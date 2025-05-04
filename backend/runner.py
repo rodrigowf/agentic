@@ -1,135 +1,276 @@
 import os
 import importlib
+import logging
 from fastapi import WebSocket
-from schemas import AgentConfig, ToolDefinition
+from starlette.websockets import WebSocketDisconnect, WebSocketState
+from schemas import AgentConfig
+from datetime import datetime
+import asyncio
+import json
+import openai
 
-# Assuming autogen v0.5.3 structure might differ, adjust imports if needed
-# Placeholder imports, replace with actual AutoGen v0.5.3+ imports
-# from autogen import Agent, ConversableAgent # Example
-# from autogen.llm import ... # Example
+# --- Corrected AutoGen v0.4+ Imports ---
+# Core components
+from autogen_core import CancellationToken, FunctionCall, Image
+# Models (including FunctionExecutionResult and ModelInfo)
+from autogen_core.models import FunctionExecutionResult, ModelInfo
+# AgentChat components
+from looping_agent import LoopingAssistantAgent
+# Corrected message/event imports
+from autogen_agentchat.messages import (
+    TextMessage,
+    ToolCallRequestEvent,
+    ToolCallExecutionEvent,
+    BaseChatMessage,
+    BaseAgentEvent
+)
+# Model clients
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+# Tools
+from autogen_core.tools import FunctionTool
 
-# Mock AutoGen classes/functions for structure - REPLACE WITH ACTUAL AUTOGEN IMPORTS
-class MockLLM:
-  def __init__(self, api_key, model):
-    self.api_key = api_key
-    self.model = model
+logger = logging.getLogger(__name__)
 
-class MockAgent:
-  def __init__(self, name, llm, tools, system_message, human_message, max_turns):
-    self.name = name
-    self.llm = llm
-    self.tools = tools
-    self.system_message = system_message
-    self.human_message = human_message
-    self.max_turns = max_turns
-    print(f"MockAgent '{self.name}' initialized.")
+# --- WebSocket Event Helper ---
+async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: any):
+    if websocket.client_state == WebSocketState.CONNECTED:
+        try:
+            # Ensure data is serializable
+            serializable_data = {}
+            if isinstance(data, (BaseChatMessage, BaseAgentEvent)):
+                try:
+                    serializable_data = data.model_dump(mode='json')
+                except Exception as dump_err:
+                    logger.warning(f"Could not model_dump event data of type {type(data)}: {dump_err}. Falling back to dict.")
+                    try:
+                        serializable_data = data.__dict__
+                    except Exception:
+                        logger.warning(f"Could not convert event data {type(data)} to dict. Sending string representation.")
+                        serializable_data = str(data)
+            elif isinstance(data, dict):
+                serializable_data = data
+            elif isinstance(data, str):
+                serializable_data = {"message": data}
+            else:
+                logger.warning(f"Sending non-standard data type {type(data)} as string.")
+                serializable_data = str(data)
 
-  async def stream(self):
-    print(f"Streaming mock events for agent '{self.name}'...")
-    for i in range(self.max_turns):
-      yield {"event_type": "mock_turn", "turn": i + 1, "message": f"Mock message {i + 1}"}
-    yield {"event_type": "mock_end", "message": "Mock run finished."}
-
-def create_openai_llm(api_key, model):
-  print(f"Creating mock OpenAI LLM (model: {model})")
-  return MockLLM(api_key=api_key, model=model)
-
-def create_anthropic_llm(api_key, model):
-  print(f"Creating mock Anthropic LLM (model: {model})")
-  return MockLLM(api_key=api_key, model=model)
-
-def create_gemini_llm(api_key, model):
-  # Assuming gemini-sdk provides a similar function
-  print(f"Creating mock Gemini LLM (model: {model})")
-  return MockLLM(api_key=api_key, model=model)
-
-async def run_agent_ws(agent_cfg: AgentConfig, tools: list[ToolDefinition], websocket: WebSocket):
-  # Build tool instances
-  tool_funcs = {}
-  for t in tools:
-    if t.name in agent_cfg.tools:
-      try:
-        # Dynamically import the tool function
-        module = importlib.import_module(f"tools.{t.name}")
-        tool_funcs[t.name] = getattr(module, t.name)
-        print(f"Loaded tool: {t.name}")
-      except (ModuleNotFoundError, AttributeError) as e:
-        print(f"Warning: Could not load tool '{t.name}': {e}")
-        await websocket.send_json({"error": f"Could not load tool '{t.name}'"})
-        # Decide if you want to proceed without the tool or close
-        # await websocket.close(code=1011) # Internal Error
-        # return
-
-  # Select LLM
-  key = None
-  llm = None
-  prov = agent_cfg.llm.provider.lower()
-  try:
-    if prov == 'openai':
-      key = os.getenv('OPENAI_API_KEY')
-      if not key:
-        raise ValueError("OPENAI_API_KEY not set in environment")
-      llm = create_openai_llm(api_key=key, model=agent_cfg.llm.model)
-    elif prov == 'anthropic':
-      key = os.getenv('ANTHROPIC_API_KEY')
-      if not key:
-        raise ValueError("ANTHROPIC_API_KEY not set in environment")
-      llm = create_anthropic_llm(api_key=key, model=agent_cfg.llm.model)
-    elif prov == 'gemini':
-      key = os.getenv('GEMINI_API_KEY')
-      if not key:
-        raise ValueError("GEMINI_API_KEY not set in environment")
-      # Ensure the gemini-sdk provides create_gemini_llm or similar
-      llm = create_gemini_llm(api_key=key, model=agent_cfg.llm.model)
+            payload = {
+                "type": event_type,
+                "data": serializable_data,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+            await websocket.send_json(payload)
+            logger.debug(f"Sent event '{event_type}'")
+        except TypeError as te:
+            logger.error(f"Serialization error sending event '{event_type}': {te}. Data: {data}")
+        except Exception as e:
+            logger.error(f"Failed to send event '{event_type}' via WebSocket: {e}")
     else:
-      raise ValueError(f"Unsupported LLM provider: {prov}")
-  except Exception as e:
-    print(f"Error creating LLM: {e}")
-    await websocket.send_json({"error": f"LLM configuration error: {e}"})
-    await websocket.close(code=1011)
-    return
+        logger.warning(f"Attempted to send event '{event_type}' but WebSocket was not connected.")
 
-  if not llm:
-    print("LLM could not be initialized.")
-    await websocket.send_json({"error": "LLM could not be initialized."})
-    await websocket.close(code=1011)
-    return
+# --- Main Agent Runner (v0.4+ Style) ---
+async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], websocket: WebSocket):
+    logger.info(f"Starting run_agent_ws for agent: {agent_cfg.name} (v0.4+ style)")
+    agent_tools = [t for t in all_tools if t.name in agent_cfg.tools]
+    logger.info(f"Filtered tools for agent '{agent_cfg.name}': {[t.name for t in agent_tools]}")
 
-  # Instantiate agent (Using MockAgent - REPLACE WITH ACTUAL AUTOGEN AGENT)
-  try:
-    # Replace MockAgent with the actual AutoGen agent class
-    agent = MockAgent(
-      name=agent_cfg.name,
-      llm=llm,
-      tools=list(tool_funcs.values()),  # Pass loaded functions
-      system_message=agent_cfg.prompt.system,
-      human_message=agent_cfg.prompt.user,  # Check if AutoGen uses this directly
-      max_turns=agent_cfg.max_turns
-    )
-  except Exception as e:
-    print(f"Error instantiating agent: {e}")
-    await websocket.send_json({"error": f"Agent instantiation error: {e}"})
-    await websocket.close(code=1011)
-    return
+    if len(agent_tools) != len(agent_cfg.tools):
+        missing = set(agent_cfg.tools) - {t.name for t in agent_tools}
+        warning_msg = f"Agent '{agent_cfg.name}' configured with tools that couldn't be loaded: {missing}"
+        logger.warning(warning_msg)
+        await send_event_to_websocket(websocket, "warning", {"message": warning_msg})
 
-  # Stream events
-  try:
-    async for evt in agent.stream():
-      # Assuming evt has a to_dict() method or is directly serializable
-      if hasattr(evt, 'to_dict'):
-        await websocket.send_json(evt.to_dict())
-      else:
-        await websocket.send_json(evt)  # Send the mock dict directly
-  except Exception as e:
-    print(f"Error during agent run: {e}")
+    # --- Model Client Setup (v0.4+) ---
+    model_client = None
+    prov = agent_cfg.llm.provider.lower()
+    model_name = agent_cfg.llm.model
+    api_key = None
+    logger.info(f"Attempting to create model client for provider: {prov}, model: {model_name}")
     try:
-      await websocket.send_json({"error": f"Runtime error: {e}"})
-    except Exception:
-      pass  # Websocket might already be closed
-  finally:
-    # Ensure websocket is closed if not already
+        if prov == 'openai':
+            api_key = os.getenv('OPENAI_API_KEY')
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY not found in environment.")
+            try:
+                # First attempt: Initialize directly (works for known models)
+                model_client = OpenAIChatCompletionClient(model=model_name, api_key=api_key)
+                logger.info(f"Using OpenAIChatCompletionClient for known OpenAI model.")
+            except ValueError as ve:
+                # Second attempt: If model_info is required (unknown/new model)
+                if "model_info is required" in str(ve):
+                    logger.warning(f"Model '{model_name}' not recognized by autogen_ext, providing default model_info.")
+                    # Define default model_info assuming modern capabilities
+                    # Adjust these based on actual o4-mini capabilities if needed
+                    openai_model_info = ModelInfo(
+                        vision=True,
+                        function_calling=True,
+                        json_output=True,
+                        family="openai", # Specify family as openai
+                        structured_output=True
+                    )
+                    openai_base_url = "https://api.openai.com/v1" # Standard OpenAI base URL
+                    model_client = OpenAIChatCompletionClient(
+                        model=model_name,
+                        api_key=api_key,
+                        base_url=openai_base_url,
+                        model_info=openai_model_info
+                    )
+                    logger.info(f"Using OpenAIChatCompletionClient with explicit model_info for OpenAI model.")
+                else:
+                    # Re-raise other ValueErrors
+                    raise ve
+
+        elif prov == 'gemini':
+            api_key = os.getenv('GEMINI_API_KEY')
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY not found in environment.")
+
+            gemini_model_info = ModelInfo(
+                vision=True,
+                function_calling=True,
+                json_output=True,
+                family="gemini",
+                structured_output=True
+            )
+            gemini_base_url = "https://generativelanguage.googleapis.com/v1beta/openai"  # remove trailing slash
+            logger.info(f"Using OpenAIChatCompletionClient for Gemini model via compatible endpoint: {gemini_base_url}")
+            model_client = OpenAIChatCompletionClient(
+                model=model_name,
+                api_key=api_key,
+                base_url=gemini_base_url,
+                model_info=gemini_model_info
+            )
+
+        else:
+            error_msg = f"Unsupported or unavailable LLM provider: {prov}"
+            logger.error(error_msg)
+            await send_event_to_websocket(websocket, "error", {"message": error_msg})
+            await websocket.close()
+            return
+
+        if model_client is None:
+             raise ValueError(f"Failed to initialize model client for provider: {prov}")
+
+        logger.info(f"Successfully created model client for {prov}")
+
+    except Exception as e:
+        logger.exception(f"Error setting up LLM Client for agent '{agent_cfg.name}': {e}")
+        await send_event_to_websocket(websocket, "error", {"message": f"Error setting up LLM Client: {str(e)}"})
+        await websocket.close()
+        return
+
+    # --- Agent Instantiation (v0.4+) ---
+    logger.info(f"Instantiating LoopingAssistantAgent: {agent_cfg.name}")
     try:
-      await websocket.close()
-      print(f"Websocket closed for agent run '{agent_cfg.name}'")
-    except Exception:
-      pass  # Ignore if already closed
+        assistant = LoopingAssistantAgent(
+            name=agent_cfg.name,
+            system_message=agent_cfg.prompt.system,
+            model_client=model_client,
+            tools=agent_tools,
+            reflect_on_tool_use=agent_cfg.reflect_on_tool_use,
+        )
+        logger.info(f"Agent '{agent_cfg.name}' instantiated successfully using LoopingAssistantAgent.")
+
+    except Exception as e:
+        logger.exception(f"Error creating agent instance '{agent_cfg.name}': {e}")
+        await send_event_to_websocket(websocket, "error", {"message": f"Error creating agent instance: {str(e)}"})
+        await websocket.close()
+        if model_client and hasattr(model_client, 'close'):
+            await model_client.close()
+        return
+
+    # --- Run Interaction using LoopingAssistantAgent.run_stream ---
+    cancellation_token = CancellationToken()
+    message_count = 0 # Initialize message counter
+    stream_finished_naturally = False
+    error_occurred = False  # flag to skip final messaging on errors
+
+    try:
+        logger.info(f"Waiting for initial 'run' message from client for agent '{agent_cfg.name}'")
+        initial_message_data = await websocket.receive_json()
+        logger.info(f"Received initial message: {initial_message_data}")
+
+        if initial_message_data.get("type") != "run":
+            error_msg = "Expected 'run' message type to start agent"
+            logger.error(error_msg)
+            await send_event_to_websocket(websocket, "error", {"message": error_msg})
+            await websocket.close()
+            return
+
+        task_message_content = initial_message_data.get("data")
+        if not task_message_content:
+            task_message_content = agent_cfg.prompt.user
+            if not task_message_content:
+                error_msg = "No task message provided in 'run' message and agent config's 'prompt.user' is also empty."
+                logger.error(error_msg)
+                await send_event_to_websocket(websocket, "error", {"message": error_msg})
+                await websocket.close()
+                return
+            else:
+                logger.info(f"Using default task from agent config: {task_message_content[:100]}...")
+        else:
+            logger.info(f"Using task from client message: {task_message_content[:100]}...")
+
+        await send_event_to_websocket(websocket, "system", {"message": f"Initiating agent run with task: {task_message_content[:100]}..."})
+
+        # Use assistant.run_stream with the task content
+        stream = assistant.run_stream(task=task_message_content, cancellation_token=cancellation_token)
+
+        # Initialize message count (run_stream doesn't start with the task message in the count)
+        message_count = 0
+
+        async for event in stream:
+            event_type = event.__class__.__name__.lower()
+            await send_event_to_websocket(websocket, event_type, event)
+
+            # Increment message count for relevant events
+            if isinstance(event, (BaseChatMessage, ToolCallRequestEvent, ToolCallExecutionEvent)):
+                message_count += 1
+
+        # If the loop finishes without exceptions, the stream ended naturally.
+        stream_finished_naturally = True
+
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected by client during run for agent '{agent_cfg.name}'.")
+        cancellation_token.cancel()
+    except asyncio.CancelledError:
+        # This might still happen if the websocket disconnects or another external cancellation occurs
+        logger.info(f"Agent run for '{agent_cfg.name}' was cancelled externally.")
+        await send_event_to_websocket(websocket, "system", {"message": "Agent run cancelled externally."})
+    except Exception as e:
+        # Quota error detection for both OpenAI and Gemini
+        err_str = str(e)
+        if isinstance(e, openai.RateLimitError) or 'RESOURCE_EXHAUSTED' in err_str or 'QuotaFailure' in err_str:
+            logger.error(f"Quota exceeded for agent '{agent_cfg.name}': {e}")
+            await send_event_to_websocket(websocket, "error", {"message": "Quota exceeded, please check your plan or try again later."})
+            await websocket.close()
+            return
+        # Handle model not found errors
+        if isinstance(e, openai.NotFoundError) or 'model_not_found' in err_str.lower():
+            logger.error(f"Model not found or unauthorized for agent '{agent_cfg.name}': {e}")
+            await send_event_to_websocket(websocket, "error", {"message": "Specified model does not exist or you do not have access to it."})
+            await websocket.close()
+            return
+        # Fallback for other exceptions
+        logger.exception(f"Error during agent run/streaming for '{agent_cfg.name}': {e}.")
+        try:
+            await send_event_to_websocket(websocket, "error", {"message": f"Error during agent run: {str(e)}"})
+        except Exception as send_err:
+            logger.error(f"Failed to send error details over WebSocket after run error: {send_err}")
+    finally:
+        if not error_occurred:
+            if stream_finished_naturally:
+                 logger.info(f"Agent stream finished naturally for '{agent_cfg.name}'. Total messages/tool events processed by runner: {message_count}")
+                 await send_event_to_websocket(websocket, "system", {"message": "Agent run finished."})
+            else:
+                 # Log if the stream ended due to cancellation/error
+                 logger.info(f"Agent stream processing stopped for '{agent_cfg.name}'. Total messages/tool events processed before stop: {message_count}")
+
+        logger.info(f"Agent run processing finished or errored for {agent_cfg.name}.")
+        if model_client and hasattr(model_client, 'close'):
+            try:
+                await model_client.close()
+                logger.info(f"Closed model client for agent '{agent_cfg.name}'.")
+            except Exception as close_err:
+                logger.error(f"Error closing model client for agent '{agent_cfg.name}': {close_err}")

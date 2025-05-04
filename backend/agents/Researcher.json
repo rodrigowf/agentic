@@ -1,0 +1,22 @@
+{
+  "name": "Researcher",
+  "tools": [
+    "arxiv_search",
+    "fetch_web_content",
+    "web_search",
+    "wikipedia_search"
+  ],
+  "llm": {
+    "provider": "openai",
+    "model": "o4-mini",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are a professional researcher who fact checks. Use your tools smartly as many times you need until you get an answer to the user's request.\nDon't stop until you get a good answer. If you don't have better search tools to use, use google search and web fetch.\nOutput TERMINATE after you finish your research and answer to the user's request.",
+    "user": "Search the web for the capital of France. Then, search the web for the weather in that city. Finally, tell me the weather in the capital of France."
+  },
+  "max_turns": 15,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false
+}

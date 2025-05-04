@@ -1,10 +1,12 @@
-from pydantic import BaseModel
-from typing import Any, Dict, List
+from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Callable, Optional
 
-class ToolDefinition(BaseModel):
+class ToolInfo(BaseModel):
+    """Simplified representation of a tool for API responses."""
     name: str
     description: str
-    parameters: Dict[str, Any]
+    parameters: Dict[str, Any]  # Keep parameters schema for frontend display if needed
+    filename: Optional[str] = None  # Keep filename for reference if possible
 
 class LLMConfig(BaseModel):
     provider: str  # openai, anthropic, gemini
@@ -22,3 +24,8 @@ class AgentConfig(BaseModel):
     llm: LLMConfig
     prompt: PromptConfig
     max_turns: int = 5
+    reflect_on_tool_use: bool = True
+    terminate_on_text: bool = True
+
+class GenerateToolRequest(BaseModel):
+    prompt: str = Field(..., description="The natural language prompt describing the tool to be generated.")

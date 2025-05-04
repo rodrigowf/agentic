@@ -1,7 +1,25 @@
+autogenstudio
 fastapi
+arxiv
 uvicorn[standard]
 pydantic
 python-dotenv
+python-multipart
 openai
 anthropic
 google-generativeai
+autogen-core>=0.2.0
+# Added missing dependencies
+pydantic>=2.0
+requests
+beautifulsoup4
+autogen-agentchat==0.5.5
+autogen-core==0.5.5
+autogen-ext==0.5.5
+autogen-ext-openai
+autogen-ext-anthropic
+autogen-ext-google
+
+# For Tools:
+duckduckgo_search
+wikipedia 
