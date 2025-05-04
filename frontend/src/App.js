@@ -24,6 +24,39 @@ import RunConsole from './components/RunConsole';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
+const lightPalette = {
+  primary: {
+    main: '#3f51b5',
+  },
+  secondary: {
+    main: '#f50057',
+  },
+  background: {
+    default: '#f4f6f8',
+    paper: '#ffffff',
+    subtile: '#e0e0e0',
+  },
+};
+
+const darkPalette = {
+  primary: {
+    main: '#80bae9',
+  },
+  secondary: {
+    main: '#f48fb1',
+  },
+  background: {
+    default: '#0d1117',
+    paper: '#161b22',
+    subtile: '#21262d',
+  },
+  text: {
+    primary: '#c9d1d9',
+    secondary: '#8b949e',
+  },
+  divider: '#30363d',
+};
+
 export default function App() {
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
   const initialMode = localStorage.getItem('themeMode') || (prefersDarkMode ? 'dark' : 'light');
@@ -47,26 +80,92 @@ export default function App() {
       createTheme({
         palette: {
           mode,
-          primary: {
-            main: '#1976d2',
+          ...(mode === 'light' ? lightPalette : darkPalette),
+        },
+        typography: {
+          h5: {
+            fontWeight: 500,
           },
-          secondary: {
-            main: '#dc004e',
+          h6: {
+            fontWeight: 500,
           },
+        },
+        shape: {
+          borderRadius: 8,
         },
         components: {
           MuiAppBar: {
             styleOverrides: {
               root: ({ theme }) => ({
                 backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.primary.main,
+                boxShadow: 'none',
+                borderBottom: `1px solid ${theme.palette.divider}`,
               }),
             },
           },
           MuiPaper: {
+            defaultProps: {
+              elevation: 0,
+              variant: 'outlined',
+            },
+            styleOverrides: {
+              root: ({ theme }) => ({
+                transition: 'background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                backgroundColor: theme.palette.background.paper,
+              }),
+              outlined: ({ theme }) => ({
+                borderColor: theme.palette.divider,
+              }),
+            },
+          },
+          MuiButton: {
+            defaultProps: {
+              disableElevation: true,
+            },
             styleOverrides: {
               root: {
-                transition: 'background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                textTransform: 'none',
               },
+              contained: ({ theme }) => ({
+                fontWeight: 500,
+              }),
+            },
+          },
+          MuiTableHead: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[100],
+                '& .MuiTableCell-root': {
+                  fontWeight: 600,
+                },
+              }),
+            },
+          },
+          MuiTableCell: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                borderBottom: `1px solid ${theme.palette.divider}`,
+              }),
+            },
+          },
+          MuiChip: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                borderRadius: theme.shape.borderRadius / 2,
+                fontWeight: 500,
+              }),
+            },
+          },
+          MuiTextField: {
+            defaultProps: {
+              variant: 'outlined',
+              size: 'small',
+            },
+          },
+          MuiSelect: {
+            defaultProps: {
+              variant: 'outlined',
+              size: 'small',
             },
           },
         },
@@ -92,13 +191,15 @@ export default function App() {
             </Toolbar>
           </AppBar>
           <Box
+            component="main"
             sx={{
+              flexGrow: 1,
               bgcolor: 'background.default',
               minHeight: 'calc(100vh - 64px)',
-              p: 3,
+              p: { xs: 2, sm: 3 },
             }}
           >
-            <Container maxWidth="lg">
+            <Container maxWidth="xl">
               <Routes>
                 <Route path="/" element={<AgentList />} />
                 <Route path="/agents/new" element={<AgentEditor />} />

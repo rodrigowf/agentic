@@ -42,5 +42,8 @@ export const runAgent = (name) => {
   return new WebSocket(wsUrl);
 };
 
+// Models
+export const getModelsByProvider = (provider) => API.get(`/models/${provider}`);
+
 // Export API instance and individual functions
-export default { API, getTools, getToolContent, saveToolContent, uploadTool, generateToolCode, getAgents, createAgent, updateAgent, runAgent };
+export default { API, getTools, getToolContent, saveToolContent, uploadTool, generateToolCode, getAgents, createAgent, updateAgent, runAgent, getModelsByProvider };

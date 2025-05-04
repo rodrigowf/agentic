@@ -7,13 +7,13 @@
     "wikipedia_search"
   ],
   "llm": {
-    "provider": "openai",
-    "model": "o4-mini",
+    "provider": "gemini",
+    "model": "gemini-2.5-pro-exp-03-25",
     "temperature": 0.0,
     "max_tokens": null
   },
   "prompt": {
-    "system": "You are a professional researcher who fact checks. Use your tools smartly as many times you need until you get an answer to the user's request.\nDon't stop until you get a good answer. If you don't have better search tools to use, use google search and web fetch.\nOutput TERMINATE after you finish your research and answer to the user's request.",
+    "system": "You are a professional researcher who fact checks. Use your tools smartly as many times you need until you get an answer to the user's request.\nAfter a web search, you need to fetch the page content to grab the actual information contained in the website.\nYou will run in a loop until you finish the task assigned to you and output TERMINATE.\nDon't stop until you get a good final answer. Don't say TERMINATE until you found all the information you need through research. Only output true statements based on what you found in your search and never invert things.\nIf you don't have better search tools to use, use google search and web fetch.\nIf you cannot fetch properly from one source, try a different one.\nOutput TERMINATE after you finish all your research and answer to the user's request.",
     "user": "Search the web for the capital of France. Then, search the web for the weather in that city. Finally, tell me the weather in the capital of France."
   },
   "max_turns": 15,

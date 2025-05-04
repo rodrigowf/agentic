@@ -1,152 +1,74 @@
-import React, { useEffect, useState, useCallback } from 'react'; // Added useCallback
-import { List, ListItem, ListItemText, Button, Typography, Box, Paper, Divider, IconButton, Tooltip, CircularProgress, Alert } from '@mui/material'; // Added Alert, CircularProgress
-import { Link as RouterLink } from 'react-router-dom';
-import EditIcon from '@mui/icons-material/Edit';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload'; // For upload button
+import React, { useEffect, useState } from 'react';
+import { Table, TableHead, TableRow, TableCell, TableBody, Button, Typography, Box, Paper, Link, Alert } from '@mui/material';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import api from '../api';
 
 export default function ToolList() {
-  const [tools, setTools] = useState([]); // Now holds flat list of ToolDefinition
-  const [loading, setLoading] = useState(true); // Loading state
+  const [tools, setTools] = useState([]);
   const [error, setError] = useState(null);
-  const [uploadError, setUploadError] = useState(null); // Specific error for uploads
-  const fileInputRef = React.useRef(null); // Ref for hidden file input
-
-  const fetchTools = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    api.getTools()
-       .then(res => {
-         // Sort tools by filename, then by name for consistent display
-         const sortedTools = res.data.sort((a, b) => {
-           if (a.filename < b.filename) return -1;
-           if (a.filename > b.filename) return 1;
-           if (a.name < b.name) return -1;
-           if (a.name > b.name) return 1;
-           return 0;
-         });
-         setTools(sortedTools);
-       })
-       .catch(err => {
-         console.error("Error fetching tools:", err);
-         setError(`Failed to load tools. ${err.response?.data?.detail || err.message}. Is the backend running?`);
-       })
-       .finally(() => setLoading(false));
-  }, []);
+  const nav = useNavigate();
 
   useEffect(() => {
-    fetchTools();
-  }, [fetchTools]);
+    api.getTools()
+      .then(res => setTools(res.data))
+      .catch(err => {
+        console.error("Error fetching tools:", err);
+        setError("Failed to load tools. Is the backend running?");
+      });
+  }, []);
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click(); // Trigger hidden file input
+  const handleDelete = (filename) => {
+    console.warn(`Delete functionality not implemented for ${filename}`);
   };
-
-  const handleFileChange = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setLoading(true); // Show loading indicator during upload
-    setUploadError(null);
-    setError(null);
-
-    try {
-      // API now returns list of tools found in the uploaded file
-      const response = await api.uploadTool(file);
-      console.log("Upload successful, tools found:", response.data);
-      // Refresh the entire list to show the newly added tools
-      fetchTools();
-    } catch (err) {
-      console.error("Error uploading tool:", err);
-      setUploadError(`Upload failed: ${err.response?.data?.detail || err.message}`);
-      setLoading(false); // Stop loading on error
-    } finally {
-       // Reset file input value so the same file can be uploaded again if needed
-       if (fileInputRef.current) {
-           fileInputRef.current.value = '';
-       }
-    }
-  };
-
 
   return (
-    <Box component={Paper} sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-        <Typography variant="h5" gutterBottom component="div" sx={{ mb: 0 }}>
-          Available Tools
+    <Box component={Paper} sx={{ p: { xs: 2, sm: 3 }, overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" component="div">
+          Tools
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-           {/* Hidden file input */}
-           <input
-             type="file"
-             accept=".py"
-             ref={fileInputRef}
-             onChange={handleFileChange}
-             style={{ display: 'none' }}
-           />
-           {/* Upload Button */}
-           <Button
-             variant="outlined"
-             startIcon={<CloudUploadIcon />}
-             onClick={handleUploadClick}
-             disabled={loading}
-           >
-             Upload File
-           </Button>
-           {/* Create Button */}
-           <Button variant="contained" component={RouterLink} to="/tools/new" disabled={loading}>
-             Create Tool
-           </Button>
-        </Box>
+        <Button variant="contained" component={RouterLink} to="/tools/new">
+          New Tool
+        </Button>
       </Box>
-
-      {/* Display errors */}
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
-      {uploadError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setUploadError(null)}>{uploadError}</Alert>}
-
-      {/* Loading Indicator */}
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-          <CircularProgress />
-        </Box>
-      )}
-
-      {/* Tool List */}
-      {!loading && (
-        <List disablePadding>
-          {tools.length === 0 && !error && <Typography sx={{ textAlign: 'center', my: 2 }}>No tools defined or loaded.</Typography>}
-          {tools.map((tool, index) => (
-            <React.Fragment key={`${tool.filename}-${tool.name}`}> {/* Use composite key */}
-              <ListItem
-                sx={{ py: 1.5 }}
-                secondaryAction={ // Edit button links to the file
-                  <Tooltip title={`Edit File: ${tool.filename}`}>
-                    <IconButton edge="end" aria-label="edit" component={RouterLink} to={`/tools/edit/${tool.filename}`}>
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                }
-              >
-                <ListItemText
-                  primary={tool.name} // Display tool definition name
-                  secondary={
-                    <>
-                      <Typography component="span" variant="body2" color="text.primary">
-                        {tool.description || 'No description'}
-                      </Typography>
-                      <Typography component="span" variant="caption" sx={{ display: 'block', mt: 0.5, fontFamily: 'monospace' }}>
-                        (File: {tool.filename}) {/* Show filename */}
-                      </Typography>
-                    </>
-                  }
-                  primaryTypographyProps={{ fontWeight: 'medium' }}
-                />
-              </ListItem>
-              {index < tools.length - 1 && <Divider component="li" />} 
-            </React.Fragment>
-          ))}
-        </List>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Box sx={{ overflowX: 'auto' }}>
+        <Table size="small" sx={{ minWidth: 400 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell>Filename</TableCell>
+              <TableCell>Description (from docstring)</TableCell>
+              <TableCell sx={{ textAlign: 'right' }}>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {tools.length === 0 && !error && (
+              <TableRow>
+                <TableCell colSpan={3} align="center" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                  No tools created or uploaded yet.
+                </TableCell>
+              </TableRow>
+            )}
+            {tools.map(t => (
+              <TableRow key={t.filename} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                <TableCell component="th" scope="row">
+                  <Link component={RouterLink} to={`/tools/edit/${t.filename}`} underline="hover" fontWeight="medium">
+                    {t.filename}
+                  </Link>
+                </TableCell>
+                <TableCell sx={{ color: 'text.secondary', maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {t.definition?.description || '-'}
+                </TableCell>
+                <TableCell sx={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <Button size="small" variant="outlined" component={RouterLink} to={`/tools/edit/${t.filename}`} sx={{ mr: 1 }}>Edit</Button>
+                  {/* Add Delete button (functionality pending) */}
+                  {/* <Button size="small" color="error" onClick={() => handleDelete(t.filename)}>Delete</Button> */}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
     </Box>
   );
 }

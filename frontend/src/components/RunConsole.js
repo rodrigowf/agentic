@@ -11,6 +11,7 @@ import {
   Button,
   IconButton,
   TextField,
+  Stack,
 } from '@mui/material';
 import ReplayIcon from '@mui/icons-material/Replay';
 import api from '../api';
@@ -19,65 +20,51 @@ import api from '../api';
 const getLogTypeColor = (type) => {
   const lowerType = type?.toLowerCase();
   switch (lowerType) {
-    // Error types
     case 'error':
     case 'system_error':
-    case 'websocketdisconnect': // Treat disconnects visually
+    case 'websocketdisconnect':
       return 'error.main';
-
-    // Warning types
     case 'warning':
       return 'warning.main';
-
-    // Informational types
     case 'info':
     case 'system':
-    case 'textmessage': // Regular text response from agent
+    case 'textmessage':
       return 'info.main';
-
-    // Debug / Verbose types
     case 'debug':
       return 'text.secondary';
-
-    // LLM Interaction types
-    case 'llmrequestevent': // Renamed from llm_request
-    case 'chatcompletionrequest': // Could be another name depending on exact event
+    case 'llmrequestevent':
+    case 'chatcompletionrequest':
       return 'primary.light';
-    case 'llmresponseevent': // Renamed from llm_response
-    case 'chatcompletionresponseevent': // Could be another name
-    case 'textmessagechunk': // Streaming chunks
+    case 'llmresponseevent':
+    case 'chatcompletionresponseevent':
+    case 'textmessagechunk':
       return 'success.light';
-
-    // Tool Interaction types
-    case 'toolcallrequestevent': // Renamed from tool_call
-    case 'toolcallrequestmessage': // Specific message type
+    case 'toolcallrequestevent':
+    case 'toolcallrequestmessage':
       return 'secondary.light';
-    case 'toolcallexecutionevent': // Renamed from tool_response
-    case 'toolcallresultmessage': // Specific message type
+    case 'toolcallexecutionevent':
+    case 'toolcallresultmessage':
       return 'secondary.main';
-
-    // Other potential types from v0.4+ streaming
     case 'agentstartevent':
     case 'agentfinishevent':
-        return 'primary.main'; // Or another distinct color
-
+      return 'primary.main';
     default:
-      console.warn("Unknown log type received:", type); // Log unknown types
+      console.warn("Unknown log type received:", type);
       return 'text.primary';
   }
 };
 
 // Helper to format log data
 const formatLogData = (data) => {
-    if (typeof data === 'object' && data !== null) {
-        try {
-            return JSON.stringify(data, null, 2);
-        } catch (e) {
-            console.error("Error stringifying log data:", e);
-            return "[Unserializable Data]";
-        }
+  if (typeof data === 'object' && data !== null) {
+    try {
+      return JSON.stringify(data, null, 2);
+    } catch (e) {
+      console.error("Error stringifying log data:", e);
+      return "[Unserializable Data]";
     }
-    return String(data); // Fallback to string conversion
+  }
+  return String(data);
 };
 
 export default function RunConsole() {
@@ -130,14 +117,13 @@ export default function RunConsole() {
         const messageTypeLower = messageData.type?.toLowerCase();
 
         if (messageTypeLower?.includes('error')) {
-            setError(messageData.data?.message || messageData.data || 'An error occurred.');
-            setIsRunning(false);
+          setError(messageData.data?.message || messageData.data || 'An error occurred.');
+          setIsRunning(false);
         } else if (messageTypeLower === 'system' && messageData.data?.message?.includes('Agent run finished')) {
-            setIsRunning(false);
+          setIsRunning(false);
         } else if (messageTypeLower === 'websocketdisconnect') {
-             setIsRunning(false);
+          setIsRunning(false);
         }
-
       } catch (e) {
         console.error('Failed to parse message or invalid message format:', event.data, e);
         const errorMsg = `Received unparsable message: ${event.data}`;
@@ -160,17 +146,13 @@ export default function RunConsole() {
     };
 
     ws.current.onclose = (event) => {
-      console.log('WebSocket Disconnected', event.code, event.reason, `Was Clean: ${event.wasClean}`);
+      console.log('WebSocket Disconnected', event.code, event.reason);
       setIsConnected(false);
       setIsConnecting(false);
-      setIsRunning(false);
-      if (!event.wasClean && !error) {
-        setError(`WebSocket closed unexpectedly (Code: ${event.code}). Check backend status.`);
+      setIsRunning(false); // Fix: Add closing parenthesis
+      if (event.code !== 1000) { // 1000 is normal closure
+        setError(`WebSocket disconnected unexpectedly: ${event.reason || 'Unknown reason'} (Code: ${event.code})`);
       }
-      setLogs(prevLogs => [
-        ...prevLogs,
-        { type: 'system', data: `WebSocket connection closed${event.reason ? `: ${event.reason}` : ''} (Code: ${event.code})`, timestamp: new Date().toISOString() }
-      ]);
     };
 
   }, [name, error]);
@@ -182,8 +164,8 @@ export default function RunConsole() {
       return;
     }
     if (!taskInput.trim()) {
-        setError("Please enter a task for the agent.");
-        return;
+      setError("Please enter a task for the agent.");
+      return;
     }
 
     try {
@@ -221,80 +203,81 @@ export default function RunConsole() {
   }, [logs]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 110px)' }}>
-      <Box component={Paper} sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Stack spacing={2} sx={{ height: 'calc(100vh - 110px)' }}>
+      <Box component={Paper} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <Typography variant="h5">
           Agent Run: <Link component={RouterLink} to={`/agents/${name}`} underline="hover">{name}</Link>
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption">Status:</Typography>
-            {isConnecting ? (
-                <Chip label="Connecting..." color="warning" size="small" icon={<CircularProgress size={14} color="inherit" />} />
-            ) : isConnected ? (
-                <Chip label="Connected" color="success" size="small" />
-            ) : (
-                <Chip label="Disconnected" color="error" size="small" />
-            )}
-            <IconButton onClick={connectWebSocket} size="small" title="Reconnect" disabled={isConnecting || isConnected}>
-              <ReplayIcon />
-            </IconButton>
-            <Button variant="outlined" size="small" component={RouterLink} to="/">Back to Agents</Button>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>Status:</Typography>
+          {isConnecting ? (
+            <Chip label="Connecting..." color="warning" size="small" icon={<CircularProgress size={14} color="inherit" />} />
+          ) : isConnected ? (
+            <Chip label="Connected" color="success" size="small" />
+          ) : (
+            <Chip label="Disconnected" color="error" size="small" />
+          )}
+          <IconButton onClick={connectWebSocket} size="small" title="Reconnect" disabled={isConnecting || isConnected}>
+            <ReplayIcon />
+          </IconButton>
+          <Button variant="outlined" size="small" component={RouterLink} to="/">Back to Agents</Button>
         </Box>
       </Box>
 
-      <Box component={Paper} sx={{ p: 2, mb: 2, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-          <TextField
-              fullWidth
-              label="Initial Task for Agent"
-              variant="outlined"
-              size="small"
-              value={taskInput}
-              onChange={(e) => setTaskInput(e.target.value)}
-              disabled={!isConnected || isRunning}
-              multiline
-              rows={2}
-              maxRows={6}
-              sx={{ flexGrow: 1 }}
-          />
-          <Button 
-              variant="contained" 
-              onClick={handleRunAgent} 
-              disabled={!isConnected || isRunning || !taskInput.trim()}
-              sx={{ height: 'fit-content', mt: '4px' }}
-          >
-              {isRunning ? <CircularProgress size={24} color="inherit" /> : 'Run Agent'}
-          </Button>
+      <Box component={Paper} sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'flex-start', flexShrink: 0 }}>
+        <TextField
+          fullWidth
+          label="Initial Task for Agent"
+          variant="outlined"
+          size="small"
+          value={taskInput}
+          onChange={(e) => setTaskInput(e.target.value)}
+          disabled={!isConnected || isRunning}
+          multiline
+          rows={2}
+          maxRows={6}
+          sx={{ flexGrow: 1 }}
+          placeholder="Enter the task description here..."
+        />
+        <Button
+          variant="contained"
+          onClick={handleRunAgent}
+          disabled={!isConnected || isRunning || !taskInput.trim()}
+          sx={{ height: '100%', px: 4}}
+        >
+          {isRunning ? <CircularProgress size={24} color="inherit" /> : 'Run'}
+        </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ flexShrink: 0 }}>{error}</Alert>}
 
       <Paper ref={logContainerRef} sx={{
-           flexGrow: 1,
-           p: 2,
-           overflowY: 'auto',
-           fontFamily: 'monospace',
-           fontSize: '0.85rem',
-           bgcolor: 'background.paper',
-           border: '1px solid',
-           borderColor: 'divider'
-         }}>
+        flexGrow: 1,
+        p: 2,
+        overflowY: 'auto',
+        fontFamily: 'monospace',
+        fontSize: '0.875rem',
+        bgcolor: 'background.paper',
+      }}>
         {logs.length === 0 && !isConnecting && (
-            <Typography sx={{ color: 'text.secondary' }}>Waiting for connection. Enter task and click Run.</Typography>
+          <Typography sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+            {isConnected ? 'Enter a task above and click Run Agent.' : 'Attempting to connect...'}
+          </Typography>
         )}
         {logs.map((log, i) => (
-          <Box key={i} sx={{ mb: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            <Typography component="span" variant="caption" sx={{ color: 'text.secondary', mr: 1 }}>
-              {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '?:??:??'}
+          <Box key={i} sx={{ mb: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word', display: 'flex' }}>
+            <Typography component="span" variant="caption" sx={{ color: 'text.disabled', mr: 1.5, flexShrink: 0 }}>
+              {log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '?:??:??'}
             </Typography>
-            <Typography component="span" variant="caption" sx={{ color: getLogTypeColor(log.type), fontWeight: 'bold', mr: 1 }}>
+            <Typography component="span" variant="caption" sx={{ color: getLogTypeColor(log.type), fontWeight: 'bold', mr: 1, flexShrink: 0 }}>
               [{log.type?.toUpperCase() || 'UNKNOWN'}]
             </Typography>
-            <Typography component="span" sx={{ color: getLogTypeColor(log.type) }}>
+            <Typography component="span" sx={{ color: getLogTypeColor(log.type), flexGrow: 1 }}>
               {formatLogData(log.data)}
             </Typography>
           </Box>
         ))}
       </Paper>
-    </Box>
+    </Stack>
   );
 }

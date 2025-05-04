@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button, Typography, Box, TextField, Alert, Paper, CircularProgress, Collapse, IconButton } from '@mui/material';
+import { Button, Typography, Box, TextField, Alert, Paper, CircularProgress, Collapse, IconButton, Stack } from '@mui/material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../api';
@@ -170,7 +170,7 @@ export default function ToolEditor() {
   const hasUnsavedChanges = code !== initialCode;
 
   return (
-    <Box component={Paper} sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box component={Paper} sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="h5" gutterBottom>
         {isEditMode ? `Edit Tool: ${routeFilename}` : 'Create New Tool'}
       </Typography>
@@ -184,79 +184,86 @@ export default function ToolEditor() {
 
       {hasUnsavedChanges && !success && <Alert severity="warning" sx={{ mt: -1, mb: 1 }}>You have unsaved changes.</Alert>}
 
-      <TextField
-        label="Filename"
-        value={filename}
-        onChange={(e) => setFilename(e.target.value)}
-        required
-        disabled={isEditMode || loading || saving}
-        error={(!filename.trim() || !filename.endsWith('.py') || !/^[a-zA-Z0-9_]+\.py$/.test(filename)) && !!error}
-        helperText={isEditMode ? "Filename cannot be changed." : "Enter a valid Python filename (e.g., my_tool.py)"}
-        sx={{ mb: 1 }} // Add some margin below filename
-      />
+      <Stack spacing={2}>
+        <TextField
+          label="Filename"
+          value={filename}
+          onChange={(e) => setFilename(e.target.value)}
+          required
+          disabled={isEditMode || loading || saving}
+          error={(!filename.trim() || !filename.endsWith('.py') || !/^[a-zA-Z0-9_]+\.py$/.test(filename)) && !!error}
+          helperText={isEditMode ? "Filename cannot be changed." : "Enter a valid Python filename (e.g., my_tool.py)"}
+          fullWidth
+        />
 
-      {/* Generation Section (only in Create mode) */}
-      {!isEditMode && (
-        <Paper variant="outlined" sx={{ p: 2, mt: 1, mb: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>Generate Code from Prompt</Typography>
-          <TextField
-            label="Describe the tool you want to create"
-            multiline
-            maxRows={10} // Allow growth up to 10 lines, then scroll
-            fullWidth
-            value={generationPrompt}
-            onChange={(e) => setGenerationPrompt(e.target.value)}
-            disabled={generating || loading || saving}
-            sx={{ mb: 1 }}
-          />
+        {/* Generation Section (only in Create mode) */}
+        {!isEditMode && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle1">Generate Code from Prompt</Typography>
+              <TextField
+                label="Describe the tool you want to create"
+                multiline
+                maxRows={10}
+                fullWidth
+                value={generationPrompt}
+                onChange={(e) => setGenerationPrompt(e.target.value)}
+                disabled={generating || loading || saving}
+                variant="outlined"
+                size="small"
+              />
+              <Box>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleGenerateCode}
+                  disabled={generating || loading || saving || !generationPrompt.trim()}
+                  startIcon={generating ? <CircularProgress size={20} color="inherit" /> : null}
+                >
+                  {generating ? 'Generating...' : 'Generate Code'}
+                </Button>
+              </Box>
+            </Stack>
+          </Paper>
+        )}
+
+        <Typography variant="subtitle1">
+          {isEditMode ? 'Tool Code' : 'Tool Code (Edit generated code or write your own)'}
+        </Typography>
+        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, flexGrow: 1, minHeight: '400px', display: 'flex' }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <CodeEditor
+              language="python"
+              value={code}
+              onChange={(value) => setCode(value || '')}
+              height="50vh"
+              options={{ automaticLayout: true }}
+            />
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 1 }}>
+          <Button
+            variant="outlined"
+            component={RouterLink}
+            to="/tools"
+            disabled={saving}
+          >
+            Cancel
+          </Button>
           <Button
             variant="contained"
-            color="secondary"
-            onClick={handleGenerateCode}
-            disabled={generating || loading || saving || !generationPrompt.trim()}
-            startIcon={generating ? <CircularProgress size={20} color="inherit" /> : null}
+            onClick={handleSave}
+            disabled={loading || saving || !filename || (isEditMode && !hasUnsavedChanges)}
           >
-            {generating ? 'Generating...' : 'Generate Code'}
+            {saving ? <CircularProgress size={24} color="inherit" /> : (isEditMode ? 'Save Changes' : 'Create Tool')}
           </Button>
-        </Paper>
-      )}
-
-      <Typography variant="subtitle1" sx={{ mt: isEditMode ? 0 : -1 }}>
-        {isEditMode ? 'Tool Code' : 'Tool Code (Edit generated code or write your own)'}
-      </Typography>
-      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, flexGrow: 1, minHeight: '400px', display: 'flex' }}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <CodeEditor
-            language="python"
-            value={code}
-            onChange={(value) => setCode(value || '')} // Ensure value is not undefined
-            height="50vh" // Adjust height as needed, e.g., use vh unit
-            options={{ automaticLayout: true }} // Ensure editor resizes
-          />
-        )}
-      </Box>
-
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
-        <Button
-          variant="outlined"
-          component={RouterLink}
-          to="/tools"
-          disabled={saving}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={loading || saving || !filename || (isEditMode && !hasUnsavedChanges)}
-        >
-          {saving ? <CircularProgress size={24} color="inherit" /> : (isEditMode ? 'Save Changes' : 'Create Tool')}
-        </Button>
-      </Box>
+        </Box>
+      </Stack>
     </Box>
   );
 }

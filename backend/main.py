@@ -6,6 +6,7 @@ import os
 import re
 import inspect  # Added inspect
 import google.generativeai as genai
+from openai import OpenAI
 # Updated imports: Use ToolInfo for API, FunctionTool internally
 from schemas import AgentConfig, ToolInfo, GenerateToolRequest
 # Updated imports: load_tools now returns List[Tuple[FunctionTool, str]]
@@ -16,6 +17,7 @@ from autogen_core.tools import FunctionTool  # Import FunctionTool
 import logging  # Add logging import
 from starlette.websockets import WebSocketState, WebSocketDisconnect  # Import WebSocketState and WebSocketDisconnect
 from datetime import datetime  # Import datetime
+import anthropic  # Import Anthropic client
 
 load_dotenv()
 
@@ -50,6 +52,46 @@ os.makedirs(AGENTS_DIR, exist_ok=True)
 # Load tools returns (FunctionTool, filename) tuples
 LOADED_TOOLS_WITH_FILENAMES = load_tools(TOOLS_DIR)
 AGENTS = load_agents(AGENTS_DIR)
+
+# --- Model Endpoints ---
+
+@app.get("/api/models/{provider}")
+def get_models_by_provider(provider: str):
+    """Fetch available models from the specified provider."""
+    try:
+        if provider.lower() == "openai":
+            # Get OpenAI models
+            openai_key = os.getenv('OPENAI_API_KEY')
+            if not openai_key:
+                raise HTTPException(status_code=400, detail="OPENAI_API_KEY not configured")
+            client = OpenAI()
+            models = [model.id for model in client.models.list()]
+            return {"models": models}
+            
+        elif provider.lower() == "gemini":
+            # Get Google Gemini models
+            gemini_key = os.getenv('GEMINI_API_KEY')
+            if not gemini_key:
+                raise HTTPException(status_code=400, detail="GEMINI_API_KEY not configured")
+            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            # Clean up model names (remove prefix)
+            models = [m.split('/')[-1] for m in models]
+            return {"models": models}
+            
+        elif provider.lower() == "anthropic":
+            # Get Anthropic models
+            anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+            if not anthropic_key:
+                raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY not configured")
+            
+            # Anthropic doesn't provide a list API, so return the known models
+            models = ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]
+            return {"models": models}
+            
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching models: {str(e)}")
 
 # --- Tool Endpoints ---
 

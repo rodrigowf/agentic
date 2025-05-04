@@ -18,6 +18,8 @@ import {
   Divider,
   Checkbox,
   FormControlLabel,
+  Stack,
+  CircularProgress,
 } from '@mui/material';
 import api from '../api';
 
@@ -48,6 +50,8 @@ export default function AgentEditor() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [models, setModels] = useState([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -84,6 +88,20 @@ export default function AgentEditor() {
       setCfg(DEFAULT_AGENT_CONFIG);
     }
   }, [isEditMode, name]);
+
+  useEffect(() => {
+    if (cfg.llm.provider) {
+      setModelsLoading(true);
+      api
+        .getModelsByProvider(cfg.llm.provider)
+        .then((r) => setModels(r.data.models))
+        .catch((err) => {
+          console.error('Error fetching models:', err);
+          setError('Failed to load models for the selected provider.');
+        })
+        .finally(() => setModelsLoading(false));
+    }
+  }, [cfg.llm.provider]);
 
   const handleInputChange = useCallback((path, value) => {
     setCfg((prevCfg) => {
@@ -156,7 +174,7 @@ export default function AgentEditor() {
   };
 
   return (
-    <Box component={Paper} sx={{ p: 3 }}>
+    <Box component={Paper} sx={{ p: { xs: 2, sm: 3 } }}>
       <Typography variant="h5" gutterBottom>
         {isEditMode ? `Edit Agent: ${name}` : 'Create New Agent'}
       </Typography>
@@ -180,185 +198,199 @@ export default function AgentEditor() {
           e.preventDefault();
           handleSave();
         }}
-        sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}
       >
-        <TextField
-          label="Agent Name"
-          value={cfg.name}
-          onChange={(e) => handleInputChange('name', e.target.value)}
-          required
-          disabled={isEditMode || loading}
-          error={!cfg.name.trim() && !!error}
-          helperText={
-            !cfg.name.trim() && !!error
-              ? 'Agent Name is required'
-              : 'Unique name for the agent'
-          }
-        />
+        <Stack spacing={3}>
+          <TextField
+            label="Agent Name"
+            value={cfg.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            required
+            disabled={isEditMode || loading}
+            error={!cfg.name.trim() && !!error}
+            helperText={
+              !cfg.name.trim() && !!error
+                ? 'Agent Name is required'
+                : 'Unique name for the agent'
+            }
+            fullWidth
+          />
 
-        <Typography variant="h6" sx={{ mt: 1 }}>
-          Prompts
-        </Typography>
-        <TextField
-          label="System Prompt"
-          multiline
-          rows={4}
-          value={cfg.prompt.system}
-          onChange={(e) => handleInputChange('prompt.system', e.target.value)}
-          disabled={loading}
-          helperText="Instructions defining the agent's role, personality, and constraints."
-        />
-        <TextField
-          label="User Prompt / Initial Task"
-          multiline
-          rows={2}
-          value={cfg.prompt.user}
-          onChange={(e) => handleInputChange('prompt.user', e.target.value)}
-          disabled={loading}
-          helperText="The initial message or task to start the conversation."
-        />
+          <Divider sx={{ my: 1 }} />
 
-        <Divider sx={{ my: 1 }} />
-
-        <Typography variant="h6">LLM Configuration</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required error={!cfg.llm.provider && !!error}>
-              <InputLabel>LLM Provider</InputLabel>
-              <Select
-                value={cfg.llm.provider}
-                onChange={(e) => handleInputChange('llm.provider', e.target.value)}
-                label="LLM Provider"
-                disabled={loading}
-              >
-                <MenuItem value="openai">OpenAI</MenuItem>
-                <MenuItem value="anthropic">Anthropic</MenuItem>
-                <MenuItem value="gemini">Gemini</MenuItem>
-              </Select>
-              {!cfg.llm.provider && !!error && (
-                <FormHelperText>Provider is required</FormHelperText>
-              )}
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Model Name"
-              value={cfg.llm.model}
-              onChange={(e) => handleInputChange('llm.model', e.target.value)}
-              required
-              error={!cfg.llm.model.trim() && !!error}
-              helperText={
-                !cfg.llm.model.trim() && !!error
-                  ? 'Model Name is required'
-                  : 'e.g., gpt-4, claude-3-opus, gemini-pro'
-              }
-              disabled={loading}
-            />
-          </Grid>
-          <Grid item xs={6} sm={4}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Temperature"
-              value={cfg.llm.temperature}
-              onChange={(e) => handleInputChange('llm.temperature', e.target.value)}
-              inputProps={{ step: '0.1', min: '0', max: '2' }}
-              helperText="0 = deterministic, >0 = creative"
-              disabled={loading}
-            />
-          </Grid>
-          <Grid item xs={6} sm={4}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Max Tokens"
-              value={cfg.llm.max_tokens ?? ''}
-              onChange={(e) =>
-                handleInputChange(
-                  'llm.max_tokens',
-                  e.target.value ? parseInt(e.target.value) : null
-                )
-              }
-              inputProps={{ min: '1' }}
-              helperText="Optional limit"
-              disabled={loading}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Max Turns"
-              value={cfg.max_turns}
-              onChange={(e) => handleInputChange('max_turns', e.target.value)}
-              inputProps={{ min: '1' }}
-              helperText="Max conversation steps"
-              disabled={loading}
-            />
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ my: 1 }} />
-
-        <Typography variant="h6">Tools</Typography>
-        <FormControl fullWidth disabled={loading}>
-          <InputLabel>Available Tools</InputLabel>
-          <Select
-            multiple
-            value={cfg.tools}
-            onChange={(e) => handleInputChange('tools', e.target.value)}
-            input={<OutlinedInput label="Available Tools" />}
-            renderValue={(selected) => (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {selected.map((toolName) => (
-                  <Chip key={toolName} label={toolName} size="small" />
-                ))}
-              </Box>
-            )}
-          >
-            {allTools.length === 0 && (
-              <MenuItem disabled>Loading tools...</MenuItem>
-            )}
-            {allTools.map((t) => (
-              <MenuItem key={t.name} value={t.name}>
-                {t.name}
-              </MenuItem>
-            ))}
-          </Select>
-          <FormHelperText>Select the tools this agent can use.</FormHelperText>
-        </FormControl>
-
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={cfg.terminate_on_text}
-              onChange={(e) =>
-                handleInputChange('terminate_on_text', e.target.checked)
-              }
-              disabled={loading}
-            />
-          }
-          label="Terminate chat if agent outputs 'TERMINATE'"
-        />
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
-          <Button
-            variant="outlined"
-            component={RouterLink}
-            to="/"
+          <Typography variant="h6">Prompts</Typography>
+          <TextField
+            label="System Prompt"
+            multiline
+            rows={4}
+            value={cfg.prompt.system}
+            onChange={(e) => handleInputChange('prompt.system', e.target.value)}
             disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" variant="contained" disabled={loading}>
-            {loading
-              ? 'Saving...'
-              : isEditMode
-              ? 'Update Agent'
-              : 'Create Agent'}
-          </Button>
-        </Box>
+            helperText="Instructions defining the agent's role, personality, and constraints."
+            fullWidth
+          />
+          <TextField
+            label="User Prompt / Initial Task"
+            multiline
+            rows={2}
+            value={cfg.prompt.user}
+            onChange={(e) => handleInputChange('prompt.user', e.target.value)}
+            disabled={loading}
+            helperText="The initial message or task to start the conversation."
+            fullWidth
+          />
+
+          <Divider sx={{ my: 1 }} />
+
+          <Typography variant="h6">LLM Configuration</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required error={!cfg.llm.provider && !!error}>
+                <InputLabel>LLM Provider</InputLabel>
+                <Select
+                  value={cfg.llm.provider}
+                  onChange={(e) => handleInputChange('llm.provider', e.target.value)}
+                  label="LLM Provider"
+                  disabled={loading}
+                >
+                  <MenuItem value="openai">OpenAI</MenuItem>
+                  <MenuItem value="anthropic">Anthropic</MenuItem>
+                  <MenuItem value="gemini">Gemini</MenuItem>
+                </Select>
+                {!cfg.llm.provider && !!error && (
+                  <FormHelperText>Provider is required</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required error={!cfg.llm.model && !!error}>
+                <InputLabel>Model Name</InputLabel>
+                <Select
+                  value={cfg.llm.model}
+                  onChange={(e) => handleInputChange('llm.model', e.target.value)}
+                  label="Model Name"
+                  disabled={modelsLoading || loading}
+                >
+                  {modelsLoading && (
+                    <MenuItem disabled>
+                      <CircularProgress size={24} />
+                    </MenuItem>
+                  )}
+                  {!modelsLoading &&
+                    models.map((model) => (
+                      <MenuItem key={model} value={model}>
+                        {model}
+                      </MenuItem>
+                    ))}
+                </Select>
+                {!cfg.llm.model && !!error && (
+                  <FormHelperText>Model Name is required</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+            <Grid item xs={6} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Temperature"
+                value={cfg.llm.temperature}
+                onChange={(e) => handleInputChange('llm.temperature', e.target.value)}
+                inputProps={{ step: '0.1', min: '0', max: '2' }}
+                helperText="0 = deterministic, >0 = creative"
+                disabled={loading}
+              />
+            </Grid>
+            <Grid item xs={6} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Max Tokens"
+                value={cfg.llm.max_tokens ?? ''}
+                onChange={(e) =>
+                  handleInputChange(
+                    'llm.max_tokens',
+                    e.target.value ? parseInt(e.target.value) : null
+                  )
+                }
+                inputProps={{ min: '1' }}
+                helperText="Optional limit"
+                disabled={loading}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Max Turns"
+                value={cfg.max_turns}
+                onChange={(e) => handleInputChange('max_turns', e.target.value)}
+                inputProps={{ min: '1' }}
+                helperText="Max conversation steps"
+                disabled={loading}
+              />
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 1 }} />
+
+          <Typography variant="h6">Tools</Typography>
+          <FormControl fullWidth disabled={loading}>
+            <InputLabel>Available Tools</InputLabel>
+            <Select
+              multiple
+              value={cfg.tools}
+              onChange={(e) => handleInputChange('tools', e.target.value)}
+              input={<OutlinedInput label="Available Tools" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((toolName) => (
+                    <Chip key={toolName} label={toolName} size="small" />
+                  ))}
+                </Box>
+              )}
+            >
+              {allTools.length === 0 && (
+                <MenuItem disabled>Loading tools...</MenuItem>
+              )}
+              {allTools.map((t) => (
+                <MenuItem key={t.name} value={t.name}>
+                  {t.name}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>Select the tools this agent can use.</FormHelperText>
+          </FormControl>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={cfg.terminate_on_text}
+                onChange={(e) =>
+                  handleInputChange('terminate_on_text', e.target.checked)
+                }
+                disabled={loading}
+              />
+            }
+            label="Terminate chat if agent outputs 'TERMINATE'"
+          />
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 2 }}>
+            <Button
+              variant="outlined"
+              component={RouterLink}
+              to="/"
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={loading}>
+              {loading
+                ? 'Saving...'
+                : isEditMode
+                ? 'Update Agent'
+                : 'Create Agent'}
+            </Button>
+          </Box>
+        </Stack>
       </Box>
     </Box>
   );
