@@ -259,32 +259,45 @@ const renderTextMessage = (fields, theme) => {
       </CardContent>
     </Card>
   );
-};
+}
 
 // Updated Recursive Data Rendering Component
 function RenderData({ data, level = 0 }) {
   const theme = useTheme();
   const [showDetails] = useState(level < 1);
 
-  if (data === null || typeof data === 'number' || typeof data === 'boolean') {
-    return (
-      <Typography 
-        component="span" 
-        variant="body2" 
-        sx={{ 
-          fontFamily: 'monospace',
-          bgcolor: 'action.hover',
-          px: 1,
-          py: 0.2,
-          borderRadius: 1,
-          color: 'text.secondary'
-        }}
-      >
-        {String(data)}
-      </Typography>
-    );
+  // Handle null and primitive types - Use Chips!
+  if (data === null) {
+    return <Chip label="null" size="small" sx={{ bgcolor: 'grey.300', color: 'text.secondary', fontFamily: 'monospace', fontWeight: 600, height: '20px' }} />;
   }
-  
+  if (typeof data === 'boolean') {
+    return <Chip 
+             label={String(data)} 
+             size="small" 
+             color={data ? 'success' : 'error'} 
+             variant="outlined"
+             sx={{ fontFamily: 'monospace', fontWeight: 600, height: '20px', 
+                   borderColor: data ? 'success.main' : 'error.main', 
+                   color: data ? 'success.dark' : 'error.dark',
+                   bgcolor: data ? 'success.light' : 'error.light',
+                   opacity: 0.8
+                 }}
+           />;
+  }
+  if (typeof data === 'number') {
+    return <Chip 
+             label={String(data)} 
+             size="small" 
+             color="info"
+             variant="filled"
+             sx={{ fontFamily: 'monospace', fontWeight: 600, height: '20px', 
+                   bgcolor: 'info.light', 
+                   color: 'info.dark' 
+                 }}
+            />;
+  }
+
+  // Handle strings
   if (typeof data === 'string') {
     if (data === 'None') return <RenderData data={null} level={level} />;
     if (data === 'True') return <RenderData data={true} level={level} />;
@@ -455,6 +468,7 @@ function RenderData({ data, level = 0 }) {
     return <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>{data}</Typography>;
   }
 
+  // Handle arrays
   if (Array.isArray(data)) {
     if (data.length === 0) return <Typography variant="caption" color="text.secondary">(Empty array)</Typography>;
     return (
@@ -468,28 +482,38 @@ function RenderData({ data, level = 0 }) {
     );
   }
 
-  if ('content' in data && typeof data.content === 'string') {
-    const source = data.source || 'system';
-    const content = data.content;
-    const color = getLogTypeColor(source);
-    const Icon = getLogTypeIcon(source);
-
+  // Special Handling for Token Usage Object
+  if (typeof data === 'object' && data !== null && ('prompt_tokens' in data || 'completion_tokens' in data) && !('content' in data)) {
     return (
-      <Card variant="outlined" sx={{ mb: 1, bgcolor: 'transparent', border: 'none', boxShadow: 0 }}>
-        <CardHeader
-          avatar={Icon}
-          title={source.charAt(0).toUpperCase() + source.slice(1)}
-          titleTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: color }}
-          sx={{ p: 0, mb: 1 }}
+      <Stack 
+        direction="row" 
+        spacing={1} 
+        sx={{ 
+          mt: 0.5, 
+          p: 0.5, 
+        }}
+      >
+        <Chip
+          icon={<Typography variant="caption" sx={{ mr: -0.5, color: 'inherit', opacity: 0.7 }}>🔄</Typography>}
+          label={`${data.prompt_tokens ?? '-'} Prompt`}
+          color="primary"
+          size="small"
+          variant="outlined"
+          sx={{ height: '24px', '& .MuiChip-label': { px: 1, fontSize: '0.75rem' } }}
         />
-        <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-          {data.models_usage && <RenderData data={data.models_usage} level={level + 1} />}
-          <RenderData data={content} level={level + 1} />
-        </CardContent>
-      </Card>
+        <Chip
+          icon={<Typography variant="caption" sx={{ mr: -0.5, color: 'inherit', opacity: 0.7 }}>↪</Typography>}
+          label={`${data.completion_tokens ?? '-'} Completion`}
+          color="success"
+          size="small"
+          variant="outlined"
+          sx={{ height: '24px', '& .MuiChip-label': { px: 1, fontSize: '0.75rem' } }}
+        />
+      </Stack>
     );
   }
 
+  // Handle regular objects
   return (
     <Box sx={{ ml: level > 0 ? 1 : 0, my: 1, p: 1, bgcolor: level > 0 ? 'action.focus' : undefined, borderRadius: 1 }}>
       <Stack spacing={1} divider={<Divider flexItem sx={{ my: 0.5, borderColor: 'divider' }} />}>
