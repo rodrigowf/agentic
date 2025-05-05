@@ -31,30 +31,30 @@ const lightPalette = {
   secondary: {
     main: '#f50057',
   },
-  background: {
-    default: '#f4f6f8',
-    paper: '#ffffff',
-    subtile: '#e0e0e0',
-  },
+  // background: {
+  //   default: '#f4f6f8',
+  //   paper: '#ffffff',
+  //   subtile: '#e0e0e0',
+  // },
 };
 
 const darkPalette = {
   primary: {
-    main: '#80bae9',
+    main: '#90caf9',
   },
   secondary: {
     main: '#f48fb1',
   },
   background: {
-    default: '#0d1117',
-    paper: '#161b22',
-    subtile: '#21262d',
+    default: '#121212',
+    paper: '#1e1e1e',
+    subtile: '#2c2c2c',
   },
   text: {
-    primary: '#c9d1d9',
-    secondary: '#8b949e',
+    primary: '#ffffff',
+    secondary: '#b0b0b0',
   },
-  divider: '#30363d',
+  divider: '#373737',
 };
 
 export default function App() {

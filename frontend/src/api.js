@@ -9,10 +9,10 @@ const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000'; // Add fal
 
 // Tools
 export const getTools = () => API.get('/tools'); // Returns [{filename: string, definition: ToolDefinition | null}, ...]
-export const getToolContent = (filename) => API.get(`/tools/${filename}`, {
+export const getToolContent = (filename) => API.get(`/tools/content/${filename}`, {
   transformResponse: [(data) => data] // Prevent axios from parsing JSON
 }); // Get raw file content
-export const saveToolContent = (filename, content) => API.put(`/tools/${filename}`, content, {
+export const saveToolContent = (filename, content) => API.put(`/tools/content/${filename}`, content, {
   headers: { 'Content-Type': 'text/plain' } // Send as plain text
 });
 export const uploadTool = (file) => {
