@@ -31,43 +31,53 @@ from autogen_core.tools import FunctionTool
 
 logger = logging.getLogger(__name__)
 
+# Helper function for recursive serialization
+def _recursive_serialize(obj):
+    """Recursively serialize objects to JSON-compatible format"""
+    if hasattr(obj, 'model_dump'):
+        try:
+            return obj.model_dump()
+        except Exception:
+            # Fallback for older pydantic versions or other model_dump implementations
+            return obj.dict() if hasattr(obj, 'dict') else str(obj)
+    elif isinstance(obj, dict):
+        return {k: _recursive_serialize(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_recursive_serialize(item) for item in obj]
+    elif isinstance(obj, (str, int, float, bool, type(None))):
+        return obj
+    # Handle any other types by converting to string
+    return str(obj)
+
 # --- WebSocket Event Helper ---
 async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: any):
-    if websocket.client_state == WebSocketState.CONNECTED:
-        try:
-            # Ensure data is serializable
-            serializable_data = {}
-            if isinstance(data, (BaseChatMessage, BaseAgentEvent)):
-                try:
-                    serializable_data = data.model_dump(mode='json')
-                except Exception as dump_err:
-                    logger.warning(f"Could not model_dump event data of type {type(data)}: {dump_err}. Falling back to dict.")
-                    try:
-                        serializable_data = data.__dict__
-                    except Exception:
-                        logger.warning(f"Could not convert event data {type(data)} to dict. Sending string representation.")
-                        serializable_data = str(data)
-            elif isinstance(data, dict):
-                serializable_data = data
-            elif isinstance(data, str):
-                serializable_data = {"message": data}
-            else:
-                logger.warning(f"Sending non-standard data type {type(data)} as string.")
-                serializable_data = str(data)
-
-            payload = {
-                "type": event_type,
-                "data": serializable_data,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
-            }
-            await websocket.send_json(payload)
-            logger.debug(f"Sent event '{event_type}'")
-        except TypeError as te:
-            logger.error(f"Serialization error sending event '{event_type}': {te}. Data: {data}")
-        except Exception as e:
-            logger.error(f"Failed to send event '{event_type}' via WebSocket: {e}")
-    else:
+    if websocket.client_state != WebSocketState.CONNECTED:
         logger.warning(f"Attempted to send event '{event_type}' but WebSocket was not connected.")
+        return
+    try:
+        # Serialize data into JSON-compatible structure
+        if isinstance(data, dict):
+            event_data = data
+        elif hasattr(data, 'model_dump'):
+            event_data = data.model_dump()
+        else:
+            event_data = _recursive_serialize(data)
+
+        payload = {
+            "type": event_type,
+            "data": event_data,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        await websocket.send_json(payload)
+        logger.debug(f"Sent event '{event_type}' with payload")
+    except Exception as e:
+        logger.error(f"Error sending event '{event_type}' via WebSocket: {e}")
+        # Fallback minimal payload
+        try:
+            error_payload = {"type": "error", "data": {"message": str(e)}, "timestamp": datetime.utcnow().isoformat() + "Z"}
+            await websocket.send_json(error_payload)
+        except Exception:
+            pass
 
 # --- Main Agent Runner (v0.4+ Style) ---
 async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], websocket: WebSocket):

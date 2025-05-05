@@ -114,382 +114,137 @@ function parseReprContent(contentStr) {
   return fields;
 }
 
+// Safe parsing helper for potentially non-JSON strings
+const safeParse = (str) => {
+  if (typeof str !== 'string') return str;
+  try {
+    // First try parsing as JSON
+    return JSON.parse(str);
+  } catch (e) {
+    // If not JSON, try to extract content from Python repr strings
+    if (str.includes('(') && str.includes(')')) {
+      try {
+        // Extract content between parentheses
+        const match = str.match(/\((.*)\)/);
+        if (match) {
+          const inner = match[1];
+          // Handle key-value pairs in Python repr
+          if (inner.includes('=')) {
+            const pairs = inner.split(',').map(pair => {
+              const [key, value] = pair.split('=').map(s => s.trim());
+              return [key, safeParse(value)];
+            });
+            return Object.fromEntries(pairs);
+          }
+          // Try parsing the inner content
+          return safeParse(inner);
+        }
+      } catch (e2) {
+        console.warn('Failed to parse Python repr:', e2);
+      }
+    }
+    return str; // Return as-is if all parsing attempts fail
+  }
+};
+
+const processMessageContent = (content) => {
+  if (!content) return '';
+  if (typeof content === 'object') return content;
+  return safeParse(content);
+};
+
 // --- Recursive Data Rendering Component ---
 function RenderData({ data, level = 0 }) {
-  const theme = useTheme();
-  const syntaxHighlightStyle = theme.palette.mode === 'dark' ? vscDarkPlus : vs;
-  const [showDetails, setShowDetails] = useState(level < 1);
-
-  // 1. Primitive Types & Null
-  if (data === null || typeof data === 'number' || typeof data === 'boolean') {
-    return <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{String(data)}</Typography>;
-  }
-  if (data === 'None') return <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>null</Typography>;
-  if (data === 'True') return <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>true</Typography>;
-  if (data === 'False') return <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>false</Typography>;
-
-  // 2. String Type - Handle Repr, JSON, Markdown, and plain text
+  if (!data) return null;
+  
+  // Handle string data directly
   if (typeof data === 'string') {
-    const trimmedData = data.trim(); // Trim whitespace once
-
-    // --- Handle top-level Response(...) string ---
-    if (trimmedData.startsWith('Response(')) {
-      // Extract content string inside Response(...)
-      const responseContentMatch = trimmedData.match(/^Response\((.*)\)$/s);
-      if (responseContentMatch) {
-        const fields = parseReprContent(responseContentMatch[1]);
-        // Render using the Response structure format
-        return (
-          <Card variant="outlined" sx={{ width: '100%', bgcolor: 'background.paper', mt: 1 }}>
-            <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
-              <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 1, display: 'block' }}>Agent Response</Typography>
-              {fields.chat_message && (
-                <Box sx={{ mb: 1 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block' }}>Chat Message:</Typography>
-                  <RenderData data={fields.chat_message} level={level + 1} />
-                </Box>
-              )}
-              {fields.inner_messages && (
-                <Box>
-                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block' }}>Inner Messages:</Typography>
-                  <RenderData data={fields.inner_messages} level={level + 1} />
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        );
-      }
-    }
-    // --- End Response(...) string handling ---
-
-    // --- Handle TypeName(...) strings ---
-    const reprMatch = trimmedData.match(/^([A-Za-z_][A-Za-z0-9_]*)\((.*)\)$/s);
-    if (reprMatch) {
-      const typeName = reprMatch[1];
-      const contentStr = reprMatch[2];
-      const fields = parseReprContent(contentStr);
-
-      // Render known types based on typeName
-      switch (typeName) {
-        case 'TextMessage':
-          return (
-            <Box sx={{ width: '100%' }}>
-              {fields.source && <Chip label={`Source: ${fields.source.replace(/['"]/g, '')}`} size="small" sx={{ mr: 1, mb: 0.5, mt: 0.5 }} />}
-              {fields.models_usage && <RenderData data={fields.models_usage} level={level + 1} />}
-              {fields.content && <RenderData data={fields.content} level={level + 1} />}
-            </Box>
-          );
-        case 'RequestUsage':
-          return (
-            <Chip
-              label={`Tokens: ${fields.prompt_tokens || '-'} (prompt), ${fields.completion_tokens || '-'} (completion)`}
-              size="small"
-              variant="outlined"
-              sx={{ fontSize: '0.75em', mt: 0.5 }}
-            />
-          );
-        case 'ToolCallRequestEvent':
-          return (
-            <Accordion elevation={1} sx={{ bgcolor: 'action.hover', width: '100%', mt: 0.5 }} defaultExpanded={level < 1}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: '36px', '.MuiAccordionSummary-content': { my: '8px' } }}>
-                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'secondary.light' }}>Tool Call Request</Typography>
-                {fields.source && <Chip label={`Source: ${fields.source.replace(/['"]/g, '')}`} size="small" sx={{ ml: 1 }} />}
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 1 }}>
-                {fields.models_usage && <Box sx={{ mb: 1 }}><RenderData data={fields.models_usage} level={level + 1} /></Box>}
-                {fields.content && <RenderData data={fields.content} level={level + 1} />}
-              </AccordionDetails>
-            </Accordion>
-          );
-        case 'FunctionCall':
-          let argsData = fields.arguments;
-          const parsedArgs = safeJsonParse(argsData);
-          if (parsedArgs !== null) {
-            argsData = parsedArgs;
-          }
-          return (
-            <Card variant="outlined" sx={{ width: '100%', mb: 1, bgcolor: 'action.hover' }}>
-              <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
-                <Chip label={`${fields.name?.replace(/['"]/g, '') || 'Unknown Tool'}`} color="secondary" size="small" sx={{ mb: 0.5 }} />
-                <Typography variant="caption" display="block" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                  Call ID: {fields.id?.replace(/['"]/g, '')}
-                </Typography>
-                <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
-                  Arguments:
-                </Typography>
-                <RenderData data={argsData} level={level + 1} />
-              </CardContent>
-            </Card>
-          );
-        default:
-          return <RenderData data={fields} level={level} />;
-      }
-    }
-    // --- End TypeName(...) string handling ---
-
-    // --- Handle list-like strings [...] ---
-    if (trimmedData.startsWith('[') && trimmedData.endsWith(']')) {
-      const listContent = trimmedData.slice(1, -1).trim();
-      if (!listContent) {
-        return <Typography component="span" variant="body2" sx={{ color: 'text.disabled' }}>[]</Typography>;
-      }
-      // Split items respecting nested structures
-      // FIX: Use a simpler, robust split for top-level commas only (does not break on nested parens/brackets/braces)
-      // This will not split inside nested structures, but will split top-level items correctly for most repr lists
-      let depth = 0;
-      let current = '';
-      const items = [];
-      for (let i = 0; i < listContent.length; i++) {
-        const char = listContent[i];
-        if (char === '(' || char === '[' || char === '{') depth++;
-        if (char === ')' || char === ']' || char === '}') depth--;
-        if (char === ',' && depth === 0) {
-          items.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      if (current.trim()) items.push(current.trim());
-      return (
-        <Stack spacing={1} sx={{ width: '100%', mt: 0.5 }}>
-          {items.map((itemStr, index) => {
-            const trimmedItemStr = itemStr.trim();
-            // Pass the individual item string back for recursive processing
-            // RenderData will handle parsing it if it's a TypeName(...) string,
-            // JSON, or plain text.
-            return (
-              <Box key={index} sx={{ borderLeft: '2px solid', borderColor: 'divider', pl: 1, width: '100%' }}>
-                <RenderData data={trimmedItemStr} level={level + 1} />
-              </Box>
-            );
-          })}
-        </Stack>
-      );
-    }
-    // --- End list-like string handling ---
-
-    // Attempt to parse as JSON
-    const parsedJson = safeJsonParse(trimmedData);
-    if (parsedJson !== null) {
-      return <RenderData data={parsedJson} level={level} />;
-    }
-
-    // Fallback: Render as Markdown or plain text
-    if (trimmedData.includes('\n') || trimmedData.match(/[*_`[#]/)) {
-      return (
-        <Box sx={{ width: '100%', wordBreak: 'break-word' }}>
-          <ReactMarkdown
-            components={{
-              p: ({ node, ...props }) => <Typography component="span" variant="body2" {...props} />,
-              code: ({ node, inline, className, children, ...props }) => {
-                const match = /language-(\w+)/.exec(className || '');
-                return !inline ? (
-                  <SyntaxHighlighter
-                    style={syntaxHighlightStyle}
-                    language={match ? match[1] : 'text'}
-                    PreTag="div"
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <Typography component="code" sx={{ fontFamily: 'monospace', bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5, fontSize: '0.85em' }} {...props}>
-                    {children}
-                  </Typography>
-                );
-              },
-              a: ({ node, ...props }) => <Link target="_blank" rel="noopener noreferrer" {...props} />,
-            }}
-          >
-            {trimmedData}
-          </ReactMarkdown>
-        </Box>
-      );
-    } else {
-      return <Typography component="span" variant="body2">{trimmedData}</Typography>;
-    }
+    return <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{data}</Typography>;
   }
 
-  // 3. Array Type
+  // Handle error messages
+  if (data.message && (data.type === 'error' || level === 0)) {
+    return <Typography color="error">{data.message}</Typography>;
+  }
+
+  // If data is an array, render each item
   if (Array.isArray(data)) {
-    if (data.length === 0) {
-      return <Typography component="span" variant="body2" sx={{ color: 'text.disabled' }}>[]</Typography>;
-    }
-    return (
-      <Stack spacing={1} sx={{ width: '100%', mt: 0.5 }}>
-        {data.map((item, index) => (
-          <Box key={index} sx={{ borderLeft: '2px solid', borderColor: 'divider', pl: 1 }}>
-            <RenderData data={item} level={level + 1} />
-          </Box>
-        ))}
-      </Stack>
-    );
+    return data.map((item, index) => (
+      <Box key={index} sx={{ ml: level > 0 ? 2 : 0, mb: 1 }}>
+        <RenderData data={item} level={level + 1} />
+      </Box>
+    ));
   }
 
-  // 4. Object Type
-  if (typeof data === 'object') {
-    const entries = Object.entries(data);
-    if (entries.length === 0) {
-      return <Typography component="span" variant="body2" sx={{ color: 'text.disabled' }}>{`{}`}</Typography>;
-    }
-
-    // --- Specific Object Structure Rendering ---
-    if ('name' in data && 'arguments' in data && 'id' in data) {
-      let argsData = data.arguments;
-      if (typeof argsData === 'string') {
-        const parsedArgs = safeJsonParse(argsData);
-        if (parsedArgs !== null) argsData = parsedArgs;
-      }
-      return (
-        <Card variant="outlined" sx={{ width: '100%', mb: 1, bgcolor: 'action.hover' }}>
-          <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
-            <Chip label={data.name || 'Unknown Tool'} color="secondary" size="small" sx={{ mb: 0.5 }} />
-            <Typography variant="caption" display="block" sx={{ color: 'text.secondary', mb: 0.5 }}>
-              Call ID: {data.id}
-            </Typography>
-            <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
-              Arguments:
-            </Typography>
-            <RenderData data={argsData} level={level + 1} />
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if ('name' in data && 'call_id' in data && 'content' in data) {
-      const isError = data.is_error === true;
-      return (
-        <Card variant="outlined" sx={{ width: '100%', mb: 1, borderColor: isError ? 'error.main' : 'divider', bgcolor: 'action.hover' }}>
-          <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
-            <Chip label={data.name || 'Unknown Tool'} color={isError ? 'error' : 'secondary'} size="small" sx={{ mb: 0.5 }} />
-            <Typography variant="caption" display="block" sx={{ color: 'text.secondary' }}>Call ID: {data.call_id}</Typography>
-            {isError && <Chip label="Error" color="error" size="small" sx={{ mr: 1, mt: 0.5 }} />}
-            <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>Result:</Typography>
-            <RenderData data={data.content} level={level + 1} />
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if ('content' in data && ('source' in data || 'models_usage' in data || entries.length <= 3)) {
-      const isLikelyTextMessage = 'source' in data || 'models_usage' in data || (typeof data.content === 'string' && entries.length === 1);
-      if (isLikelyTextMessage) {
-        return (
-          <Box sx={{ width: '100%' }}>
-            {data.source && <Chip label={`Source: ${data.source}`} size="small" sx={{ mr: 1, mb: 0.5, mt: 0.5 }} />}
-            {data.models_usage && <RenderData data={data.models_usage} level={level + 1} />}
-            <RenderData data={data.content} level={level + 1} />
-          </Box>
-        );
-      }
-    }
-
-    if ('prompt_tokens' in data || 'completion_tokens' in data) {
-      return (
-        <Chip
-          label={`Tokens: ${data.prompt_tokens || '-'} (prompt), ${data.completion_tokens || '-'} (completion)`}
-          size="small"
-          variant="outlined"
-          sx={{ fontSize: '0.75em', mt: 0.5 }}
-        />
-      );
-    }
-
-    if ('chat_message' in data && 'inner_messages' in data) {
-      return (
-        <Card variant="outlined" sx={{ width: '100%', bgcolor: 'background.paper', mt: 1 }}>
-          <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
-            <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 1, display: 'block' }}>Agent Response</Typography>
-            {data.chat_message && (
-              <Box sx={{ mb: 1 }}>
-                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block' }}>Chat Message:</Typography>
-                <RenderData data={data.chat_message} level={level + 1} />
-              </Box>
-            )}
-            {data.inner_messages && (
-              <Box>
-                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block' }}>Inner Messages:</Typography>
-                <RenderData data={data.inner_messages} level={level + 1} />
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if ('content' in data && 'source' in data && entries.length <= 3) {
-      const isRequest = data.source?.toLowerCase().includes('request');
-      const title = isRequest ? 'Tool Call Request' : 'Tool Execution Result';
-      const color = isRequest ? 'secondary.light' : 'secondary.main';
-      return (
-        <Accordion elevation={1} sx={{ bgcolor: 'action.hover', width: '100%', mt: 0.5 }} defaultExpanded={level < 1}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: '36px', '.MuiAccordionSummary-content': { my: '8px' } }}>
-            <Typography variant="caption" sx={{ fontWeight: 'bold', color: color }}>{title}</Typography>
-            <Chip label={`Source: ${data.source}`} size="small" sx={{ ml: 1 }} />
-          </AccordionSummary>
-          <AccordionDetails sx={{ p: 1 }}>
-            {data.models_usage && <Box sx={{ mb: 1 }}><RenderData data={data.models_usage} level={level + 1} /></Box>}
-            <RenderData data={data.content} level={level + 1} />
-          </AccordionDetails>
-        </Accordion>
-      );
-    }
-
-    const isComplex = entries.length > 3 || entries.some(([k, v]) => typeof v === 'object' || (typeof v === 'string' && v.length > 80));
-
-    if (!isComplex && level > 0) {
-      return (
-        <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace', bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5, fontSize: '0.85em' }}>
-          {JSON.stringify(data)}
-        </Typography>
-      );
-    }
+  // Handle messages with content and source (most common case)
+  if ('content' in data) {
+    const source = data.source || 'system';
+    const content = data.content;
+    const colorMap = {
+      system: 'text.primary',
+      tools: 'secondary.main',
+      user: 'primary.main',
+      assistant: 'success.main',
+      error: 'error.main',
+      warning: 'warning.main'
+    };
+    const color = colorMap[source.toLowerCase()] || 'text.primary';
 
     return (
-      <Box sx={{ width: '100%', mt: 0.5 }}>
-        <Button
-          size="small"
-          variant="text"
-          startIcon={showDetails ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          onClick={() => setShowDetails(v => !v)}
-          sx={{ fontSize: '0.75em', color: 'text.secondary', p: '2px 4px', minWidth: 'auto', textTransform: 'none', "&:hover": { bgcolor: 'action.hover' } }}
-        >
-          {showDetails ? 'Hide Details' : 'Show Details'}
-        </Button>
-        <Collapse in={showDetails}>
-          <Stack spacing={0.5} sx={{ mt: 0.5, pl: 1, borderLeft: '2px solid', borderColor: 'divider' }}>
-            {entries.map(([key, value]) => (
-              <Box key={key} sx={{ display: 'flex' }}>
-                <Typography variant="caption" sx={{ fontWeight: 'bold', mr: 1, minWidth: '100px', color: 'text.secondary', flexShrink: 0 }}>
-                  {humanizeKey(key)}:
-                </Typography>
-                <Box sx={{ flexGrow: 1 }}>
-                  <RenderData data={value} level={level + 1} />
-                </Box>
-              </Box>
-            ))}
-          </Stack>
-          <Accordion elevation={0} sx={{ bgcolor: 'transparent', '.MuiAccordionSummary-root': { minHeight: '24px' }, '.MuiAccordionSummary-content': { my: 0 } }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ p: 0 }}>
-              <Typography variant="caption" sx={{ color: 'text.disabled' }}>Raw JSON</Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-              <SyntaxHighlighter
-                language="json"
-                style={syntaxHighlightStyle}
-                PreTag="div"
-              >
-                {JSON.stringify(data, null, 2)}
-              </SyntaxHighlighter>
-            </AccordionDetails>
-          </Accordion>
-        </Collapse>
+      <Box sx={{ ml: level > 0 ? 2 : 0, mb: 1 }}>
+        {source !== 'system' && (
+          <Typography variant="caption" sx={{ color, fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+            {source}:
+          </Typography>
+        )}
+        {typeof content === 'string' ? (
+          <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color }}>
+            {content}
+          </Typography>
+        ) : Array.isArray(content) ? (
+          content.map((item, idx) => (
+            <Box key={idx} sx={{ ml: 2 }}>
+              <RenderData data={item} level={level + 1} />
+            </Box>
+          ))
+        ) : typeof content === 'object' ? (
+          <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace' }}>
+            {JSON.stringify(content, null, 2)}
+          </Typography>
+        ) : (
+          <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color }}>
+            {String(content)}
+          </Typography>
+        )}
       </Box>
     );
   }
 
-  return <Typography component="span" variant="body2">{`[Unknown Data Type: ${typeof data}]`}</Typography>;
+  // For objects, render each key-value pair
+  const entries = Object.entries(data);
+  return (
+    <Box sx={{ ml: level > 0 ? 2 : 0 }}>
+      {entries.map(([key, value]) => (
+        <Box key={key} sx={{ mb: 1 }}>
+          {typeof value === 'object' && value !== null ? (
+            <>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block' }}>
+                {humanizeKey(key)}:
+              </Typography>
+              <RenderData data={value} level={level + 1} />
+            </>
+          ) : (
+            <Typography>
+              <Box component="span" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                {humanizeKey(key)}:
+              </Box>{' '}
+              {String(value)}
+            </Typography>
+          )}
+        </Box>
+      ))}
+    </Box>
+  );
 }
 
 // Main LogMessage component - delegates rendering
@@ -541,6 +296,8 @@ export default function RunConsole() {
         if (!messageData.timestamp) {
           messageData.timestamp = new Date().toISOString();
         }
+
+        messageData.data = processMessageContent(messageData.data);
 
         setLogs(prevLogs => [...prevLogs, messageData]);
 
