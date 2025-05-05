@@ -513,17 +513,33 @@ function RenderData({ data, level = 0 }) {
     );
   }
 
-  // Handle regular objects
+  // Handle regular objects - cleaner key/value display
   return (
     <Box sx={{ ml: level > 0 ? 1 : 0, my: 1, p: 1, bgcolor: level > 0 ? 'action.focus' : undefined, borderRadius: 1 }}>
       <Stack spacing={1} divider={<Divider flexItem sx={{ my: 0.5, borderColor: 'divider' }} />}>
-        {Object.entries(data).map(([key, value]) => (
-          <Box key={key}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', letterSpacing: 0.5, display: 'block' }}>{humanizeKey(key)}:</Typography>
-            <Box sx={{ pl: 1, mt: 0.5 }}>
-              <RenderData data={value} level={level + 1} />
+        {Object.entries(data)
+          .filter(([key, value]) => {
+            // Filter out null, undefined, or empty string values
+            if (value === null || value === undefined || value === '') {
+              return false;
+            }
+            // Filter out empty objects
+            if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+              return false;
+            }
+            // Filter out empty arrays (optional, uncomment if needed)
+            // if (Array.isArray(value) && value.length === 0) {
+            //   return false;
+            // }
+            return true; // Keep the entry if none of the above conditions are met
+          })
+          .map(([key, value]) => (
+            <Box key={key}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', letterSpacing: 0.5, display: 'block' }}>{humanizeKey(key)}:</Typography>
+              <Box sx={{ pl: 1, mt: 0.5 }}>
+                <RenderData data={value} level={level + 1} />
+              </Box>
             </Box>
-          </Box>
         ))}
       </Stack>
     </Box>
