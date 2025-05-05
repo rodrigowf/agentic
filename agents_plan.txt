@@ -1,0 +1,25 @@
+Planner
+
+Memory
+ (short term, contexts)
+Desktop controler
+ (screenshot, shortcut, keypress, text input, scroll, mouse move, click, click position)
+Browser controler + Extension
+ (screenshot, scrape buttons & inputs, run javascript)
+APIs handler
+ (get, post, put, delete) [documentation is fetched from researcher and stored in memory - instruct planner]
+HTML Display
+ [show using broser extension]
+Developer
+ (plan, write, run)
+
+User Assistant
+
+--
+
+Add code execution capabilities
+Add direct audio input and output option
+  Live stream agent version
+Add image input and output options
+
+
