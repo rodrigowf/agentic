@@ -179,12 +179,12 @@ export default function RunConsole({nested = false}) {
   }, [logs]);
 
   return (
-    <Stack spacing={2} sx={{ height: '100%' }}>
-      <Box component={Paper} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+    <Stack spacing={2} sx={{ height: '100%', overflowX: 'hidden' }}>
+      <Box component={Paper} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, overflowX: 'hidden' }}>
         <Typography variant="h5">
           Run {!nested ? <Link component={RouterLink} to={`/agents/${name}`} underline="hover">{name}</Link> : ''}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'hidden' }}>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>Status:</Typography>
           {isConnecting ? (
             <Chip label="Connecting..." color="warning" size="small" icon={<CircularProgress size={14} color="inherit" />} />
@@ -208,7 +208,7 @@ export default function RunConsole({nested = false}) {
         </Box>
       </Box>
 
-      <Box component={Paper} sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'flex-start', flexShrink: 0 }}>
+      <Box component={Paper} sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'flex-start', flexShrink: 0, overflowX: 'hidden' }}>
         <TextField
           fullWidth
           label="Initial Task for Agent"
@@ -238,7 +238,8 @@ export default function RunConsole({nested = false}) {
       <Paper ref={logContainerRef} sx={{
         flexGrow: 1,
         p: 2,
-        overflowY: 'auto',
+        overflowY: 'auto', 
+        overflowX: 'hidden',
         fontFamily: 'inherit',
         fontSize: '0.9rem',
         bgcolor: 'background.default',

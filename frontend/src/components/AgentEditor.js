@@ -20,6 +20,7 @@ import {
   Stack,
   CircularProgress,
   Switch,
+  Snackbar,
 } from '@mui/material';
 import api from '../api';
 
@@ -53,11 +54,73 @@ export default function AgentEditor({nested = false}) {
   const [success, setSuccess] = useState(null);
   const [models, setModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
+  const [notification, setNotification] = useState({ message: '', severity: 'success', open: false });
+
+  const handleCloseNotification = () => {
+    setNotification(prev => ({ ...prev, open: false }));
+  };
+
+  const showNotification = (message, severity = 'success') => {
+    setNotification({ message, severity, open: true });
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, open: false }));
+    }, 3000);
+  };
 
   // Keep track of whether any fields have changed
   const hasChanges = useCallback(() => {
-    if (!originalCfg || !isEditMode) return true;
-    return JSON.stringify(cfg) !== JSON.stringify(originalCfg);
+    console.log('hasChanges called with:', {
+      originalCfg,
+      currentCfg: cfg,
+      isEditMode
+    });
+
+    if (!originalCfg || !isEditMode) {
+      console.log('hasChanges returning true - no originalCfg or not in edit mode');
+      return true;
+    }
+    
+    // Deep compare the configurations, ignoring loading states
+    const cleanCfg = {
+      ...cfg,
+      llm: {
+        ...cfg.llm,
+        temperature: parseFloat(cfg.llm.temperature) || 0.0,
+        max_tokens: cfg.llm.max_tokens ? parseInt(cfg.llm.max_tokens) : null,
+      },
+      prompt: {
+        system: cfg.prompt?.system || '',
+        user: cfg.prompt?.user || ''
+      },
+      max_turns: parseInt(cfg.max_turns) || 5,
+      tool_call_loop: Boolean(cfg.tool_call_loop),
+      reflect_on_tool_use: Boolean(cfg.reflect_on_tool_use),
+    };
+
+    const cleanOriginalCfg = {
+      ...originalCfg,
+      llm: {
+        ...originalCfg.llm,
+        temperature: parseFloat(originalCfg.llm.temperature) || 0.0,
+        max_tokens: originalCfg.llm.max_tokens ? parseInt(originalCfg.llm.max_tokens) : null,
+      },
+      prompt: {
+        system: originalCfg.prompt?.system || '',
+        user: originalCfg.prompt?.user || ''
+      },
+      max_turns: parseInt(originalCfg.max_turns) || 5,
+      tool_call_loop: Boolean(originalCfg.tool_call_loop),
+      reflect_on_tool_use: Boolean(originalCfg.reflect_on_tool_use),
+    };
+    
+    console.log('Comparing configurations:', {
+      cleanCfg,
+      cleanOriginalCfg,
+      areEqual: JSON.stringify(cleanCfg) === JSON.stringify(cleanOriginalCfg)
+    });
+    
+    return JSON.stringify(cleanCfg) !== JSON.stringify(cleanOriginalCfg);
   }, [cfg, originalCfg, isEditMode]);
 
   useEffect(() => {
@@ -72,8 +135,10 @@ export default function AgentEditor({nested = false}) {
       .finally(() => setLoading(false));
   }, []);
 
+  // Add logging to track when originalCfg is set
   useEffect(() => {
     if (isEditMode) {
+      console.log('Loading agent in edit mode:', { name });
       setLoading(true);
       setError(null);
       api
@@ -81,15 +146,18 @@ export default function AgentEditor({nested = false}) {
         .then((r) => {
           const agentToEdit = r.data.find((x) => x.name === name);
           if (agentToEdit) {
+            console.log('Found agent to edit:', agentToEdit);
             const config = {
               ...DEFAULT_AGENT_CONFIG,
               ...agentToEdit,
               tool_call_loop: agentToEdit.tool_call_loop ?? false,
               reflect_on_tool_use: agentToEdit.reflect_on_tool_use ?? true,
             };
+            console.log('Setting initial config:', config);
             setCfg(config);
             setOriginalCfg(config); // Store original config for comparison
           } else {
+            console.error('Agent not found:', name);
             setError(`Agent '${name}' not found.`);
           }
         })
@@ -99,6 +167,7 @@ export default function AgentEditor({nested = false}) {
         })
         .finally(() => setLoading(false));
     } else {
+      console.log('Creating new agent - setting default config');
       setCfg(DEFAULT_AGENT_CONFIG);
       setOriginalCfg(null);
     }
@@ -118,25 +187,56 @@ export default function AgentEditor({nested = false}) {
     }
   }, [cfg.llm.provider]);
 
+  useEffect(() => {
+    if (error) {
+      showNotification(error, 'error');
+      setError(null);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (success) {
+      showNotification(success, 'success');
+      setSuccess(null);
+    }
+  }, [success]);
+
+  // Add logging for input changes
   const handleInputChange = useCallback((path, value) => {
+    console.log('Input changed:', { path, value });
     setCfg((prevCfg) => {
       const keys = path.split('.');
-      const newCfg = { ...prevCfg };
+      const newCfg = JSON.parse(JSON.stringify(prevCfg)); // Deep clone to ensure proper object references
       let current = newCfg;
+      
+      // Handle all but the last key by traversing/creating the path
       for (let i = 0; i < keys.length - 1; i++) {
         if (!current[keys[i]]) {
           current[keys[i]] = {};
         }
         current = current[keys[i]];
       }
+
+      // Handle the final value assignment
+      const lastKey = keys[keys.length - 1];
       if (path === 'tool_call_loop' || path === 'reflect_on_tool_use') {
-        current[keys[keys.length - 1]] = Boolean(value);
+        current[lastKey] = Boolean(value);
       } else {
-        current[keys[keys.length - 1]] = value;
+        current[lastKey] = value;
       }
+
+      // Special case for provider change
       if (path === 'llm.provider') {
         newCfg.llm.model = '';
       }
+
+      console.log('Config after update:', {
+        path,
+        value,
+        newConfig: newCfg,
+        originalConfig: prevCfg
+      });
+
       return newCfg;
     });
     setSuccess(null);
@@ -199,24 +299,37 @@ export default function AgentEditor({nested = false}) {
       .finally(() => setLoading(false));
   };
 
+  // Add logging for button disabled state
+  const buttonDisabled = loading || (nested && isEditMode && !hasChanges());
+  console.log('Save button disabled state:', {
+    loading,
+    nested,
+    isEditMode,
+    hasChanges: hasChanges(),
+    finalDisabledState: buttonDisabled
+  });
+
   return (
     <Box component={Paper} sx={{ p: { xs: 2, sm: 3 } }}>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" gutterBottom mb={4}>
         {isEditMode ? `Edit Agent${nested ? '' : ': '+name}` : 'Create New Agent'}
       </Typography>
 
-      <br />
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+      <Snackbar 
+        open={notification.open}
+        autoHideDuration={3000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseNotification}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+          elevation={6}
+        >
+          {notification.message}
         </Alert>
-      )}
-      {success && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {success}
-        </Alert>
-      )}
+      </Snackbar>
 
       <Box
         component="form"
@@ -249,7 +362,8 @@ export default function AgentEditor({nested = false}) {
           <TextField
             label="System Prompt"
             multiline
-            rows={4}
+            minRows={4}
+            maxRows={20}
             value={cfg.prompt.system}
             onChange={(e) => handleInputChange('prompt.system', e.target.value)}
             disabled={loading}
@@ -259,7 +373,8 @@ export default function AgentEditor({nested = false}) {
           <TextField
             label="User Prompt / Initial Task"
             multiline
-            rows={2}
+            minRows={2}
+            maxRows={10}
             value={cfg.prompt.user}
             onChange={(e) => handleInputChange('prompt.user', e.target.value)}
             disabled={loading}
@@ -437,7 +552,7 @@ export default function AgentEditor({nested = false}) {
             <Button 
               type="submit" 
               variant="contained" 
-              disabled={loading || (nested && isEditMode && !hasChanges())}
+              disabled={buttonDisabled}
             >
               {loading
                 ? 'Saving...'

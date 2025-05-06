@@ -50,19 +50,15 @@ export const getLogTypeColor = (type) => {
       return 'primary.light';
     case 'llmresponseevent':
     case 'chatcompletionresponseevent':
-    case 'textmessagechunk':
       return 'success.light';
     case 'toolcallrequestevent':
-    case 'toolcallrequestmessage':
       return 'secondary.light';
     case 'toolcallexecutionevent':
-    case 'toolcallresultmessage':
       return 'secondary.main';
     case 'agentstartevent':
     case 'agentfinishevent':
       return 'primary.main';
     default:
-      console.warn("Unknown log type received:", type);
       return 'text.primary';
   }
 };
@@ -469,7 +465,7 @@ function RenderData({ data, level = 0 }) {
       }
     }
     
-    return <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>{data}</Typography>;
+    return <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6, marginTop: '16px' }}>{data}</Typography>;
   }
 
   // Handle arrays
@@ -519,9 +515,15 @@ function RenderData({ data, level = 0 }) {
 
   // Handle regular objects - cleaner key/value display
   return (
-    <Box sx={{ ml: level > 0 ? 1 : 0, my: 1, p: 1, bgcolor: level > 0 ? 'action.focus' : undefined, borderRadius: 1 }}>
+    <Box sx={{ p: 0, ml: level > 0 ? 1 : 0, my: 1, p: 1, bgcolor: level > 0 ? 'action.focus' : undefined, borderRadius: 1 }}>
       <Stack spacing={1} divider={<Divider flexItem sx={{ my: 0.5, borderColor: 'divider' }} />}>
         {Object.entries(data)
+          .sort(([keyA], [keyB]) => {
+            // Show type first
+            if (keyA === 'type') return -1;
+            if (keyB === 'type') return 1;
+            return keyA.localeCompare(keyB);
+          })
           .filter(([key, value]) => {
             // Filter out null, undefined, or empty string values
             if (value === null || value === undefined || value === '') {
@@ -531,14 +533,10 @@ function RenderData({ data, level = 0 }) {
             if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
               return false;
             }
-            // Filter out empty arrays (optional, uncomment if needed)
-            // if (Array.isArray(value) && value.length === 0) {
-            //   return false;
-            // }
-            return true; // Keep the entry if none of the above conditions are met
+            return true;
           })
           .map(([key, value]) => (
-            <Box key={key}>
+            <Box key={key} sx={{ p: 0 }}>
               <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', letterSpacing: 0.5, display: 'block' }}>{humanizeKey(key)}:</Typography>
               <Box sx={{ pl: 1, mt: 0.5 }}>
                 <RenderData data={value} level={level + 1} />
@@ -592,7 +590,9 @@ export const LogEntry = ({ log }) => {
           alignItems: 'center',
           justifyContent: 'center',
           color: color,
-          border: `2px solid ${theme.palette.divider}`
+          border: `2px solid ${theme.palette.divider}`,
+          width: "28px",
+          paddingLeft: "9px"
         }}>
           {Icon}
         </Box>
@@ -617,6 +617,7 @@ export const LogEntry = ({ log }) => {
       </Typography>
       <Box sx={{ 
         flexGrow: 1,
+        marginTop: 1.5,
         width: '100%',
         pt: 0.5,
       }}>
