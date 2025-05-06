@@ -18,5 +18,6 @@
   },
   "max_turns": 15,
   "reflect_on_tool_use": true,
-  "terminate_on_text": false
+  "terminate_on_text": false,
+  "tool_call_loop": true
 }

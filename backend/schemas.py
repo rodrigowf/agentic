@@ -35,7 +35,8 @@ class AgentConfig(BaseSchema):
     prompt: PromptConfig
     max_turns: int = 5
     reflect_on_tool_use: bool = True
-    terminate_on_text: bool = True
+    terminate_on_text: bool = False  # Keep for potential future use or backward compat if needed, but default to False
+    tool_call_loop: bool = False  # New field to control looping agent behavior
 
 class GenerateToolRequest(BaseSchema):
     prompt: str = Field(..., description="The natural language prompt describing the tool to be generated.")

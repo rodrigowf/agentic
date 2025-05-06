@@ -16,6 +16,8 @@ from autogen_core import CancellationToken, FunctionCall, Image
 from autogen_core.models import FunctionExecutionResult, ModelInfo
 # AgentChat components
 from looping_agent import LoopingAssistantAgent
+# Import the standard AssistantAgent
+from autogen_agentchat.agents import AssistantAgent # Corrected import path
 # Corrected message/event imports
 from autogen_agentchat.messages import (
     TextMessage,
@@ -170,31 +172,51 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
         await websocket.close()
         return
 
-    # --- Agent Instantiation (v0.4+) ---
-    logger.info(f"Instantiating LoopingAssistantAgent: {agent_cfg.name}")
+    # --- Agent Instantiation (Conditional based on tool_call_loop) ---
+    assistant = None # Initialize assistant variable
     try:
-        assistant = LoopingAssistantAgent(
-            name=agent_cfg.name,
-            system_message=agent_cfg.prompt.system,
-            model_client=model_client,
-            tools=agent_tools,
-            reflect_on_tool_use=agent_cfg.reflect_on_tool_use,
-        )
-        logger.info(f"Agent '{agent_cfg.name}' instantiated successfully using LoopingAssistantAgent.")
+        agent_name = agent_cfg.name
+        system_message = agent_cfg.prompt.system
+
+        if agent_cfg.tool_call_loop:
+            logger.info(f"Instantiating LoopingAssistantAgent: {agent_name}")
+            assistant = LoopingAssistantAgent(
+                name=agent_name,
+                system_message=system_message,
+                model_client=model_client,
+                tools=agent_tools,
+                reflect_on_tool_use=agent_cfg.reflect_on_tool_use, # Specific to LoopingAssistantAgent? Check docs if needed
+            )
+            logger.info(f"Agent '{agent_name}' instantiated successfully using LoopingAssistantAgent.")
+        else:
+            logger.info(f"Instantiating standard AssistantAgent: {agent_name}")
+            # Note: Standard AssistantAgent might not use reflect_on_tool_use
+            # Check autogen_agentchat.AssistantAgent signature if issues arise
+            assistant = AssistantAgent(
+                name=agent_name,
+                system_message=system_message,
+                model_client=model_client,
+                tools=agent_tools,
+                # max_consecutive_auto_reply=agent_cfg.max_turns # Optional: Map max_turns if relevant here
+            )
+            logger.info(f"Agent '{agent_name}' instantiated successfully using standard AssistantAgent.")
+
+        if assistant is None:
+             raise ValueError("Failed to instantiate any agent type.")
 
     except Exception as e:
         logger.exception(f"Error creating agent instance '{agent_cfg.name}': {e}")
         await send_event_to_websocket(websocket, "error", {"message": f"Error creating agent instance: {str(e)}"})
         await websocket.close()
         if model_client and hasattr(model_client, 'close'):
-            await model_client.close()
+            await model_client.close() # Ensure client is closed on error
         return
 
-    # --- Run Interaction using LoopingAssistantAgent.run_stream ---
+    # --- Run Interaction using agent's run_stream ---
     cancellation_token = CancellationToken()
-    message_count = 0 # Initialize message counter
+    message_count = 0
     stream_finished_naturally = False
-    error_occurred = False  # flag to skip final messaging on errors
+    error_occurred = False
 
     try:
         logger.info(f"Waiting for initial 'run' message from client for agent '{agent_cfg.name}'")
@@ -224,12 +246,11 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
 
         await send_event_to_websocket(websocket, "system", {"message": f"Initiating agent run with task: {task_message_content[:100]}..."})
 
-        # Use assistant.run_stream with the task content
+        # Use the instantiated assistant's run_stream method
+        # Both AssistantAgent and LoopingAssistantAgent should have this method
         stream = assistant.run_stream(task=task_message_content, cancellation_token=cancellation_token)
 
-        # Initialize message count (run_stream doesn't start with the task message in the count)
         message_count = 0
-
         async for event in stream:
             event_type = event.__class__.__name__.lower()
             await send_event_to_websocket(websocket, event_type, event)
@@ -238,14 +259,12 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
             if isinstance(event, (BaseChatMessage, ToolCallRequestEvent, ToolCallExecutionEvent)):
                 message_count += 1
 
-        # If the loop finishes without exceptions, the stream ended naturally.
         stream_finished_naturally = True
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected by client during run for agent '{agent_cfg.name}'.")
         cancellation_token.cancel()
     except asyncio.CancelledError:
-        # This might still happen if the websocket disconnects or another external cancellation occurs
         logger.info(f"Agent run for '{agent_cfg.name}' was cancelled externally.")
         await send_event_to_websocket(websocket, "system", {"message": "Agent run cancelled externally."})
     except Exception as e:
@@ -263,6 +282,7 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
             await websocket.close()
             return
         # Fallback for other exceptions
+        error_occurred = True # Set flag on error
         logger.exception(f"Error during agent run/streaming for '{agent_cfg.name}': {e}.")
         try:
             await send_event_to_websocket(websocket, "error", {"message": f"Error during agent run: {str(e)}"})
@@ -274,8 +294,9 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                  logger.info(f"Agent stream finished naturally for '{agent_cfg.name}'. Total messages/tool events processed by runner: {message_count}")
                  await send_event_to_websocket(websocket, "system", {"message": "Agent run finished."})
             else:
-                 # Log if the stream ended due to cancellation/error
                  logger.info(f"Agent stream processing stopped for '{agent_cfg.name}'. Total messages/tool events processed before stop: {message_count}")
+        else:
+             logger.warning(f"Agent run for '{agent_cfg.name}' ended due to an error.")
 
         logger.info(f"Agent run processing finished or errored for {agent_cfg.name}.")
         if model_client and hasattr(model_client, 'close'):
@@ -284,3 +305,10 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                 logger.info(f"Closed model client for agent '{agent_cfg.name}'.")
             except Exception as close_err:
                 logger.error(f"Error closing model client for agent '{agent_cfg.name}': {close_err}")
+        # Ensure websocket is closed in finally block if still connected
+        if websocket.client_state == WebSocketState.CONNECTED:
+            try:
+                await websocket.close()
+                logger.info(f"Closed WebSocket connection for agent '{agent_cfg.name}' in finally block.")
+            except Exception as ws_close_err:
+                logger.error(f"Error closing WebSocket in finally block for agent '{agent_cfg.name}': {ws_close_err}")

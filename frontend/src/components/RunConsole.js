@@ -14,10 +14,12 @@ import {
   Stack,
 } from '@mui/material';
 import ReplayIcon from '@mui/icons-material/Replay';
+import ClearIcon from '@mui/icons-material/Clear';
+import DownloadIcon from '@mui/icons-material/Download';
 import api from '../api';
 import LogEntry from './LogMessageDisplay';
 
-export default function RunConsole() {
+export default function RunConsole({nested = false}) {
   const { name } = useParams();
   const [logs, setLogs] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -136,6 +138,30 @@ export default function RunConsole() {
     }
   };
 
+  const handleClearLogs = () => {
+    if (ws.current) {
+      ws.current.close();
+    }
+    connectWebSocket();
+  };
+
+  const handleDownloadLogs = () => {
+    const logText = logs.map(log => {
+      const timestamp = new Date(log.timestamp).toLocaleString();
+      return `[${timestamp}] [${log.type}] ${typeof log.data === 'string' ? log.data : JSON.stringify(log.data)}`;
+    }).join('\n');
+
+    const blob = new Blob([logText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `agent-${name}-logs-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     connectWebSocket();
     return () => {
@@ -153,10 +179,10 @@ export default function RunConsole() {
   }, [logs]);
 
   return (
-    <Stack spacing={2} sx={{ height: 'calc(100vh - 110px)' }}>
+    <Stack spacing={2} sx={{ height: '100%' }}>
       <Box component={Paper} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <Typography variant="h5">
-          Agent Run: <Link component={RouterLink} to={`/agents/${name}`} underline="hover">{name}</Link>
+          Run {!nested ? <Link component={RouterLink} to={`/agents/${name}`} underline="hover">{name}</Link> : ''}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>Status:</Typography>
@@ -169,6 +195,12 @@ export default function RunConsole() {
           )}
           <IconButton onClick={connectWebSocket} size="small" title="Reconnect" disabled={isConnecting || isConnected}>
             <ReplayIcon />
+          </IconButton>
+          <IconButton onClick={handleClearLogs} size="small" title="Clear Logs" disabled={logs.length === 0}>
+            <ClearIcon />
+          </IconButton>
+          <IconButton onClick={handleDownloadLogs} size="small" title="Download Logs" disabled={logs.length === 0}>
+            <DownloadIcon />
           </IconButton>
           <Button variant="outlined" size="small" component={RouterLink} to="/">Back to Agents</Button>
         </Box>

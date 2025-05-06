@@ -21,6 +21,7 @@ import ToolEditor from './components/ToolEditor';
 import AgentList from './components/AgentList';
 import AgentEditor from './components/AgentEditor';
 import RunConsole from './components/RunConsole';
+import AgentDashboard from './components/AgentDashboard';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -203,7 +204,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<AgentList />} />
                 <Route path="/agents/new" element={<AgentEditor />} />
-                <Route path="/agents/:name" element={<AgentEditor />} />
+                <Route path="/agents/:name" element={<AgentDashboard />} />
                 <Route path="/runs/:name" element={<RunConsole />} />
                 <Route path="/tools" element={<ToolList />} />
                 <Route path="/tools/new" element={<ToolEditor />} />

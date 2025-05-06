@@ -50,7 +50,7 @@ export default function AgentList() {
             {agents.map(a => (
               <TableRow key={a.name} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                 <TableCell component="th" scope="row">
-                  <Link component={RouterLink} to={`/runs/${a.name}`} underline="hover" fontWeight="medium"> {/* Bolder link */}
+                  <Link component={RouterLink} to={`/agents/${a.name}`} underline="hover" fontWeight="medium"> {/* Bolder link */}
                     {a.name}
                   </Link>
                 </TableCell>

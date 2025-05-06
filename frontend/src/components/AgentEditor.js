@@ -16,10 +16,10 @@ import {
   FormHelperText,
   Grid,
   Divider,
-  Checkbox,
   FormControlLabel,
   Stack,
   CircularProgress,
+  Switch,
 } from '@mui/material';
 import api from '../api';
 
@@ -36,22 +36,29 @@ const DEFAULT_AGENT_CONFIG = {
     system: '',
     user: '',
   },
-  max_turns: 15, // Default to 15 as per previous discussion
+  max_turns: 15,
   reflect_on_tool_use: true,
-  terminate_on_text: true, // <-- Add default value
+  tool_call_loop: false,
 };
 
-export default function AgentEditor() {
+export default function AgentEditor({nested = false}) {
   const { name } = useParams();
   const isEditMode = Boolean(name);
   const nav = useNavigate();
   const [allTools, setAllTools] = useState([]);
   const [cfg, setCfg] = useState(DEFAULT_AGENT_CONFIG);
+  const [originalCfg, setOriginalCfg] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [models, setModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
+
+  // Keep track of whether any fields have changed
+  const hasChanges = useCallback(() => {
+    if (!originalCfg || !isEditMode) return true;
+    return JSON.stringify(cfg) !== JSON.stringify(originalCfg);
+  }, [cfg, originalCfg, isEditMode]);
 
   useEffect(() => {
     setLoading(true);
@@ -74,7 +81,14 @@ export default function AgentEditor() {
         .then((r) => {
           const agentToEdit = r.data.find((x) => x.name === name);
           if (agentToEdit) {
-            setCfg({ ...DEFAULT_AGENT_CONFIG, ...agentToEdit });
+            const config = {
+              ...DEFAULT_AGENT_CONFIG,
+              ...agentToEdit,
+              tool_call_loop: agentToEdit.tool_call_loop ?? false,
+              reflect_on_tool_use: agentToEdit.reflect_on_tool_use ?? true,
+            };
+            setCfg(config);
+            setOriginalCfg(config); // Store original config for comparison
           } else {
             setError(`Agent '${name}' not found.`);
           }
@@ -86,6 +100,7 @@ export default function AgentEditor() {
         .finally(() => setLoading(false));
     } else {
       setCfg(DEFAULT_AGENT_CONFIG);
+      setOriginalCfg(null);
     }
   }, [isEditMode, name]);
 
@@ -114,10 +129,13 @@ export default function AgentEditor() {
         }
         current = current[keys[i]];
       }
-      if (typeof current[keys[keys.length - 1]] === 'boolean') {
+      if (path === 'tool_call_loop' || path === 'reflect_on_tool_use') {
         current[keys[keys.length - 1]] = Boolean(value);
       } else {
         current[keys[keys.length - 1]] = value;
+      }
+      if (path === 'llm.provider') {
+        newCfg.llm.model = '';
       }
       return newCfg;
     });
@@ -149,6 +167,8 @@ export default function AgentEditor() {
         max_tokens: cfg.llm.max_tokens ? parseInt(cfg.llm.max_tokens) : null,
       },
       max_turns: parseInt(cfg.max_turns) || 5,
+      tool_call_loop: Boolean(cfg.tool_call_loop),
+      reflect_on_tool_use: Boolean(cfg.reflect_on_tool_use),
     };
 
     const action = isEditMode
@@ -161,7 +181,13 @@ export default function AgentEditor() {
             isEditMode ? 'updated' : 'created'
           } successfully!`
         );
-        setTimeout(() => nav('/'), 1500);
+        // Only navigate away if not in nested mode
+        if (!nested) {
+          setTimeout(() => nav('/'), 1500);
+        } else {
+          // In nested mode, update the original config to reflect the new state
+          setOriginalCfg(payload);
+        }
       })
       .catch((err) => {
         console.error('Error saving agent:', err);
@@ -176,8 +202,10 @@ export default function AgentEditor() {
   return (
     <Box component={Paper} sx={{ p: { xs: 2, sm: 3 } }}>
       <Typography variant="h5" gutterBottom>
-        {isEditMode ? `Edit Agent: ${name}` : 'Create New Agent'}
+        {isEditMode ? `Edit Agent${nested ? '' : ': '+name}` : 'Create New Agent'}
       </Typography>
+
+      <br />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -242,7 +270,7 @@ export default function AgentEditor() {
           <Divider sx={{ my: 1 }} />
 
           <Typography variant="h6">LLM Configuration</Typography>
-          <Grid container spacing={2}>
+          <Grid container spacing={2} sx={{marginLeft: "-16px !important"}}>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth required error={!cfg.llm.provider && !!error}>
                 <InputLabel>LLM Provider</InputLabel>
@@ -360,29 +388,57 @@ export default function AgentEditor() {
             <FormHelperText>Select the tools this agent can use.</FormHelperText>
           </FormControl>
 
+          <Divider sx={{ my: 1 }} />
+          <Typography variant="h6">Behavior</Typography>
+
           <FormControlLabel
             control={
-              <Checkbox
-                checked={cfg.terminate_on_text}
+              <Switch
+                checked={cfg.tool_call_loop ?? false}
                 onChange={(e) =>
-                  handleInputChange('terminate_on_text', e.target.checked)
+                  handleInputChange('tool_call_loop', e.target.checked)
                 }
                 disabled={loading}
               />
             }
-            label="Terminate chat if agent outputs 'TERMINATE'"
+            label="Enable Tool Call Loop (Uses LoopingAssistantAgent)"
           />
+          <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
+            Allows the agent to repeatedly call tools within a single turn if needed.
+          </FormHelperText>
 
+          <FormControlLabel
+            control={
+              <Switch
+                checked={cfg.reflect_on_tool_use ?? true}
+                onChange={(e) =>
+                  handleInputChange('reflect_on_tool_use', e.target.checked)
+                }
+                disabled={loading}
+              />
+            }
+            label="Reflect on Tool Use (Applies to Looping Agent)"
+          />
+          <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
+            Allows the agent to reflect on the success/failure of tool calls.
+          </FormHelperText>
+          
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 2 }}>
-            <Button
-              variant="outlined"
-              component={RouterLink}
-              to="/"
-              disabled={loading}
+            {!nested && (
+              <Button
+                variant="outlined"
+                component={RouterLink}
+                to="/"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              )}
+            <Button 
+              type="submit" 
+              variant="contained" 
+              disabled={loading || (nested && isEditMode && !hasChanges())}
             >
-              Cancel
-            </Button>
-            <Button type="submit" variant="contained" disabled={loading}>
               {loading
                 ? 'Saving...'
                 : isEditMode
