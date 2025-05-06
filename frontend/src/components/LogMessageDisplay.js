@@ -305,7 +305,11 @@ function RenderData({ data, level = 0 }) {
 
     const trimmedData = data.trim();
 
-    if (/^(```|# |\*\*|\d+\.|- )/.test(trimmedData) || trimmedData.includes('\n')) {
+    // Convert URLs in plain text to markdown links
+    const urlRegex = /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi;
+    const textWithLinks = trimmedData.replace(urlRegex, '[$1]($1)');
+
+    if (/^(```|# |\*\*|\d+\.|- )/.test(trimmedData) || trimmedData.includes('\n') || urlRegex.test(trimmedData)) {
       return (
         <Box sx={{ my: 1, fontSize: '0.95rem' }}>
           <ReactMarkdown
@@ -353,7 +357,7 @@ function RenderData({ data, level = 0 }) {
               }
             }}
           >
-            {trimmedData}
+            {textWithLinks}
           </ReactMarkdown>
         </Box>
       );

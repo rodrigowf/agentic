@@ -202,7 +202,9 @@ export default function RunConsole({nested = false}) {
           <IconButton onClick={handleDownloadLogs} size="small" title="Download Logs" disabled={logs.length === 0}>
             <DownloadIcon />
           </IconButton>
-          <Button variant="outlined" size="small" component={RouterLink} to="/">Back to Agents</Button>
+          {!nested && (
+            <Button variant="outlined" size="small" component={RouterLink} to="/">Back to Agents</Button>
+          )}
         </Box>
       </Box>
 

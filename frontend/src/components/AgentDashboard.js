@@ -10,7 +10,7 @@ export default function AgentDashboard() {
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
-        Agent Dashboard: &nbsp; <b>{name}</b>
+        Agent Dashboard: <b>{name}</b>
       </Typography>
       <Grid container spacing={3}> 
         {/* Agent Editor Column */}

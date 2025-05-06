@@ -109,7 +109,7 @@ export default function ToolList() {
       
       <Box sx={{ overflowX: 'auto' }}>
         <Table size="medium" sx={{ minWidth: 400 }}>
-          <TableHead>
+          <TableHead sx={{ backgroundColor: 'background.subtile' }}>
             <TableRow>
               <TableCell width="50px" /> {/* Column for expand/collapse icon */}
               <TableCell>Filename</TableCell>
