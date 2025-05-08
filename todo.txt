@@ -1,0 +1,15 @@
+to do
+
+- use bg colors and icons according to message type
+- better spacing for messages
+- message attrs order: type, source, usage, content, etc
+- function call order: name, id, arguments (format json)
+- function response order: name, call_id, is_error, content
+
+- Remove user message from agent config
+
+--
+
+I want you to change this just enought to make the icons and background colors to change slightly according to the type. The ones I see here are: TextMessage, ToolCallRequestEvent, ToolCallExecutionEvent and undefined.
+Make it modular so I can control the colors by changing constants.
+Be carefull not to change other styling or functionality.
