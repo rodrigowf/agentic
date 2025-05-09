@@ -33,7 +33,7 @@ class AgentConfig(BaseSchema):
     tools: List[str]
     llm: LLMConfig
     prompt: PromptConfig
-    max_turns: int = 5
+    max_consecutive_auto_reply: Optional[int] = Field(default=5, description="Optional. Maximum consecutive auto-replies. Defaults to 5 if not provided.")  # Renamed from max_turns
     reflect_on_tool_use: bool = True
     terminate_on_text: bool = False  # Keep for potential future use or backward compat if needed, but default to False
     tool_call_loop: bool = False  # New field to control looping agent behavior

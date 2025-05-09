@@ -16,7 +16,7 @@ This project provides a seamless experience with:
 *   **Tool Management**: Easily add, edit, or generate Python tools for your agents to use.
 *   **Live Run Console**: Observe agent interactions, tool calls, and LLM responses as they happen.
 *   **Multi-LLM Support**: Configure agents to use models from OpenAI, Anthropic, or Google Gemini.
-*   **Flexible Configuration**: Fine-tune agent parameters like temperature, max turns, system prompts, and more.
+*   **Flexible Configuration**: Fine-tune agent parameters like temperature, max_consecutive_auto_reply, system prompts, and more.
 *   **Modern Tech Stack**: Built with FastAPI, React, Material UI, and AutoGen.
 
 ## 🛠️ Setup & Installation

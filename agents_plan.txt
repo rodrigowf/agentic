@@ -18,11 +18,13 @@ User Assistant
 
 --
 
+I want you to please apply the following changes based on the models multimodality, the characteristics of the latest version of autogen (>0.4), and a clear understanding of all the code related to them:
+
 - max_turns is not a model config, but a termination condition (as TERMINATE), so we should change this in the frontend.
-- Allow access to the self agent instance from inside the tools file (to allow tools to change the system prompt, for instance).
-- Add optional code execution capabilities.
-- Add direct audio input and output option.
+- Allow access to the self agent instance from inside the tools file (to allow tools to change their agent's system prompt at runtime, for instance).
+- Add optional code execution capabilities (option from autogen agents).
+- Add direct audio input and output option (using multimodality).
 - Add image input and output options.
   - Investigate how (and if necessary add ability) allow tools to send images to the model?
 
-
+Please plan and execute all the changes step by step very carefully so you don't break any existing functionality.

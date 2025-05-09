@@ -37,7 +37,7 @@ const DEFAULT_AGENT_CONFIG = {
     system: '',
     user: '',
   },
-  max_turns: 15,
+  max_consecutive_auto_reply: null, // Renamed from max_turns
   reflect_on_tool_use: true,
   tool_call_loop: false,
 };
@@ -93,7 +93,7 @@ export default function AgentEditor({nested = false}) {
         system: cfg.prompt?.system || '',
         user: cfg.prompt?.user || ''
       },
-      max_turns: parseInt(cfg.max_turns) || 5,
+      max_consecutive_auto_reply: cfg.max_consecutive_auto_reply === null || cfg.max_consecutive_auto_reply === '' ? null : parseInt(cfg.max_consecutive_auto_reply), // Renamed
       tool_call_loop: Boolean(cfg.tool_call_loop),
       reflect_on_tool_use: Boolean(cfg.reflect_on_tool_use),
     };
@@ -109,7 +109,7 @@ export default function AgentEditor({nested = false}) {
         system: originalCfg.prompt?.system || '',
         user: originalCfg.prompt?.user || ''
       },
-      max_turns: parseInt(originalCfg.max_turns) || 5,
+      max_consecutive_auto_reply: originalCfg.max_consecutive_auto_reply === null || originalCfg.max_consecutive_auto_reply === '' ? null : parseInt(originalCfg.max_consecutive_auto_reply), // Renamed
       tool_call_loop: Boolean(originalCfg.tool_call_loop),
       reflect_on_tool_use: Boolean(originalCfg.reflect_on_tool_use),
     };
@@ -221,6 +221,8 @@ export default function AgentEditor({nested = false}) {
       const lastKey = keys[keys.length - 1];
       if (path === 'tool_call_loop' || path === 'reflect_on_tool_use') {
         current[lastKey] = Boolean(value);
+      } else if (path === 'max_consecutive_auto_reply') { // Renamed
+        current[lastKey] = value === '' ? null : value;
       } else {
         current[lastKey] = value;
       }
@@ -266,7 +268,7 @@ export default function AgentEditor({nested = false}) {
         temperature: parseFloat(cfg.llm.temperature) || 0.0,
         max_tokens: cfg.llm.max_tokens ? parseInt(cfg.llm.max_tokens) : null,
       },
-      max_turns: parseInt(cfg.max_turns) || 5,
+      max_consecutive_auto_reply: cfg.max_consecutive_auto_reply === null || cfg.max_consecutive_auto_reply === '' ? null : parseInt(cfg.max_consecutive_auto_reply), // Renamed
       tool_call_loop: Boolean(cfg.tool_call_loop),
       reflect_on_tool_use: Boolean(cfg.reflect_on_tool_use),
     };
@@ -356,188 +358,224 @@ export default function AgentEditor({nested = false}) {
             fullWidth
           />
 
-          <Divider sx={{ my: 1 }} />
+          <Divider />
 
-          <Typography variant="h6">Prompts</Typography>
-          <TextField
-            label="System Prompt"
-            multiline
-            minRows={4}
-            maxRows={20}
-            value={cfg.prompt.system}
-            onChange={(e) => handleInputChange('prompt.system', e.target.value)}
-            disabled={loading}
-            helperText="Instructions defining the agent's role, personality, and constraints."
-            fullWidth
-          />
-          <TextField
-            label="User Prompt / Initial Task"
-            multiline
-            minRows={2}
-            maxRows={10}
-            value={cfg.prompt.user}
-            onChange={(e) => handleInputChange('prompt.user', e.target.value)}
-            disabled={loading}
-            helperText="The initial message or task to start the conversation."
-            fullWidth
-          />
+          <Box>
+            <Typography variant="h6" sx={{ mb: 3 }}>Prompts</Typography>
+            <Stack spacing={2}>
+              <TextField
+                label="System Prompt"
+                multiline
+                minRows={4}
+                maxRows={20}
+                value={cfg.prompt.system}
+                onChange={(e) => handleInputChange('prompt.system', e.target.value)}
+                disabled={loading}
+                helperText="Instructions defining the agent's role, personality, and constraints."
+                fullWidth
+              />
+              <TextField
+                label="User Prompt / Initial Task"
+                multiline
+                minRows={2}
+                maxRows={10}
+                value={cfg.prompt.user}
+                onChange={(e) => handleInputChange('prompt.user', e.target.value)}
+                disabled={loading}
+                helperText="The initial message or task to start the conversation."
+                fullWidth
+              />
+            </Stack>
+          </Box>
 
-          <Divider sx={{ my: 1 }} />
+          <Divider />
 
-          <Typography variant="h6">LLM Configuration</Typography>
-          <Grid container spacing={2} sx={{marginLeft: "-16px !important"}}>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required error={!cfg.llm.provider && !!error}>
-                <InputLabel>LLM Provider</InputLabel>
-                <Select
-                  value={cfg.llm.provider}
-                  onChange={(e) => handleInputChange('llm.provider', e.target.value)}
-                  label="LLM Provider"
-                  disabled={loading}
-                >
-                  <MenuItem value="openai">OpenAI</MenuItem>
-                  <MenuItem value="anthropic">Anthropic</MenuItem>
-                  <MenuItem value="gemini">Gemini</MenuItem>
-                </Select>
-                {!cfg.llm.provider && !!error && (
-                  <FormHelperText>Provider is required</FormHelperText>
-                )}
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required error={!cfg.llm.model && !!error}>
-                <InputLabel>Model Name</InputLabel>
-                <Select
-                  value={cfg.llm.model}
-                  onChange={(e) => handleInputChange('llm.model', e.target.value)}
-                  label="Model Name"
-                  disabled={modelsLoading || loading}
-                >
-                  {modelsLoading && (
-                    <MenuItem disabled>
-                      <CircularProgress size={24} />
-                    </MenuItem>
-                  )}
-                  {!modelsLoading &&
-                    models.map((model) => (
-                      <MenuItem key={model} value={model}>
-                        {model}
-                      </MenuItem>
+          <Box>
+            <Typography variant="h6" sx={{ mb: 4 }}>Tools</Typography>
+            <FormControl fullWidth disabled={loading}>
+              <InputLabel id="tools-select-label">Tools</InputLabel>
+              <Select
+                labelId="tools-select-label"
+                multiple
+                value={cfg.tools}
+                onChange={(e) => handleInputChange('tools', e.target.value)}
+                input={<OutlinedInput label="Tools" />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip 
+                        key={value} 
+                        label={value} 
+                        onDelete={() => {
+                          const newTools = cfg.tools.filter(tool => tool !== value);
+                          handleInputChange('tools', newTools);
+                        }}
+                        onMouseDown={(event) => {
+                          // Prevent the Select dropdown from opening when clicking the delete icon
+                          event.stopPropagation();
+                        }}
+                      />
                     ))}
-                </Select>
-                {!cfg.llm.model && !!error && (
-                  <FormHelperText>Model Name is required</FormHelperText>
+                  </Box>
                 )}
-              </FormControl>
+              >
+                {allTools.map((tool) => (
+                  <MenuItem key={tool.name} value={tool.name}>
+                    {tool.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>Select the tools this agent can use.</FormHelperText>
+            </FormControl>
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <Typography variant="h6" sx={{ mb: 4 }}>LLM Configuration</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth required error={!cfg.llm.provider && !!error}>
+                  <InputLabel>LLM Provider</InputLabel>
+                  <Select
+                    value={cfg.llm.provider}
+                    onChange={(e) => handleInputChange('llm.provider', e.target.value)}
+                    label="LLM Provider"
+                    disabled={loading}
+                  >
+                    <MenuItem value="openai">OpenAI</MenuItem>
+                    <MenuItem value="anthropic">Anthropic</MenuItem>
+                    <MenuItem value="gemini">Gemini</MenuItem>
+                  </Select>
+                  {!cfg.llm.provider && !!error && (
+                    <FormHelperText>Provider is required</FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth required error={!cfg.llm.model && !!error}>
+                  <InputLabel>Model Name</InputLabel>
+                  <Select
+                    value={cfg.llm.model}
+                    onChange={(e) => handleInputChange('llm.model', e.target.value)}
+                    label="Model Name"
+                    disabled={loading || modelsLoading || !cfg.llm.provider}
+                  >
+                    {modelsLoading ? (
+                      <MenuItem value="" disabled>
+                        <CircularProgress size={20} sx={{ mr: 1 }} />
+                        Loading models...
+                      </MenuItem>
+                    ) : models.length === 0 && cfg.llm.provider ? (
+                      <MenuItem value="" disabled>
+                        No models found for {cfg.llm.provider} or failed to load.
+                      </MenuItem>
+                    ) : (
+                      models.map((model) => (
+                        <MenuItem key={model} value={model}>
+                          {model}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                  {(!cfg.llm.model && !!error) && (
+                    <FormHelperText>Model Name is required</FormHelperText>
+                  )}
+                  {!modelsLoading && models.length === 0 && cfg.llm.provider && (
+                    <FormHelperText>Ensure API key for {cfg.llm.provider} is set in the backend.</FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Temperature"
+                  value={cfg.llm.temperature}
+                  onChange={(e) => handleInputChange('llm.temperature', e.target.value)}
+                  inputProps={{ step: '0.1', min: '0', max: '2' }}
+                  helperText="0 = deterministic, >0 = creative"
+                  disabled={loading}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Max Tokens"
+                  value={cfg.llm.max_tokens ?? ''}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'llm.max_tokens',
+                      e.target.value ? parseInt(e.target.value) : null
+                    )
+                  }
+                  inputProps={{ min: '1' }}
+                  helperText="Optional limit"
+                  disabled={loading}
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Temperature"
-                value={cfg.llm.temperature}
-                onChange={(e) => handleInputChange('llm.temperature', e.target.value)}
-                inputProps={{ step: '0.1', min: '0', max: '2' }}
-                helperText="0 = deterministic, >0 = creative"
-                disabled={loading}
-              />
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2 }}>Behavior</Typography>
+            <Grid container spacing={2} alignItems="center"> 
+              <Grid item xs={12} sm={8}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={cfg.tool_call_loop ?? false}
+                      onChange={(e) =>
+                        handleInputChange('tool_call_loop', e.target.checked)
+                      }
+                      disabled={loading}
+                    />
+                  }
+                  label="Enable Tool Call Loop (Uses LoopingAssistantAgent)"
+                />
+                <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
+                  Allows the agent to repeatedly call tools within a single turn if needed.
+                </FormHelperText>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Max Consecutive Auto-Reply"
+                  value={cfg.max_consecutive_auto_reply ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleInputChange('max_consecutive_auto_reply', val === '' ? null : (Number.isInteger(parseInt(val)) ? parseInt(val) : val));
+                  }}
+                  inputProps={{ min: '1' }}
+                  helperText="Optional. Max auto-replies."
+                  disabled={loading}
+                />
+              </Grid>
+              <Grid item xs={12} sm={8}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={cfg.reflect_on_tool_use ?? true}
+                      onChange={(e) =>
+                        handleInputChange('reflect_on_tool_use', e.target.checked)
+                      }
+                      disabled={loading}
+                    />
+                  }
+                  label="Reflect on Tool Use (Applies to Looping Agent)"
+                />
+                <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
+                  Allows the agent to reflect on the success/failure of tool calls.
+                </FormHelperText>
+              </Grid>
+              <Grid item xs={false} sm={4} />
             </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Max Tokens"
-                value={cfg.llm.max_tokens ?? ''}
-                onChange={(e) =>
-                  handleInputChange(
-                    'llm.max_tokens',
-                    e.target.value ? parseInt(e.target.value) : null
-                  )
-                }
-                inputProps={{ min: '1' }}
-                helperText="Optional limit"
-                disabled={loading}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Max Turns"
-                value={cfg.max_turns}
-                onChange={(e) => handleInputChange('max_turns', e.target.value)}
-                inputProps={{ min: '1' }}
-                helperText="Max conversation steps"
-                disabled={loading}
-              />
-            </Grid>
-          </Grid>
+          </Box>
 
-          <Divider sx={{ my: 1 }} />
-
-          <Typography variant="h6">Tools</Typography>
-          <FormControl fullWidth disabled={loading}>
-            <InputLabel>Available Tools</InputLabel>
-            <Select
-              multiple
-              value={cfg.tools}
-              onChange={(e) => handleInputChange('tools', e.target.value)}
-              input={<OutlinedInput label="Available Tools" />}
-              renderValue={(selected) => (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {selected.map((toolName) => (
-                    <Chip key={toolName} label={toolName} size="small" />
-                  ))}
-                </Box>
-              )}
-            >
-              {allTools.length === 0 && (
-                <MenuItem disabled>Loading tools...</MenuItem>
-              )}
-              {allTools.map((t) => (
-                <MenuItem key={t.name} value={t.name}>
-                  {t.name}
-                </MenuItem>
-              ))}
-            </Select>
-            <FormHelperText>Select the tools this agent can use.</FormHelperText>
-          </FormControl>
-
-          <Divider sx={{ my: 1 }} />
-          <Typography variant="h6">Behavior</Typography>
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={cfg.tool_call_loop ?? false}
-                onChange={(e) =>
-                  handleInputChange('tool_call_loop', e.target.checked)
-                }
-                disabled={loading}
-              />
-            }
-            label="Enable Tool Call Loop (Uses LoopingAssistantAgent)"
-          />
-          <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
-            Allows the agent to repeatedly call tools within a single turn if needed.
-          </FormHelperText>
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={cfg.reflect_on_tool_use ?? true}
-                onChange={(e) =>
-                  handleInputChange('reflect_on_tool_use', e.target.checked)
-                }
-                disabled={loading}
-              />
-            }
-            label="Reflect on Tool Use (Applies to Looping Agent)"
-          />
-          <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
-            Allows the agent to reflect on the success/failure of tool calls.
-          </FormHelperText>
-          
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 2 }}>
             {!nested && (
               <Button

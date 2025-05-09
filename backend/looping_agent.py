@@ -1,6 +1,6 @@
 import asyncio
 import pprint
-from typing import AsyncIterator, List, Sequence
+from typing import AsyncIterator, List, Sequence, Optional
 
 # Core autogen components
 from autogen_core import CancellationToken
@@ -16,13 +16,17 @@ from autogen_agentchat.messages import (
 )
 
 # Default max iterations
-MAX_ITERS = 20
+DEFAULT_MAX_ITERS = 40 # Renamed from MAX_ITERS
 
 class LoopingAssistantAgent(AssistantAgent):
     """
     An AssistantAgent that overrides run_stream to loop its core logic
     (calling the LLM, handling tools) until its own output contains "TERMINATE".
     """
+    def __init__(self, *args, max_consecutive_auto_reply: Optional[int] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_consecutive_auto_reply = max_consecutive_auto_reply if max_consecutive_auto_reply is not None else DEFAULT_MAX_ITERS
+
     async def run_stream(
         self,
         task: str,
@@ -37,8 +41,8 @@ class LoopingAssistantAgent(AssistantAgent):
 
         while True:
             iters += 1
-            if iters > MAX_ITERS:
-                yield TextMessage(content=f"[SYSTEM] Safety stop: max iterations ({MAX_ITERS}) reached.", source="system").model_dump()
+            if iters > self.max_consecutive_auto_reply: # Changed from MAX_ITERS to self.max_iters
+                yield TextMessage(content=f"[SYSTEM] Safety stop: max iterations ({self.max_iters}) reached.", source="system").model_dump()
                 break
 
             last_assistant_text_message_content: str | None = None

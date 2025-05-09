@@ -185,19 +185,18 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                 system_message=system_message,
                 model_client=model_client,
                 tools=agent_tools,
-                reflect_on_tool_use=agent_cfg.reflect_on_tool_use, # Specific to LoopingAssistantAgent? Check docs if needed
+                reflect_on_tool_use=agent_cfg.reflect_on_tool_use, 
+                max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply # Pass max_consecutive_auto_reply
             )
             logger.info(f"Agent '{agent_name}' instantiated successfully using LoopingAssistantAgent.")
         else:
             logger.info(f"Instantiating standard AssistantAgent: {agent_name}")
-            # Note: Standard AssistantAgent might not use reflect_on_tool_use
-            # Check autogen_agentchat.AssistantAgent signature if issues arise
             assistant = AssistantAgent(
                 name=agent_name,
                 system_message=system_message,
                 model_client=model_client,
                 tools=agent_tools,
-                # max_consecutive_auto_reply=agent_cfg.max_turns # Optional: Map max_turns if relevant here
+                max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply # Pass max_consecutive_auto_reply
             )
             logger.info(f"Agent '{agent_name}' instantiated successfully using standard AssistantAgent.")
 
