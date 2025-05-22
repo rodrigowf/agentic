@@ -52,9 +52,6 @@ uvicorn main:app --reload --port 8000
 # Navigate to the frontend directory
 cd frontend
 
-# Create environment file (usually no changes needed if backend runs on port 8000)
-cp .env.local.example .env.local
-
 # Install Node.js dependencies
 npm install
 

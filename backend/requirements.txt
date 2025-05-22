@@ -8,18 +8,14 @@ python-multipart
 openai
 anthropic
 google-generativeai
-autogen-core>=0.2.0
 # Added missing dependencies
 pydantic>=2.0
 requests~=2.31.0
 beautifulsoup4~=4.12.2
-autogen-agentchat==0.5.5
-autogen-core==0.5.5
-autogen-ext==0.5.5
-autogen-ext-openai
-autogen-ext-anthropic
-autogen-ext-google
+autogen-agentchat>=0.5.5
+autogen-core>=0.5.5
+autogen-ext>=0.5.5
 
 # For Tools:
-duckduckgo-search~=3.9.6
-wikipedia~=1.4.0
+duckduckgo-search
+wikipedia
