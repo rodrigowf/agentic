@@ -29,6 +29,8 @@ export default function RunConsole({nested = false}) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [taskInput, setTaskInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadedAudio, setUploadedAudio] = useState(null);
 
   const connectWebSocket = useCallback(() => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -109,24 +111,61 @@ export default function RunConsole({nested = false}) {
 
   }, [name, error]);
 
+  // Handler for image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(',')[1];
+      setUploadedImage(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handler for audio upload
+  const handleAudioUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUploadedAudio(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleRunAgent = () => {
     if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
       setError("WebSocket is not connected. Cannot run agent.");
       console.error("Attempted to run agent while WebSocket is not open.");
       return;
     }
-    if (!taskInput.trim()) {
-      setError("Please enter a task for the agent.");
+    if (!taskInput.trim() && !uploadedImage && !uploadedAudio) {
+      setError("Please enter a task or upload media for the agent.");
       return;
     }
 
     try {
-      const runMessage = JSON.stringify({ type: 'run', data: taskInput });
+      // Build payload including text, image, or audio
+      let dataPayload;
+      if (uploadedImage || uploadedAudio) {
+        dataPayload = {};
+        if (taskInput.trim()) dataPayload.text = taskInput;
+        if (uploadedImage) dataPayload.image = uploadedImage;
+        else if (uploadedAudio) dataPayload.audio = uploadedAudio;
+      } else {
+        dataPayload = taskInput;
+      }
+      const runMessage = JSON.stringify({ type: 'run', data: dataPayload });
       console.log('Sending run message:', runMessage);
       ws.current.send(runMessage);
       setIsRunning(true);
       setError(null);
       setLogs([{ type: 'system', data: `Sending run command with task: ${taskInput.substring(0, 100)}...`, timestamp: new Date().toISOString() }]);
+      // Clear uploads after sending
+      setUploadedImage(null);
+      setUploadedAudio(null);
     } catch (e) {
       console.error('Failed to send run message:', e);
       setError('Failed to send run command to backend.');
@@ -223,10 +262,31 @@ export default function RunConsole({nested = false}) {
           sx={{ flexGrow: 1 }}
           placeholder="Enter the task description here..."
         />
+        <Button variant="outlined" component="label" sx={{ height: '100%' }}>
+          Upload Image
+          <input hidden accept="image/*" type="file" onChange={handleImageUpload} />
+        </Button>
+        <Button variant="outlined" component="label" sx={{ height: '100%' }}>
+          Upload Audio
+          <input hidden accept="audio/*" type="file" onChange={handleAudioUpload} />
+        </Button>
+        {/* Previews for uploaded media */}
+        {uploadedImage && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <img src={`data:image/*;base64,${uploadedImage}`} alt="preview" style={{ maxHeight: 80 }} />
+            <Button size="small" onClick={() => setUploadedImage(null)}>Remove Image</Button>
+          </Box>
+        )}
+        {uploadedAudio && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <audio controls src={uploadedAudio} style={{ maxHeight: 80 }} />
+            <Button size="small" onClick={() => setUploadedAudio(null)}>Remove Audio</Button>
+          </Box>
+        )}
         <Button
           variant="contained"
           onClick={handleRunAgent}
-          disabled={!isConnected || isRunning || !taskInput.trim()}
+          disabled={!isConnected || isRunning || (!taskInput.trim() && !uploadedImage && !uploadedAudio)}
           sx={{ height: '100%', px: 4}}
         >
           {isRunning ? <CircularProgress size={24} color="inherit" /> : 'Run'}

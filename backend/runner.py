@@ -8,6 +8,9 @@ from datetime import datetime
 import asyncio
 import json
 import openai
+import contextvars
+from autogen_agentchat.messages import MultiModalMessage
+from autogen_core import Image as AGImage
 
 # --- Corrected AutoGen v0.4+ Imports ---
 # Core components
@@ -32,6 +35,13 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_core.tools import FunctionTool
 
 logger = logging.getLogger(__name__)
+
+# Context variable for current agent
+CURRENT_AGENT = contextvars.ContextVar("CURRENT_AGENT", default=None)
+
+def get_current_agent():
+    """Helper for tools to access current agent instance."""
+    return CURRENT_AGENT.get()
 
 # Helper function for recursive serialization
 def _recursive_serialize(obj):
@@ -173,6 +183,7 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
         return
 
     # --- Agent Instantiation (Conditional based on tool_call_loop) ---
+    # Set current agent context after instantiation
     assistant = None # Initialize assistant variable
     try:
         agent_name = agent_cfg.name
@@ -196,12 +207,14 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                 system_message=system_message,
                 model_client=model_client,
                 tools=agent_tools,
-                max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply # Pass max_consecutive_auto_reply
             )
             logger.info(f"Agent '{agent_name}' instantiated successfully using standard AssistantAgent.")
 
         if assistant is None:
              raise ValueError("Failed to instantiate any agent type.")
+
+        # Set contextvar for tools
+        CURRENT_AGENT.set(assistant)
 
     except Exception as e:
         logger.exception(f"Error creating agent instance '{agent_cfg.name}': {e}")
@@ -229,25 +242,27 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
             await websocket.close()
             return
 
-        task_message_content = initial_message_data.get("data")
-        if not task_message_content:
-            task_message_content = agent_cfg.prompt.user
-            if not task_message_content:
-                error_msg = "No task message provided in 'run' message and agent config's 'prompt.user' is also empty."
-                logger.error(error_msg)
-                await send_event_to_websocket(websocket, "error", {"message": error_msg})
-                await websocket.close()
-                return
-            else:
-                logger.info(f"Using default task from agent config: {task_message_content[:100]}...")
+        # Handle multimodal initial data
+        initial_data = initial_message_data.get("data")
+        if isinstance(initial_data, dict) and initial_data.get("image"):
+            # Image input
+            img = AGImage.from_base64(initial_data["image"])
+            contents = [initial_data.get("text", ""), img] if initial_data.get("text") else [img]
+            task_message = MultiModalMessage(content=contents, source="user")
+        elif isinstance(initial_data, dict) and initial_data.get("audio"):
+            # Audio input
+            audio = initial_data["audio"]
+            audio_uri = audio if audio.startswith("data:audio") else f"data:audio/wav;base64,{audio}"
+            contents = [initial_data.get("text", ""), audio_uri] if initial_data.get("text") else [audio_uri]
+            task_message = MultiModalMessage(content=contents, source="user")
         else:
-            logger.info(f"Using task from client message: {task_message_content[:100]}...")
+            # Fallback to text
+            task_message = initial_data or agent_cfg.prompt.user or ""
 
-        await send_event_to_websocket(websocket, "system", {"message": f"Initiating agent run with task: {task_message_content[:100]}..."})
+        await send_event_to_websocket(websocket, "system", {"message": f"Initiating agent run with task: {str(task_message)[:100]}..."})
 
-        # Use the instantiated assistant's run_stream method
-        # Both AssistantAgent and LoopingAssistantAgent should have this method
-        stream = assistant.run_stream(task=task_message_content, cancellation_token=cancellation_token)
+        # Start streaming with multimodal task message
+        stream = assistant.run_stream(task=task_message, cancellation_token=cancellation_token)
 
         message_count = 0
         async for event in stream:

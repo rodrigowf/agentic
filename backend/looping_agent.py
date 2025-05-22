@@ -4,6 +4,7 @@ from typing import AsyncIterator, List, Sequence, Optional
 
 # Core autogen components
 from autogen_core import CancellationToken
+from autogen_core import Image as AGImage  # added to detect Image outputs
 
 # AgentChat specific components
 from autogen_agentchat.agents import AssistantAgent
@@ -12,7 +13,8 @@ from autogen_agentchat.messages import (
     BaseChatMessage,
     ModelClientStreamingChunkEvent,
     TextMessage,
-    ToolCallExecutionEvent
+    ToolCallExecutionEvent,
+    MultiModalMessage  # added for multimodal support
 )
 
 # Default max iterations
@@ -29,14 +31,17 @@ class LoopingAssistantAgent(AssistantAgent):
 
     async def run_stream(
         self,
-        task: str,
+        task: BaseChatMessage | str,  # support multimodal initial task
         cancellation_token: CancellationToken | None = None,
     ) -> AsyncIterator:
         if cancellation_token is None:
             cancellation_token = CancellationToken()
 
-        # Initialize history with the initial user task
-        history: List[BaseChatMessage] = [TextMessage(content=task, source="user")]
+        # Initialize history with the initial user task, supporting multimodal
+        if isinstance(task, BaseChatMessage):
+            history: List[BaseChatMessage] = [task]
+        else:
+            history = [TextMessage(content=str(task), source="user")]
         iters = 0
 
         while True:
@@ -67,7 +72,18 @@ class LoopingAssistantAgent(AssistantAgent):
 
                     if isinstance(evt, ToolCallExecutionEvent):
                         for result in evt.content:
-                            msg = TextMessage(content=str(result.content), source="tools")
+                            output = result.content
+                            # Wrap image outputs
+                            if isinstance(output, AGImage):
+                                msg = MultiModalMessage(content=[output], source="tools")
+                            # Handle image URI strings
+                            elif isinstance(output, str) and output.startswith("data:image"):
+                                msg = MultiModalMessage(content=[output], source="tools")
+                            # Handle audio URI strings
+                            elif isinstance(output, str) and output.startswith("data:audio"):
+                                msg = MultiModalMessage(content=[output], source="tools")
+                            else:
+                                msg = TextMessage(content=str(output), source="tools")
                             current_iteration_new_history.append(msg)
                         accumulated_assistant_chunks = ""
                         last_assistant_text_message_content = None

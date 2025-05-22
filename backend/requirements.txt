@@ -19,3 +19,7 @@ autogen-ext>=0.5.5
 # For Tools:
 duckduckgo-search
 wikipedia
+
+# For image handling and screenshots:
+Pillow>=9.0.0
+pyscreenshot>=2.0
