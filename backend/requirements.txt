@@ -12,9 +12,9 @@ google-generativeai
 pydantic>=2.0
 requests~=2.31.0
 beautifulsoup4~=4.12.2
-autogen-agentchat>=0.5.5
-autogen-core>=0.5.5
-autogen-ext>=0.5.5
+autogen-agentchat>=0.5.7
+autogen-core>=0.5.7
+autogen-ext>=0.5.7
 
 # For Tools:
 duckduckgo-search
@@ -23,3 +23,4 @@ wikipedia
 # For image handling and screenshots:
 Pillow>=9.0.0
 pyscreenshot>=2.0
+mss>=6.1.0

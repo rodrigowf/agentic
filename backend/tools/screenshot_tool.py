@@ -3,13 +3,16 @@ Tool for taking a screenshot and returning it as an Autogen Image.
 """
 import io
 import base64
-import pyscreenshot as ImageGrab
+try:
+    from PIL import ImageGrab
+except ImportError:
+    import pyscreenshot as ImageGrab
 from autogen_core import Image as AGImage
 from autogen_core.tools import FunctionTool
 
 
 def take_screenshot() -> AGImage:
-    """Capture the current screen and return it as an Autogen Image object."""
+    """Capture the current screen using Pillow ImageGrab (or pyscreenshot) and return it as an Autogen Image object."""
     # Grab the screen
     img = ImageGrab.grab()
     # Convert to PNG bytes

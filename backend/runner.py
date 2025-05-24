@@ -114,34 +114,27 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
                 raise ValueError("OPENAI_API_KEY not found in environment.")
-            try:
-                # First attempt: Initialize directly (works for known models)
+            # For vision-capable models, explicitly set vision in model_info
+            if any(vis in model_name.lower() for vis in ['gpt-4o', 'gpt-4v', 'vision']):
+                logger.info(f"Using OpenAIChatCompletionClient with explicit vision ModelInfo for model: {model_name}")
+                openai_model_info = ModelInfo(
+                    vision=True,
+                    function_calling=True,
+                    json_output=True,
+                    family="openai",
+                    structured_output=True
+                )
+                openai_base_url = "https://api.openai.com/v1"
+                model_client = OpenAIChatCompletionClient(
+                    model=model_name,
+                    api_key=api_key,
+                    base_url=openai_base_url,
+                    model_info=openai_model_info
+                )
+            else:
+                # Default initialization for non-vision models
                 model_client = OpenAIChatCompletionClient(model=model_name, api_key=api_key)
-                logger.info(f"Using OpenAIChatCompletionClient for known OpenAI model.")
-            except ValueError as ve:
-                # Second attempt: If model_info is required (unknown/new model)
-                if "model_info is required" in str(ve):
-                    logger.warning(f"Model '{model_name}' not recognized by autogen_ext, providing default model_info.")
-                    # Define default model_info assuming modern capabilities
-                    # Adjust these based on actual o4-mini capabilities if needed
-                    openai_model_info = ModelInfo(
-                        vision=True,
-                        function_calling=True,
-                        json_output=True,
-                        family="openai", # Specify family as openai
-                        structured_output=True
-                    )
-                    openai_base_url = "https://api.openai.com/v1" # Standard OpenAI base URL
-                    model_client = OpenAIChatCompletionClient(
-                        model=model_name,
-                        api_key=api_key,
-                        base_url=openai_base_url,
-                        model_info=openai_model_info
-                    )
-                    logger.info(f"Using OpenAIChatCompletionClient with explicit model_info for OpenAI model.")
-                else:
-                    # Re-raise other ValueErrors
-                    raise ve
+                logger.info(f"Using OpenAIChatCompletionClient for known OpenAI model: {model_name}")
 
         elif prov == 'gemini':
             api_key = os.getenv('GEMINI_API_KEY')

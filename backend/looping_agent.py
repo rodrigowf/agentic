@@ -5,6 +5,7 @@ from typing import AsyncIterator, List, Sequence, Optional
 # Core autogen components
 from autogen_core import CancellationToken
 from autogen_core import Image as AGImage  # added to detect Image outputs
+from autogen_core.models import FunctionExecutionResult  # added for fake tool result construction
 
 # AgentChat specific components
 from autogen_agentchat.agents import AssistantAgent
@@ -16,6 +17,7 @@ from autogen_agentchat.messages import (
     ToolCallExecutionEvent,
     MultiModalMessage  # added for multimodal support
 )
+from autogen_core.models import FunctionExecutionResult  # for creating fake execution results
 
 # Default max iterations
 DEFAULT_MAX_ITERS = 40 # Renamed from MAX_ITERS
@@ -71,20 +73,23 @@ class LoopingAssistantAgent(AssistantAgent):
                         yield evt.model_dump() if hasattr(evt, 'model_dump') else evt.__dict__
 
                     if isinstance(evt, ToolCallExecutionEvent):
+                        # Generic handling of tool outputs, including images and audio
                         for result in evt.content:
                             output = result.content
-                            # Wrap image outputs
                             if isinstance(output, AGImage):
-                                msg = MultiModalMessage(content=[output], source="tools")
-                            # Handle image URI strings
+                                # Inject actual image into LLM request as OpenAI-style attachment
+                                attachment = output.to_openai_format()
+                                fake_res = FunctionExecutionResult(content=attachment, source=result.source, meta=getattr(result, 'meta', None))
+                                fake_evt = ToolCallExecutionEvent(tool_name=evt.tool_name, content=[fake_res])
+                                yield fake_evt.model_dump()
+                                # Also record image in history for multimodal conversation
+                                current_iteration_new_history.append(MultiModalMessage(content=[output], source="tools"))
                             elif isinstance(output, str) and output.startswith("data:image"):
-                                msg = MultiModalMessage(content=[output], source="tools")
-                            # Handle audio URI strings
+                                current_iteration_new_history.append(MultiModalMessage(content=[output], source="tools"))
                             elif isinstance(output, str) and output.startswith("data:audio"):
-                                msg = MultiModalMessage(content=[output], source="tools")
+                                current_iteration_new_history.append(MultiModalMessage(content=[output], source="tools"))
                             else:
-                                msg = TextMessage(content=str(output), source="tools")
-                            current_iteration_new_history.append(msg)
+                                current_iteration_new_history.append(TextMessage(content=str(output), source="tools"))
                         accumulated_assistant_chunks = ""
                         last_assistant_text_message_content = None
                     elif isinstance(evt, ModelClientStreamingChunkEvent):
