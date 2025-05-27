@@ -30,13 +30,27 @@ class PromptConfig(BaseSchema):
 
 class AgentConfig(BaseSchema):
     name: str
+    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent")
     tools: List[str]
-    llm: LLMConfig
-    prompt: PromptConfig
+    llm: Optional[LLMConfig] = None
+    prompt: Optional[PromptConfig] = None
+    # CodeExecutorAgent-specific fields
+    code_executor: Optional[dict] = Field(default=None, description="Configuration for code executor (e.g., {'type': 'local'}). Required for code_executor agent_type.")
+    model_client_stream: Optional[bool] = Field(default=False, description="Whether to stream model client output in CodeExecutorAgent.")
+    sources: Optional[List[str]] = Field(default=None, description="Additional source file paths for code execution.")
+    description: Optional[str] = Field(default=None, description="Optional description for CodeExecutorAgent.")
+    system_message: Optional[str] = Field(default=None, description="System message for CodeExecutorAgent.")
     max_consecutive_auto_reply: Optional[int] = Field(default=5, description="Optional. Maximum consecutive auto-replies. Defaults to 5 if not provided.")  # Renamed from max_turns
     reflect_on_tool_use: bool = True
     terminate_on_text: bool = False  # Keep for potential future use or backward compat if needed, but default to False
     tool_call_loop: bool = False  # New field to control looping agent behavior
+    # Nested team-specific configuration
+    sub_agents: Optional[List["AgentConfig"]] = None
+    mode: Optional[str] = None
+    orchestrator_prompt: Optional[str] = None
+
+# Resolve forward references for recursive sub_agents
+AgentConfig.update_forward_refs()
 
 class GenerateToolRequest(BaseSchema):
     prompt: str = Field(..., description="The natural language prompt describing the tool to be generated.")

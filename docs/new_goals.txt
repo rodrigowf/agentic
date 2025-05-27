@@ -1,0 +1,6 @@
+Now that you know the codebase and what this project is about, I'd like you to take a look to the codebase again in order to change the conversation page in the following ways:
+- The conversation must look like a chat: with the input box at the bottom, and the messages list should automatically scroll to the bottom at every new message.
+- The chat system must allow me to follow up with the conversation, allowing me to send new messages to the agent after they answer to my first question.
+Please suggest precise changes that work and doesn't break the app.
+
+Now that you know the codebase and what this project is about, I think you can create something very special to me: Please create an agent (like backend/agents/Researcher.json and backend/tools/research.py) with both Json and tools functions that can create any other agents using any of the app's features. This agent should be capable of generating other agents and tools.

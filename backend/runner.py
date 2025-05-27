@@ -15,9 +15,7 @@ from autogen_core import CancellationToken, FunctionCall, Image
 # Models (including FunctionExecutionResult and ModelInfo)
 from autogen_core.models import FunctionExecutionResult, ModelInfo
 # AgentChat components
-from looping_agent import LoopingAssistantAgent
-# Import the standard AssistantAgent
-from autogen_agentchat.agents import AssistantAgent # Corrected import path
+# Agent instantiation now handled via factory
 # Corrected message/event imports
 from autogen_agentchat.messages import (
     TextMessage,
@@ -28,8 +26,8 @@ from autogen_agentchat.messages import (
 )
 # Model clients
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-# Tools
 from autogen_core.tools import FunctionTool
+from agent_factory import create_agent_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -172,43 +170,16 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
         await websocket.close()
         return
 
-    # --- Agent Instantiation (Conditional based on tool_call_loop) ---
-    assistant = None # Initialize assistant variable
+    # --- Agent Instantiation via factory ---
     try:
-        agent_name = agent_cfg.name
-        system_message = agent_cfg.prompt.system
-
-        if agent_cfg.tool_call_loop:
-            logger.info(f"Instantiating LoopingAssistantAgent: {agent_name}")
-            assistant = LoopingAssistantAgent(
-                name=agent_name,
-                system_message=system_message,
-                model_client=model_client,
-                tools=agent_tools,
-                reflect_on_tool_use=agent_cfg.reflect_on_tool_use, 
-                max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply # Pass max_consecutive_auto_reply
-            )
-            logger.info(f"Agent '{agent_name}' instantiated successfully using LoopingAssistantAgent.")
-        else:
-            logger.info(f"Instantiating standard AssistantAgent: {agent_name}")
-            assistant = AssistantAgent(
-                name=agent_name,
-                system_message=system_message,
-                model_client=model_client,
-                tools=agent_tools,
-                max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply # Pass max_consecutive_auto_reply
-            )
-            logger.info(f"Agent '{agent_name}' instantiated successfully using standard AssistantAgent.")
-
-        if assistant is None:
-             raise ValueError("Failed to instantiate any agent type.")
-
+        assistant = create_agent_from_config(agent_cfg, all_tools, model_client)
+        logger.info(f"Agent '{agent_cfg.name}' instantiated as type '{agent_cfg.agent_type}' using factory.")
     except Exception as e:
         logger.exception(f"Error creating agent instance '{agent_cfg.name}': {e}")
-        await send_event_to_websocket(websocket, "error", {"message": f"Error creating agent instance: {str(e)}"})
+        await send_event_to_websocket(websocket, "error", {"message": f"Failed to create agent: {e}"})
         await websocket.close()
         if model_client and hasattr(model_client, 'close'):
-            await model_client.close() # Ensure client is closed on error
+            await model_client.close()
         return
 
     # --- Run Interaction using agent's run_stream ---

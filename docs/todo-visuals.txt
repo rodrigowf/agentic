@@ -1,4 +1,13 @@
-to do
+to do visuals
+
+- all the inner agent messages should be foldable (folded by default) 
+  and show a small summary of attributes when folded
+
+- total page size should be 100vh
+- agent chat scrolls internally
+- message input at the bottom
+- auto-scroll messages
+
 
 - use bg colors and icons according to message type
 - better spacing for messages

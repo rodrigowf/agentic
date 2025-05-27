@@ -25,6 +25,7 @@ import {
 import api from '../api';
 
 const DEFAULT_AGENT_CONFIG = {
+  agent_type: 'assistant',
   name: '',
   tools: [],
   llm: {
@@ -37,24 +38,33 @@ const DEFAULT_AGENT_CONFIG = {
     system: '',
     user: '',
   },
+  // CodeExecutorAgent fields
+  code_executor: { type: '' },
+  system_message: '',
+  description: '',
+  sources: [],
+  model_client_stream: false,
   max_consecutive_auto_reply: null, // Renamed from max_turns
   reflect_on_tool_use: true,
-  tool_call_loop: false,
 };
 
 export default function AgentEditor({nested = false}) {
+  // Loading state splits: tools vs agents
   const { name } = useParams();
   const isEditMode = Boolean(name);
   const nav = useNavigate();
   const [allTools, setAllTools] = useState([]);
   const [cfg, setCfg] = useState(DEFAULT_AGENT_CONFIG);
   const [originalCfg, setOriginalCfg] = useState(null);
+  const [toolsLoading, setToolsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [models, setModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [notification, setNotification] = useState({ message: '', severity: 'success', open: false });
+  // Load existing agents for nested team selection
+  const [allAgents, setAllAgents] = useState([]);
 
   const handleCloseNotification = () => {
     setNotification(prev => ({ ...prev, open: false }));
@@ -124,15 +134,19 @@ export default function AgentEditor({nested = false}) {
   }, [cfg, originalCfg, isEditMode]);
 
   useEffect(() => {
-    setLoading(true);
-    api
-      .getTools()
-      .then((r) => setAllTools(r.data))
+    setToolsLoading(true);
+    api.getTools()
+      .then((r) => {
+        setAllTools(r.data);
+        console.log('Loaded tools:', r.data);
+      })
       .catch((err) => {
         console.error('Error fetching tools:', err);
         setError('Failed to load available tools.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => setToolsLoading(false));
+    // Fetch agents list for nested sub-agent selection
+    api.getAgents().then(r => setAllAgents(r.data)).catch(e => console.error('Error fetching agents:', e));
   }, []);
 
   // Add logging to track when originalCfg is set
@@ -262,6 +276,7 @@ export default function AgentEditor({nested = false}) {
     }
 
     const payload = {
+      agent_type: cfg.agent_type,
       ...cfg,
       llm: {
         ...cfg.llm,
@@ -269,7 +284,6 @@ export default function AgentEditor({nested = false}) {
         max_tokens: cfg.llm.max_tokens ? parseInt(cfg.llm.max_tokens) : null,
       },
       max_consecutive_auto_reply: cfg.max_consecutive_auto_reply === null || cfg.max_consecutive_auto_reply === '' ? null : parseInt(cfg.max_consecutive_auto_reply), // Renamed
-      tool_call_loop: Boolean(cfg.tool_call_loop),
       reflect_on_tool_use: Boolean(cfg.reflect_on_tool_use),
     };
 
@@ -300,6 +314,35 @@ export default function AgentEditor({nested = false}) {
       })
       .finally(() => setLoading(false));
   };
+
+  // Handlers for nested team configuration
+  const handleAddSubAgent = () => {
+    setCfg(prev => {
+      const sub_agents = prev.sub_agents ? [...prev.sub_agents] : [];
+      sub_agents.push({
+        name: '', tools: [], llm: {provider: 'openai', model: '', temperature: 0.0, max_tokens: null},
+        prompt: {system: '', user: ''}, max_consecutive_auto_reply: null, reflect_on_tool_use: true, tool_call_loop: false
+      });
+      return {...prev, sub_agents};
+    });
+  };
+  const handleRemoveSubAgent = index => {
+    setCfg(prev => {
+      const sub_agents = prev.sub_agents ? [...prev.sub_agents] : [];
+      sub_agents.splice(index,1);
+      return {...prev, sub_agents};
+    });
+  };
+
+  // Handler to select existing agent as sub-agent
+  const handleSelectSubAgent = useCallback((index, agentName) => {
+    setCfg(prev => {
+      const subs = prev.sub_agents ? [...prev.sub_agents] : [];
+      const selected = allAgents.find(a => a.name === agentName);
+      if (selected) subs[index] = selected;
+      return { ...prev, sub_agents: subs };
+    });
+  }, [allAgents]);
 
   // Add logging for button disabled state
   const buttonDisabled = loading || (nested && isEditMode && !hasChanges());
@@ -349,256 +392,301 @@ export default function AgentEditor({nested = false}) {
             onChange={(e) => handleInputChange('name', e.target.value)}
             required
             disabled={isEditMode || loading}
-            error={!cfg.name.trim() && !!error}
-            helperText={
-              !cfg.name.trim() && !!error
-                ? 'Agent Name is required'
-                : 'Unique name for the agent'
-            }
-            fullWidth
           />
-
-          <Divider />
-
-          <Box>
-            <Typography variant="h6" sx={{ mb: 3 }}>Prompts</Typography>
+         <FormControl fullWidth>
+          <InputLabel>Agent Type</InputLabel>
+          <Select
+            label="Agent Type"
+            value={cfg.agent_type}
+            onChange={(e) => handleInputChange('agent_type', e.target.value)}
+            disabled={loading}
+          >
+            <MenuItem value="assistant">Assistant</MenuItem>
+            <MenuItem value="looping">Looping Assistant</MenuItem>
+            <MenuItem value="nested_team">Nested Team Agent</MenuItem>
+          </Select>
+        </FormControl>
+        {cfg.agent_type === 'nested_team' && (
+          <Box sx={{ pl: 2, borderLeft: '4px solid #ccc' }}>
+            <FormControl fullWidth>
+              <InputLabel>Team Mode</InputLabel>
+              <Select
+                label="Team Mode"
+                value={cfg.mode || 'round_robin'}
+                onChange={(e) => handleInputChange('mode', e.target.value)}
+                disabled={loading}
+              >
+                <MenuItem value="round_robin">Round Robin</MenuItem>
+                <MenuItem value="selector">Selector (Orchestrator)</MenuItem>
+              </Select>
+            </FormControl>
+            {cfg.mode === 'selector' && (
+              <TextField
+                label="Orchestrator Prompt"
+                value={cfg.orchestrator_prompt || ''}
+                onChange={(e) => handleInputChange('orchestrator_prompt', e.target.value)}
+                multiline
+                rows={3}
+                fullWidth
+              />
+            )}
+            <Typography variant="h6" mt={2}>Sub-Agents</Typography>
             <Stack spacing={2}>
-              <TextField
-                label="System Prompt"
-                multiline
-                minRows={4}
-                maxRows={20}
-                value={cfg.prompt.system}
-                onChange={(e) => handleInputChange('prompt.system', e.target.value)}
-                disabled={loading}
-                helperText="Instructions defining the agent's role, personality, and constraints."
-                fullWidth
-              />
-              <TextField
-                label="User Prompt / Initial Task"
-                multiline
-                minRows={2}
-                maxRows={10}
-                value={cfg.prompt.user}
-                onChange={(e) => handleInputChange('prompt.user', e.target.value)}
-                disabled={loading}
-                helperText="The initial message or task to start the conversation."
-                fullWidth
-              />
+              {(cfg.sub_agents || []).map((sub, idx) => (
+                <FormControl fullWidth key={idx} sx={{ mt:1 }}>
+                  <InputLabel>Sub-Agent {idx + 1}</InputLabel>
+                  <Select
+                    value={sub.name || ''}
+                    label={`Sub-Agent ${idx + 1}`}
+                    onChange={(e) => handleSelectSubAgent(idx, e.target.value)}
+                  >
+                    {allAgents.map(agent => (
+                      <MenuItem key={agent.name} value={agent.name}>
+                        {agent.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>Select an existing agent</FormHelperText>
+                  <Button color="error" onClick={() => handleRemoveSubAgent(idx)} sx={{ mt:1 }}>Remove</Button>
+                </FormControl>
+              ))}
+              <Button variant="outlined" onClick={handleAddSubAgent} sx={{ mt:2 }}>Add Sub-Agent</Button>
             </Stack>
           </Box>
+        )}
+        {cfg.agent_type === 'assistant' && (
+          <React.Fragment>
+            <Divider />
 
-          <Divider />
-
-          <Box>
-            <Typography variant="h6" sx={{ mb: 4 }}>Tools</Typography>
-            <FormControl fullWidth disabled={loading}>
-              <InputLabel id="tools-select-label">Tools</InputLabel>
-              <Select
-                labelId="tools-select-label"
-                multiple
-                value={cfg.tools}
-                onChange={(e) => handleInputChange('tools', e.target.value)}
-                input={<OutlinedInput label="Tools" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value) => (
-                      <Chip 
-                        key={value} 
-                        label={value} 
-                        onDelete={() => {
-                          const newTools = cfg.tools.filter(tool => tool !== value);
-                          handleInputChange('tools', newTools);
-                        }}
-                        onMouseDown={(event) => {
-                          // Prevent the Select dropdown from opening when clicking the delete icon
-                          event.stopPropagation();
-                        }}
-                      />
-                    ))}
-                  </Box>
-                )}
-              >
-                {allTools.map((tool) => (
-                  <MenuItem key={tool.name} value={tool.name}>
-                    {tool.name}
-                  </MenuItem>
-                ))}
-              </Select>
-              <FormHelperText>Select the tools this agent can use.</FormHelperText>
-            </FormControl>
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Typography variant="h6" sx={{ mb: 4 }}>LLM Configuration</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required error={!cfg.llm.provider && !!error}>
-                  <InputLabel>LLM Provider</InputLabel>
-                  <Select
-                    value={cfg.llm.provider}
-                    onChange={(e) => handleInputChange('llm.provider', e.target.value)}
-                    label="LLM Provider"
-                    disabled={loading}
-                  >
-                    <MenuItem value="openai">OpenAI</MenuItem>
-                    <MenuItem value="anthropic">Anthropic</MenuItem>
-                    <MenuItem value="gemini">Gemini</MenuItem>
-                  </Select>
-                  {!cfg.llm.provider && !!error && (
-                    <FormHelperText>Provider is required</FormHelperText>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required error={!cfg.llm.model && !!error}>
-                  <InputLabel>Model Name</InputLabel>
-                  <Select
-                    value={cfg.llm.model}
-                    onChange={(e) => handleInputChange('llm.model', e.target.value)}
-                    label="Model Name"
-                    disabled={loading || modelsLoading || !cfg.llm.provider}
-                  >
-                    {modelsLoading ? (
-                      <MenuItem value="" disabled>
-                        <CircularProgress size={20} sx={{ mr: 1 }} />
-                        Loading models...
-                      </MenuItem>
-                    ) : models.length === 0 && cfg.llm.provider ? (
-                      <MenuItem value="" disabled>
-                        No models found for {cfg.llm.provider} or failed to load.
-                      </MenuItem>
-                    ) : (
-                      models.map((model) => (
-                        <MenuItem key={model} value={model}>
-                          {model}
-                        </MenuItem>
-                      ))
-                    )}
-                  </Select>
-                  {(!cfg.llm.model && !!error) && (
-                    <FormHelperText>Model Name is required</FormHelperText>
-                  )}
-                  {!modelsLoading && models.length === 0 && cfg.llm.provider && (
-                    <FormHelperText>Ensure API key for {cfg.llm.provider} is set in the backend.</FormHelperText>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+            {/* Prompts Section */}
+            <Box>
+              <Typography variant="h6" sx={{ mb: 3 }}>Prompts</Typography>
+              <Stack spacing={2}>
                 <TextField
-                  fullWidth
-                  type="number"
-                  label="Temperature"
-                  value={cfg.llm.temperature}
-                  onChange={(e) => handleInputChange('llm.temperature', e.target.value)}
-                  inputProps={{ step: '0.1', min: '0', max: '2' }}
-                  helperText="0 = deterministic, >0 = creative"
+                  label="System Prompt"
+                  multiline
+                  minRows={4}
+                  maxRows={20}
+                  value={cfg.prompt.system}
+                  onChange={(e) => handleInputChange('prompt.system', e.target.value)}
                   disabled={loading}
+                  helperText="Instructions defining the agent's role, personality, and constraints."
+                  fullWidth
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
                 <TextField
-                  fullWidth
-                  type="number"
-                  label="Max Tokens"
-                  value={cfg.llm.max_tokens ?? ''}
-                  onChange={(e) =>
-                    handleInputChange(
-                      'llm.max_tokens',
-                      e.target.value ? parseInt(e.target.value) : null
-                    )
-                  }
-                  inputProps={{ min: '1' }}
-                  helperText="Optional limit"
+                  label="User Prompt / Initial Task"
+                  multiline
+                  minRows={2}
+                  maxRows={10}
+                  value={cfg.prompt.user}
+                  onChange={(e) => handleInputChange('prompt.user', e.target.value)}
                   disabled={loading}
+                  helperText="The initial message or task to start the conversation."
+                  fullWidth
                 />
-              </Grid>
-            </Grid>
-          </Box>
+              </Stack>
+            </Box>
 
-          <Divider />
+            <Divider />
+          </React.Fragment>
+        )}
 
-          <Box>
-            <Typography variant="h6" sx={{ mb: 2 }}>Behavior</Typography>
-            <Grid container spacing={2} alignItems="center"> 
-              <Grid item xs={12} sm={8}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={cfg.tool_call_loop ?? false}
-                      onChange={(e) =>
-                        handleInputChange('tool_call_loop', e.target.checked)
-                      }
-                      disabled={loading}
+        <Box>
+          <Typography variant="h6" sx={{ mb: 4 }}>Tools</Typography>
+          <FormControl fullWidth disabled={toolsLoading}>
+            <InputLabel id="tools-select-label">Tools</InputLabel>
+            <Select
+              labelId="tools-select-label"
+              multiple
+              value={cfg.tools}
+              onChange={(e) => handleInputChange('tools', e.target.value)}
+              input={<OutlinedInput label="Tools" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((value) => (
+                    <Chip 
+                      key={value} 
+                      label={value} 
+                      onDelete={() => {
+                        const newTools = cfg.tools.filter(tool => tool !== value);
+                        handleInputChange('tools', newTools);
+                      }}
+                      onMouseDown={(event) => {
+                        // Prevent the Select dropdown from opening when clicking the delete icon
+                        event.stopPropagation();
+                      }}
                     />
-                  }
-                  label="Enable Tool Call Loop (Uses LoopingAssistantAgent)"
-                />
-                <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
-                  Allows the agent to repeatedly call tools within a single turn if needed.
-                </FormHelperText>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Max Consecutive Auto-Reply"
-                  value={cfg.max_consecutive_auto_reply ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    handleInputChange('max_consecutive_auto_reply', val === '' ? null : (Number.isInteger(parseInt(val)) ? parseInt(val) : val));
-                  }}
-                  inputProps={{ min: '1' }}
-                  helperText="Optional. Max auto-replies."
-                  disabled={loading}
-                />
-              </Grid>
-              <Grid item xs={12} sm={8}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={cfg.reflect_on_tool_use ?? true}
-                      onChange={(e) =>
-                        handleInputChange('reflect_on_tool_use', e.target.checked)
-                      }
-                      disabled={loading}
-                    />
-                  }
-                  label="Reflect on Tool Use (Applies to Looping Agent)"
-                />
-                <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
-                  Allows the agent to reflect on the success/failure of tool calls.
-                </FormHelperText>
-              </Grid>
-              <Grid item xs={false} sm={4} />
-            </Grid>
-          </Box>
-
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 2 }}>
-            {!nested && (
-              <Button
-                variant="outlined"
-                component={RouterLink}
-                to="/"
-                disabled={loading}
-              >
-                Cancel
-              </Button>
+                  ))}
+                </Box>
               )}
-            <Button 
-              type="submit" 
-              variant="contained" 
-              disabled={buttonDisabled}
             >
-              {loading
-                ? 'Saving...'
-                : isEditMode
-                ? 'Update Agent'
-                : 'Create Agent'}
+              {allTools.map((tool) => (
+                <MenuItem key={tool.name} value={tool.name}>
+                  {tool.name}
+                </MenuItem>
+              ))}
+            </Select>
+            {(!toolsLoading && allTools.length === 0) && (
+               <FormHelperText>No tools found. Make sure the backend has loaded them.</FormHelperText>
+             )}
+            {!toolsLoading && (
+              <FormHelperText>Select the tools this agent can use.</FormHelperText>
+            )}
+          </FormControl>
+        </Box>
+
+        <Divider />
+
+        <Box>
+          <Typography variant="h6" sx={{ mb: 4 }}>LLM Configuration</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required error={!cfg.llm.provider && !!error}>
+                <InputLabel>LLM Provider</InputLabel>
+                <Select
+                  value={cfg.llm.provider}
+                  onChange={(e) => handleInputChange('llm.provider', e.target.value)}
+                  label="LLM Provider"
+                  disabled={loading}
+                >
+                  <MenuItem value="openai">OpenAI</MenuItem>
+                  <MenuItem value="anthropic">Anthropic</MenuItem>
+                  <MenuItem value="gemini">Gemini</MenuItem>
+                </Select>
+                {!cfg.llm.provider && !!error && (
+                  <FormHelperText>Provider is required</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required error={!cfg.llm.model && !!error}>
+                <InputLabel>Model Name</InputLabel>
+                <Select
+                  value={cfg.llm.model}
+                  onChange={(e) => handleInputChange('llm.model', e.target.value)}
+                  label="Model Name"
+                  disabled={loading || modelsLoading || !cfg.llm.provider}
+                >
+                  {modelsLoading ? (
+                    <MenuItem value="" disabled>
+                      <CircularProgress size={20} sx={{ mr: 1 }} />
+                      Loading models...
+                    </MenuItem>
+                  ) : models.length === 0 && cfg.llm.provider ? (
+                    <MenuItem value="" disabled>
+                      No models found for {cfg.llm.provider} or failed to load.
+                    </MenuItem>
+                  ) : (
+                    models.map((model) => (
+                      <MenuItem key={model} value={model}>
+                        {model}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+                {(!cfg.llm.model && !!error) && (
+                  <FormHelperText>Model Name is required</FormHelperText>
+                )}
+                {!modelsLoading && models.length === 0 && cfg.llm.provider && (
+                  <FormHelperText>Ensure API key for {cfg.llm.provider} is set in the backend.</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Temperature"
+                value={cfg.llm.temperature}
+                onChange={(e) => handleInputChange('llm.temperature', e.target.value)}
+                inputProps={{ step: '0.1', min: '0', max: '2' }}
+                helperText="0 = deterministic, >0 = creative"
+                disabled={loading}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Max Tokens"
+                value={cfg.llm.max_tokens ?? ''}
+                onChange={(e) =>
+                  handleInputChange(
+                    'llm.max_tokens',
+                    e.target.value ? parseInt(e.target.value) : null
+                  )
+                }
+                inputProps={{ min: '1' }}
+                helperText="Optional limit"
+                disabled={loading}
+              />
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Divider />
+
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2 }}>Behavior</Typography>
+          <Grid container spacing={2} alignItems="center"> 
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Max Consecutive Auto-Reply"
+                value={cfg.max_consecutive_auto_reply ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  handleInputChange('max_consecutive_auto_reply', val === '' ? null : (Number.isInteger(parseInt(val)) ? parseInt(val) : val));
+                }}
+                inputProps={{ min: '1' }}
+                helperText="Optional. Max auto-replies."
+                disabled={loading}
+              />
+            </Grid>
+            <Grid item xs={12} sm={8}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={cfg.reflect_on_tool_use ?? true}
+                    onChange={(e) =>
+                      handleInputChange('reflect_on_tool_use', e.target.checked)
+                    }
+                    disabled={loading}
+                  />
+                }
+                label="Reflect on Tool Use (Applies to Looping Agent)"
+              />
+              <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
+                Allows the agent to reflect on the success/failure of tool calls.
+              </FormHelperText>
+            </Grid>
+            <Grid item xs={false} sm={4} />
+          </Grid>
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 2 }}>
+          {!nested && (
+            <Button
+              variant="outlined"
+              component={RouterLink}
+              to="/"
+              disabled={loading}
+            >
+              Cancel
             </Button>
-          </Box>
+            )}
+          <Button 
+            type="submit" 
+            variant="contained" 
+            disabled={buttonDisabled}
+          >
+            {loading
+              ? 'Saving...'
+              : isEditMode
+              ? 'Update Agent'
+              : 'Create Agent'}
+          </Button>
+        </Box>
         </Stack>
       </Box>
     </Box>
