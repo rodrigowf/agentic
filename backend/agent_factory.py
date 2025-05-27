@@ -1,3 +1,10 @@
+"""
+Module: agent_factory
+
+Provides a factory function to instantiate various Agent types (assistant, nested team, looping, code executor)
+based on a uniform AgentConfig schema.
+"""
+
 import os
 from typing import List
 from schemas import AgentConfig
@@ -15,8 +22,16 @@ def create_agent_from_config(
     model_client: OpenAIChatCompletionClient
 ) -> AssistantAgent:
     """
-    Factory function to instantiate different Agent types based on AgentConfig.
-    Supports nested_team, code_executor, looping, and standard assistant.
+    Instantiate and return an Agent instance matching the given configuration.
+
+    Parameters:
+        agent_cfg (AgentConfig): Configuration object specifying agent type, tools, and settings.
+        all_tools (List[FunctionTool]): List of available function tools to filter and attach.
+        model_client (OpenAIChatCompletionClient): Default model client for chat completions.
+
+    Returns:
+        AssistantAgent: An instance of the requested agent type (AssistantAgent, LoopingAssistantAgent,
+                        CodeExecutorAgent, or NestedTeamAgent).
     """
     # Filter tools for this agent
     agent_tools = [t for t in all_tools if t.name in (agent_cfg.tools or [])]

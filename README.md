@@ -74,3 +74,81 @@ npm start
 5.  **Interact**: In the Run Console, enter the initial task or message for the agent and click "Run Agent". Watch the magic happen!
 
 Enjoy building and experimenting with your AI agents using Agentic!
+
+## Architecture Overview
+
+Agentic consists of two main components:
+
+1. **Backend (FastAPI + AutoGen)**
+   - **Agent Runner (`runner.py`)**: WebSocket endpoint to run agents in real-time, streaming messages to the frontend.
+   - **Agent Factory (`agent_factory.py`)**: Centralized logic to instantiate LLM, Looping, CodeExecutor, and NestedTeam agents from configuration.
+   - **Config Loader (`config_loader.py`)**: Dynamically loads tool definitions (`FunctionTool`) and agent JSON configs at startup.
+   - **Schemas (`schemas.py`)**: Pydantic models for `AgentConfig`, `ToolInfo`, and API request/response validation.
+   - **NestedTeamAgent (`nested_agent.py`)**: Custom agent class that wraps multiple sub-agents in a round-robin or selector team chat.
+   - **LoopingAssistantAgent (`looping_agent.py`)**: Extends the standard assistant to loop tool calls until termination criteria.
+   - **CodeExecutorAgent**: Integrates code generation and local execution via Autogen’s code-executor framework.
+
+2. **Frontend (React + Material UI)**
+   - **Agent List / Editor (`AgentList`, `AgentEditor`)**: UI to create, edit, and configure agents and their tools.
+   - **Tool Editor (`ToolList`, `ToolEditor`)**: View, edit, and generate Python tool code loaded into the system.
+   - **Run Console (`RunConsole`)**: Live chat interface to run an agent, view streaming messages, and follow up with multi-turn conversations.
+
+---
+
+## Agent Types
+
+Agentic supports four agent types, selected in the Agent Editor UI:
+
+- **Assistant**: Standard LLM-based agent with system/user prompts and optional tools.
+- **Looping Assistant**: Same as Assistant but will automatically call tools in a loop until a termination signal or max iterations.
+- **Code Executor**: Agent that generates code snippets and executes them locally, returning results back into the chat.
+- **Nested Team**: Orchestrates a group of sub-agents in a round-robin or selector mode, aggregating their responses.
+
+Each type is configured via `AgentConfig` JSON and instantiated by `agent_factory.py`.
+
+---
+
+## Getting Started
+
+1. **Clone & Install**
+
+   ```bash
+   git clone https://github.com/your-repo/agentic.git
+   cd agentic/backend
+   pip install -r requirements.txt
+   cd ../frontend
+   npm install
+   ```
+
+2. **Environment Variables**
+
+   Copy `.env.example` to `.env` in the backend folder and provide API keys for OpenAI, Anthropic, and Gemini.
+
+3. **Run Backend**
+
+   ```bash
+   uvicorn main:app --reload --port 8000
+   ```
+
+4. **Run Frontend**
+
+   ```bash
+   npm start
+   ```
+
+5. **Open Dashboard**
+
+   Navigate to `http://localhost:3000` to manage agents, tools, and run live sessions.
+
+---
+
+## Development Notes
+
+- **Adding New Agent Types**: Update `schemas.py` with new config fields, extend `create_agent_from_config`, and add UI options in `AgentEditor.js`.
+- **Adding Tools**: Drop new `.py` modules in `backend/tools/`, each exporting `FunctionTool` instances. The system auto-loads them on startup.
+- **Extending Nested Teams**: Custom sub-agents can be any supported agent type; modify `nested_agent.py` if adding new team behaviors.
+- **Testing**: Use the existing logs (under `logs/`) to trace agent runs. Frontend console logs show loaded tools and agents.
+
+---
+
+We hope this guide helps you quickly onboard and extend Agentic with your own AI workflows! Feel free to explore the `docs/` folder for deeper tutorials and migration guides.
