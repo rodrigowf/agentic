@@ -48,6 +48,7 @@ class AgentConfig(BaseSchema):
     sub_agents: Optional[List["AgentConfig"]] = None
     mode: Optional[str] = None
     orchestrator_prompt: Optional[str] = None
+    include_inner_dialog: bool = Field(default=True, description="Include inner dialog messages in the response for nested team agents.")
 
 # Resolve forward references for recursive sub_agents
 AgentConfig.update_forward_refs()

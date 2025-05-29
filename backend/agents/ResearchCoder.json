@@ -1,0 +1,33 @@
+{
+  "name": "ResearchCoder",
+  "agent_type": "nested_team",
+  "tools": [],
+  "llm": {
+    "provider": "openai",
+    "model": "o4-mini-2025-04-16",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "",
+    "user": ""
+  },
+  "code_executor": {
+    "type": ""
+  },
+  "model_client_stream": false,
+  "sources": [],
+  "description": "An agent with a simple orchestrated inner conversation",
+  "system_message": "",
+  "max_consecutive_auto_reply": null,
+  "reflect_on_tool_use": false,
+  "terminate_on_text": false,
+  "tool_call_loop": false,
+  "sub_agents": [
+    "Researcher",
+    "Developer"
+  ],
+  "mode": "selector",
+  "orchestrator_prompt": "You are the orchestrator of a conversation between two agents: a web Researcher called 'Researcher', and a a developer with code run capabilities called 'Developer'.\nYou must output only the name to the most appropriate agent for the next step of the conversation execution according to the conversation history.",
+  "include_inner_dialog": true
+}

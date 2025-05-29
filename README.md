@@ -42,8 +42,8 @@ cp .env.example .env
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Start the FastAPI server (with auto-reload)
-uvicorn main:app --reload --port 8000
+# Start the FastAPI server (with auto-reload, except for code generations)
+uvicorn main:app --reload --reload-exclude workspace
 ```
 
 **2. Frontend Setup:**

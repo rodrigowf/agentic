@@ -68,25 +68,49 @@ def save_tool(tools_dir: str, filename: str, content: bytes):
         f.write(content)
 
 def load_agents(agents_dir: str) -> List[AgentConfig]:
-    agents = []
+    agents: List[AgentConfig] = []
     os.makedirs(agents_dir, exist_ok=True)
     for fname in os.listdir(agents_dir):
-        if fname.endswith('.json'):
-            try: # Add error handling for invalid JSON
-                with open(os.path.join(agents_dir, fname)) as f:
-                    data = json.load(f)
-                    agents.append(AgentConfig(**data))
-            except json.JSONDecodeError:
-                print(f"Warning: Could not decode JSON from {fname}")
-            except Exception as e:
-                 print(f"Warning: Could not load agent from {fname}: {e}")
+        if not fname.endswith('.json'):
+            continue
+        try:
+            path = os.path.join(agents_dir, fname)
+            with open(path) as f:
+                data = json.load(f)
+            # For nested_team, expand sub_agents list of filenames to full configs
+            if data.get('agent_type') == 'nested_team' and isinstance(data.get('sub_agents'), list):
+                names = data['sub_agents']
+                expanded: List[AgentConfig] = []
+                for item in names:
+                    if isinstance(item, str):
+                        sub_path = os.path.join(agents_dir, f"{item}.json")
+                        try:
+                            with open(sub_path) as sf:
+                                sub_data = json.load(sf)
+                            expanded.append(AgentConfig(**sub_data))
+                        except Exception as e:
+                            print(f"Warning: Could not load sub-agent '{item}': {e}")
+                    elif isinstance(item, dict):
+                        expanded.append(AgentConfig(**item))
+                data['sub_agents'] = expanded
+            agents.append(AgentConfig(**data))
+        except json.JSONDecodeError:
+            print(f"Warning: Could not decode JSON from {fname}")
+        except Exception as e:
+            print(f"Warning: Could not load agent from {fname}: {e}")
     return agents
 
 def save_agent(cfg: AgentConfig, agents_dir: str):
-    os.makedirs(agents_dir, exist_ok=True)
     path = os.path.join(agents_dir, f"{cfg.name}.json")
-    with open(path, 'w') as f:
-        f.write(cfg.model_dump_json(indent=2)) # Use model_dump_json for Pydantic v2+
+    if cfg.agent_type == 'nested_team' and cfg.sub_agents:
+        # Only save filenames (agent names) for sub_agents to avoid redundancy
+        data = cfg.model_dump()
+        data['sub_agents'] = [sub.name for sub in cfg.sub_agents]
+        with open(path, 'w') as f:
+            json.dump(data, f, indent=2)
+    else:
+        with open(path, 'w') as f:
+            f.write(cfg.model_dump_json(indent=2))
 
 def get_tool_infos(loaded_tools: List[Tuple[FunctionTool, str]]) -> List[ToolInfo]:
     """Converts loaded FunctionTools into ToolInfo for API responses."""

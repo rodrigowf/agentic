@@ -164,8 +164,6 @@ export default function AgentEditor({nested = false}) {
             const config = {
               ...DEFAULT_AGENT_CONFIG,
               ...agentToEdit,
-              tool_call_loop: agentToEdit.tool_call_loop ?? false,
-              reflect_on_tool_use: agentToEdit.reflect_on_tool_use ?? true,
             };
             console.log('Setting initial config:', config);
             setCfg(config);
@@ -404,63 +402,29 @@ export default function AgentEditor({nested = false}) {
             <MenuItem value="assistant">Assistant</MenuItem>
             <MenuItem value="looping">Looping Assistant</MenuItem>
             <MenuItem value="nested_team">Nested Team Agent</MenuItem>
+            <MenuItem value="code_executor">Code Executor</MenuItem>
           </Select>
-        </FormControl>
-        {cfg.agent_type === 'nested_team' && (
-          <Box sx={{ pl: 2, borderLeft: '4px solid #ccc' }}>
-            <FormControl fullWidth>
-              <InputLabel>Team Mode</InputLabel>
-              <Select
-                label="Team Mode"
-                value={cfg.mode || 'round_robin'}
-                onChange={(e) => handleInputChange('mode', e.target.value)}
-                disabled={loading}
-              >
-                <MenuItem value="round_robin">Round Robin</MenuItem>
-                <MenuItem value="selector">Selector (Orchestrator)</MenuItem>
-              </Select>
-            </FormControl>
-            {cfg.mode === 'selector' && (
-              <TextField
-                label="Orchestrator Prompt"
-                value={cfg.orchestrator_prompt || ''}
-                onChange={(e) => handleInputChange('orchestrator_prompt', e.target.value)}
-                multiline
-                rows={3}
-                fullWidth
-              />
-            )}
-            <Typography variant="h6" mt={2}>Sub-Agents</Typography>
-            <Stack spacing={2}>
-              {(cfg.sub_agents || []).map((sub, idx) => (
-                <FormControl fullWidth key={idx} sx={{ mt:1 }}>
-                  <InputLabel>Sub-Agent {idx + 1}</InputLabel>
-                  <Select
-                    value={sub.name || ''}
-                    label={`Sub-Agent ${idx + 1}`}
-                    onChange={(e) => handleSelectSubAgent(idx, e.target.value)}
-                  >
-                    {allAgents.map(agent => (
-                      <MenuItem key={agent.name} value={agent.name}>
-                        {agent.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <FormHelperText>Select an existing agent</FormHelperText>
-                  <Button color="error" onClick={() => handleRemoveSubAgent(idx)} sx={{ mt:1 }}>Remove</Button>
-                </FormControl>
-              ))}
-              <Button variant="outlined" onClick={handleAddSubAgent} sx={{ mt:2 }}>Add Sub-Agent</Button>
-            </Stack>
-          </Box>
-        )}
-        {cfg.agent_type === 'assistant' && (
-          <React.Fragment>
-            <Divider />
+         </FormControl>
+        {/* General Description for all agent types */}
+        <TextField
+          label="Description"
+          multiline
+          minRows={2}
+          maxRows={4}
+          value={cfg.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          disabled={loading}
+          helperText="Short description of the agent's purpose."
+          fullWidth
+        />
 
-            {/* Prompts Section */}
+        <Divider />
+
+        {/* Prompts for assistant and looping types */}
+        {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping') && (
+          <React.Fragment>
             <Box>
-              <Typography variant="h6" sx={{ mb: 3 }}>Prompts</Typography>
+              <Typography variant="h6" sx={{ mb: 3 }}>Prompt</Typography>
               <Stack spacing={2}>
                 <TextField
                   label="System Prompt"
@@ -473,67 +437,242 @@ export default function AgentEditor({nested = false}) {
                   helperText="Instructions defining the agent's role, personality, and constraints."
                   fullWidth
                 />
-                <TextField
-                  label="User Prompt / Initial Task"
-                  multiline
-                  minRows={2}
-                  maxRows={10}
-                  value={cfg.prompt.user}
-                  onChange={(e) => handleInputChange('prompt.user', e.target.value)}
-                  disabled={loading}
-                  helperText="The initial message or task to start the conversation."
-                  fullWidth
-                />
               </Stack>
             </Box>
 
-            <Divider />
           </React.Fragment>
         )}
 
-        <Box>
-          <Typography variant="h6" sx={{ mb: 4 }}>Tools</Typography>
-          <FormControl fullWidth disabled={toolsLoading}>
-            <InputLabel id="tools-select-label">Tools</InputLabel>
-            <Select
-              labelId="tools-select-label"
-              multiple
-              value={cfg.tools}
-              onChange={(e) => handleInputChange('tools', e.target.value)}
-              input={<OutlinedInput label="Tools" />}
-              renderValue={(selected) => (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {selected.map((value) => (
-                    <Chip 
-                      key={value} 
-                      label={value} 
-                      onDelete={() => {
-                        const newTools = cfg.tools.filter(tool => tool !== value);
-                        handleInputChange('tools', newTools);
-                      }}
-                      onMouseDown={(event) => {
-                        // Prevent the Select dropdown from opening when clicking the delete icon
-                        event.stopPropagation();
-                      }}
-                    />
-                  ))}
-                </Box>
+        {cfg.agent_type !== 'nested_team' && cfg.agent_type !== 'code_executor' && (
+          <Stack spacing={2}>
+            <Typography variant="h6">Tools</Typography>
+            <FormControl fullWidth disabled={toolsLoading} size="small">
+              <InputLabel id="tools-select-label">Tools</InputLabel>
+              <Select
+                labelId="tools-select-label"
+                multiple
+                value={cfg.tools}
+                onChange={(e) => handleInputChange('tools', e.target.value)}
+                input={<OutlinedInput label="Tools" size="small" />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip 
+                        key={value} 
+                        label={value} 
+                        onDelete={() => {
+                          const newTools = cfg.tools.filter(tool => tool !== value);
+                          handleInputChange('tools', newTools);
+                        }}
+                        onMouseDown={(event) => {
+                          // Prevent the Select dropdown from opening when clicking the delete icon
+                          event.stopPropagation();
+                        }}
+                      />
+                    ))}
+                  </Box>
+                )}
+              >
+                {allTools.map((tool) => (
+                  <MenuItem key={tool.name} value={tool.name}>
+                    {tool.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {(!toolsLoading && allTools.length === 0) && (
+                <FormHelperText>No tools found. Make sure the backend has loaded them.</FormHelperText>
               )}
-            >
-              {allTools.map((tool) => (
-                <MenuItem key={tool.name} value={tool.name}>
-                  {tool.name}
-                </MenuItem>
-              ))}
-            </Select>
-            {(!toolsLoading && allTools.length === 0) && (
-               <FormHelperText>No tools found. Make sure the backend has loaded them.</FormHelperText>
-             )}
-            {!toolsLoading && (
-              <FormHelperText>Select the tools this agent can use.</FormHelperText>
-            )}
-          </FormControl>
-        </Box>
+              {!toolsLoading && (
+                <FormHelperText>Select the tools this agent can use.</FormHelperText>
+              )}
+            </FormControl>
+          </Stack>
+        )}
+
+        {/* Looping Agent specific configuration */}
+        {cfg.agent_type === 'looping' && (
+          <React.Fragment>
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2 }}>Behavior</Typography>
+              <Stack spacing={2}>
+                <FormControl fullWidth sx={{ width: '50%'}}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Max Consecutive Auto-Reply"
+                    value={cfg.max_consecutive_auto_reply ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleInputChange('max_consecutive_auto_reply', val === '' ? null : (Number.isInteger(parseInt(val)) ? parseInt(val) : val));
+                    }}
+                    inputProps={{ min: '1' }}
+                    helperText="Optional. Max auto-replies."
+                    disabled={loading}
+                  />
+                </FormControl>
+                <FormControl fullWidth>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={cfg.reflect_on_tool_use ?? true}
+                        onChange={(e) =>
+                          handleInputChange('reflect_on_tool_use', e.target.checked)
+                        }
+                        disabled={loading}
+                      />
+                    }
+                    label="Reflect on Tool Use (Applies to Looping Agent)"
+                  />
+                  <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
+                    Allows the agent to reflect on the success/failure of tool calls.
+                  </FormHelperText>
+                </FormControl>
+              </Stack>
+            </Box>
+          </React.Fragment>
+        )}
+
+        {cfg.agent_type === 'nested_team' && (
+          <Box sx={{ pb: 2 }}>
+            <Typography variant="h6" sx={{ mb: 3 }}>Inner GroupChat Config</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={24} sm={12}>
+              <FormControlLabel
+                control={
+                <Switch
+                  checked={cfg.include_inner_dialog ?? true}
+                  onChange={(e) => handleInputChange('include_inner_dialog', e.target.checked)}
+                  disabled={loading}
+                />
+                }
+                label="Expose Inner Dialog"
+              />
+              </Grid>
+              <Grid item xs={24} sm={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Team Mode</InputLabel>
+                  <Select
+                  label="Team Mode"
+                  value={cfg.mode || 'round_robin'}
+                  onChange={(e) => handleInputChange('mode', e.target.value)}
+                  disabled={loading}
+                  >
+                  <MenuItem value="round_robin">Round Robin</MenuItem>
+                  <MenuItem value="selector">Selector (Orchestrator)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              {cfg.mode === 'selector' && (
+              <Grid item xs={12}>
+                <TextField
+                label="Orchestrator Prompt"
+                value={cfg.orchestrator_prompt || ''}
+                onChange={(e) => handleInputChange('orchestrator_prompt', e.target.value)}
+                multiline
+                rows={3}
+                fullWidth
+                />
+              </Grid>
+              )}
+              <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2 }}>Sub-Agents</Typography>
+              <Grid container spacing={2}>
+                {(cfg.sub_agents || []).map((sub, idx) => (
+                <Grid item xs={12} key={idx}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Sub-Agent {idx + 1}</InputLabel>
+                    <Select
+                    value={sub.name || ''}
+                    label={`Sub-Agent ${idx + 1}`}
+                    onChange={(e) => handleSelectSubAgent(idx, e.target.value)}
+                    >
+                    {allAgents.map(agent => (
+                      <MenuItem key={agent.name} value={agent.name}>
+                      {agent.name}
+                      </MenuItem>
+                    ))}
+                    </Select>
+                    <FormHelperText>Select an existing agent</FormHelperText>
+                  </FormControl>
+                  <Button color="error" onClick={() => handleRemoveSubAgent(idx)}>Remove</Button>
+                  </Box>
+                </Grid>
+                ))}
+                <Grid item xs={12}>
+                <Button variant="outlined" onClick={handleAddSubAgent} sx={{ alignSelf: 'flex-start' }}>
+                  Add Sub-Agent
+                </Button>
+                </Grid>
+              </Grid>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+
+        {/* Code Executor specific configuration */}
+        {cfg.agent_type === 'code_executor' && (
+          <React.Fragment>
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2 }}>Code Executor Settings</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth size='small'>
+                    <InputLabel>Executor Type</InputLabel>
+                    <Select
+                      value={cfg.code_executor.type}
+                      label="Executor Type"
+                      onChange={(e) => handleInputChange('code_executor.type', e.target.value)}
+                      disabled={loading}
+                    >
+                      <MenuItem value="local">Local</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Working Directory"
+                    value={cfg.code_executor.work_dir || ''}
+                    onChange={(e) => handleInputChange('code_executor.work_dir', e.target.value)}
+                    disabled={loading}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    label="System Message"
+                    value={cfg.system_message}
+                    onChange={(e) => handleInputChange('system_message', e.target.value)}
+                    disabled={loading}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Sources (comma-separated)"
+                    value={cfg.sources.join(',')}
+                    onChange={(e) => handleInputChange('sources', e.target.value.split(',').map(s => s.trim()))}
+                    disabled={loading}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={cfg.model_client_stream}
+                        onChange={(e) => handleInputChange('model_client_stream', e.target.checked)}
+                        disabled={loading}
+                      />
+                    }
+                    label="Stream Model Client"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          </React.Fragment>
+        )}
 
         <Divider />
 
@@ -559,7 +698,7 @@ export default function AgentEditor({nested = false}) {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required error={!cfg.llm.model && !!error}>
+              <FormControl fullWidth size='small' required error={!cfg.llm.model && !!error}>
                 <InputLabel>Model Name</InputLabel>
                 <Select
                   value={cfg.llm.model}
@@ -624,46 +763,7 @@ export default function AgentEditor({nested = false}) {
           </Grid>
         </Box>
 
-        <Divider />
-
-        <Box>
-          <Typography variant="h6" sx={{ mb: 2 }}>Behavior</Typography>
-          <Grid container spacing={2} alignItems="center"> 
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Max Consecutive Auto-Reply"
-                value={cfg.max_consecutive_auto_reply ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  handleInputChange('max_consecutive_auto_reply', val === '' ? null : (Number.isInteger(parseInt(val)) ? parseInt(val) : val));
-                }}
-                inputProps={{ min: '1' }}
-                helperText="Optional. Max auto-replies."
-                disabled={loading}
-              />
-            </Grid>
-            <Grid item xs={12} sm={8}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={cfg.reflect_on_tool_use ?? true}
-                    onChange={(e) =>
-                      handleInputChange('reflect_on_tool_use', e.target.checked)
-                    }
-                    disabled={loading}
-                  />
-                }
-                label="Reflect on Tool Use (Applies to Looping Agent)"
-              />
-              <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
-                Allows the agent to reflect on the success/failure of tool calls.
-              </FormHelperText>
-            </Grid>
-            <Grid item xs={false} sm={4} />
-          </Grid>
-        </Box>
+        {/* Submit buttons */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 2 }}>
           {!nested && (
             <Button

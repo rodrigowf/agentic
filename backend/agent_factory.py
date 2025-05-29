@@ -12,7 +12,6 @@ from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.agents import AssistantAgent, CodeExecutorAgent
 from looping_agent import LoopingAssistantAgent
-from nested_agent import NestedTeamAgent
 from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
 
 
@@ -36,8 +35,10 @@ def create_agent_from_config(
     # Filter tools for this agent
     agent_tools = [t for t in all_tools if t.name in (agent_cfg.tools or [])]
 
-    # Nested team agent
+    # Nested team agent: import locally to avoid circular import
     if agent_cfg.agent_type == "nested_team":
+        from nested_agent import NestedTeamAgent
+        # Include flag for inner dialog in nested team agent config
         return NestedTeamAgent.from_config(agent_cfg, all_tools, model_client)
 
     # Code executor agent
@@ -49,10 +50,11 @@ def create_agent_from_config(
             code_executor = LocalCommandLineCodeExecutor(work_dir=work_dir)
         else:
             raise ValueError(f"Unsupported code_executor type: {ce_type}")
+        # Always provide model_client to enable code generation; streaming controlled by model_client_stream
         return CodeExecutorAgent(
             name=agent_cfg.name,
             code_executor=code_executor,
-            model_client=model_client if agent_cfg.model_client_stream else None,
+            model_client=model_client,
             system_message=agent_cfg.system_message,
             description=agent_cfg.description,
             sources=agent_cfg.sources,
@@ -63,6 +65,7 @@ def create_agent_from_config(
     if agent_cfg.agent_type == 'looping':
         return LoopingAssistantAgent(
             name=agent_cfg.name,
+            description=agent_cfg.description,
             system_message=agent_cfg.prompt.system,
             model_client=model_client,
             tools=agent_tools,
@@ -73,8 +76,8 @@ def create_agent_from_config(
     # Default: standard AssistantAgent
     return AssistantAgent(
         name=agent_cfg.name,
+        description=agent_cfg.description,
         system_message=agent_cfg.prompt.system,
         model_client=model_client,
         tools=agent_tools,
-        max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply
     )

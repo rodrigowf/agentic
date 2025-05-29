@@ -218,8 +218,8 @@ export default function RunConsole({nested = false}) {
           onChange={(e) => setTaskInput(e.target.value)}
           disabled={!isConnected || isRunning}
           multiline
-          rows={2}
-          maxRows={6}
+          minRows={4}
+          maxRows={20}
           sx={{ flexGrow: 1 }}
           placeholder="Enter the task description here..."
         />

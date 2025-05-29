@@ -8,6 +8,8 @@ from datetime import datetime
 import asyncio
 import json
 import openai
+import contextvars
+from context import CURRENT_AGENT, get_current_agent
 
 # --- Corrected AutoGen v0.4+ Imports ---
 # Core components
@@ -174,6 +176,8 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
     try:
         assistant = create_agent_from_config(agent_cfg, all_tools, model_client)
         logger.info(f"Agent '{agent_cfg.name}' instantiated as type '{agent_cfg.agent_type}' using factory.")
+        # Set current agent in context for tool access
+        CURRENT_AGENT.set(assistant)
     except Exception as e:
         logger.exception(f"Error creating agent instance '{agent_cfg.name}': {e}")
         await send_event_to_websocket(websocket, "error", {"message": f"Failed to create agent: {e}"})
@@ -259,6 +263,8 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
         except Exception as send_err:
             logger.error(f"Failed to send error details over WebSocket after run error: {send_err}")
     finally:
+        # Reset current agent context
+        CURRENT_AGENT.set(None)
         if not error_occurred:
             if stream_finished_naturally:
                  logger.info(f"Agent stream finished naturally for '{agent_cfg.name}'. Total messages/tool events processed by runner: {message_count}")

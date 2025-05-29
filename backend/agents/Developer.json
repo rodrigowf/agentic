@@ -1,0 +1,31 @@
+{
+  "name": "Developer",
+  "agent_type": "code_executor",
+  "tools": [],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4.1",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "",
+    "user": ""
+  },
+  "code_executor": {
+    "type": "local",
+    "work_dir": "./workspace"
+  },
+  "model_client_stream": false,
+  "sources": [],
+  "description": "An agent that writes and executes code to fulfill user requests.",
+  "system_message": "You are the best Software Engineer and Developer. You should write effective singlve file code to do what the user requested.",
+  "max_consecutive_auto_reply": null,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": false,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
+}
