@@ -218,7 +218,7 @@ export default function RunConsole({nested = false}) {
           onChange={(e) => setTaskInput(e.target.value)}
           disabled={!isConnected || isRunning}
           multiline
-          minRows={4}
+          minRows={3}
           maxRows={20}
           sx={{ flexGrow: 1 }}
           placeholder="Enter the task description here..."
@@ -227,7 +227,7 @@ export default function RunConsole({nested = false}) {
           variant="contained"
           onClick={handleRunAgent}
           disabled={!isConnected || isRunning || !taskInput.trim()}
-          sx={{ height: '100%', px: 4}}
+          sx={{ height: '86px', px: 4}}
         >
           {isRunning ? <CircularProgress size={24} color="inherit" /> : 'Run'}
         </Button>

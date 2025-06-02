@@ -410,7 +410,7 @@ export default function AgentEditor({nested = false}) {
           label="Description"
           multiline
           minRows={2}
-          maxRows={4}
+          maxRows={6}
           value={cfg.description}
           onChange={(e) => handleInputChange('description', e.target.value)}
           disabled={loading}
@@ -424,7 +424,7 @@ export default function AgentEditor({nested = false}) {
         {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping') && (
           <React.Fragment>
             <Box>
-              <Typography variant="h6" sx={{ mb: 3 }}>Prompt</Typography>
+              {/* <Typography variant="h6" sx={{ mb: 3 }}>Prompt</Typography> */}
               <Stack spacing={2}>
                 <TextField
                   label="System Prompt"
@@ -445,7 +445,7 @@ export default function AgentEditor({nested = false}) {
 
         {cfg.agent_type !== 'nested_team' && cfg.agent_type !== 'code_executor' && (
           <Stack spacing={2}>
-            <Typography variant="h6">Tools</Typography>
+            {/* <Typography variant="h6">Tools</Typography> */}
             <FormControl fullWidth disabled={toolsLoading} size="small">
               <InputLabel id="tools-select-label">Tools</InputLabel>
               <Select
@@ -493,9 +493,9 @@ export default function AgentEditor({nested = false}) {
         {cfg.agent_type === 'looping' && (
           <React.Fragment>
             <Box>
-              <Typography variant="h6" sx={{ mb: 2 }}>Behavior</Typography>
+              {/* <Typography variant="h6" sx={{ mb: 2 }}>Behavior</Typography> */}
               <Stack spacing={2}>
-                <FormControl fullWidth sx={{ width: '50%'}}>
+                <FormControl fullWidth sx={{ width: '300px'}}>
                   <TextField
                     fullWidth
                     type="number"
@@ -521,7 +521,7 @@ export default function AgentEditor({nested = false}) {
                         disabled={loading}
                       />
                     }
-                    label="Reflect on Tool Use (Applies to Looping Agent)"
+                    label="Reflect on Tool Use"
                   />
                   <FormHelperText sx={{ mt: -1, mb: 1, ml: 1.8 }}>
                     Allows the agent to reflect on the success/failure of tool calls.
@@ -549,13 +549,13 @@ export default function AgentEditor({nested = false}) {
               />
               </Grid>
               <Grid item xs={24} sm={12}>
-                <FormControl fullWidth>
+                <FormControl fullWidth size='small'>
                   <InputLabel>Team Mode</InputLabel>
                   <Select
-                  label="Team Mode"
-                  value={cfg.mode || 'round_robin'}
-                  onChange={(e) => handleInputChange('mode', e.target.value)}
-                  disabled={loading}
+                    label="Team Mode"
+                    value={cfg.mode || 'round_robin'}
+                    onChange={(e) => handleInputChange('mode', e.target.value)}
+                    disabled={loading}
                   >
                   <MenuItem value="round_robin">Round Robin</MenuItem>
                   <MenuItem value="selector">Selector (Orchestrator)</MenuItem>
@@ -565,11 +565,12 @@ export default function AgentEditor({nested = false}) {
               {cfg.mode === 'selector' && (
               <Grid item xs={12}>
                 <TextField
-                label="Orchestrator Prompt"
+                label="Selector Prompt"
                 value={cfg.orchestrator_prompt || ''}
                 onChange={(e) => handleInputChange('orchestrator_prompt', e.target.value)}
                 multiline
-                rows={3}
+                minRows={2}
+                maxRows={12}
                 fullWidth
                 />
               </Grid>
@@ -579,13 +580,13 @@ export default function AgentEditor({nested = false}) {
               <Grid container spacing={2}>
                 {(cfg.sub_agents || []).map((sub, idx) => (
                 <Grid item xs={12} key={idx}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <FormControl fullWidth>
+                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                  <FormControl fullWidth size='small'>
                     <InputLabel>Sub-Agent {idx + 1}</InputLabel>
                     <Select
-                    value={sub.name || ''}
-                    label={`Sub-Agent ${idx + 1}`}
-                    onChange={(e) => handleSelectSubAgent(idx, e.target.value)}
+                      value={sub.name || ''}
+                      label={`Sub-Agent ${idx + 1}`}
+                      onChange={(e) => handleSelectSubAgent(idx, e.target.value)}
                     >
                     {allAgents.map(agent => (
                       <MenuItem key={agent.name} value={agent.name}>
@@ -642,6 +643,8 @@ export default function AgentEditor({nested = false}) {
                   <TextField
                     fullWidth
                     multiline
+                    minRows={2}
+                    maxRows={12}
                     label="System Message"
                     value={cfg.system_message}
                     onChange={(e) => handleInputChange('system_message', e.target.value)}
@@ -680,7 +683,7 @@ export default function AgentEditor({nested = false}) {
           <Typography variant="h6" sx={{ mb: 4 }}>LLM Configuration</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required error={!cfg.llm.provider && !!error}>
+              <FormControl fullWidth size='small' required error={!cfg.llm.provider && !!error}>
                 <InputLabel>LLM Provider</InputLabel>
                 <Select
                   value={cfg.llm.provider}
