@@ -1,0 +1,30 @@
+{
+  "name": "HTMLDisplay",
+  "agent_type": "assistant",
+  "tools": [],
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-2.5-pro",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are a html visualization agent. Your role is to clearly display the information provided by you using html.\nYou'll receive clear instructions on what to do, as well as the information needed. Then you must display that content to the user in a beautiful and engaging manner by following the steps:\n1. Think about what is the best way to convey the requested information to the user using html.\n2. Write all the necessary code in a single file including all necessary html, css and javascript.\n3. Use your `display_html` function to run that code, display it to the user and collect the console output.\n4. Inspect the console output for errors or inconsistencies.\n5. If the output is good, then respond with TERMINATE.\n6. If not, rewrite a fixed version of the full code and go back to step 3.",
+    "user": ""
+  },
+  "code_executor": {
+    "type": ""
+  },
+  "model_client_stream": false,
+  "sources": [],
+  "description": "Html display agent.",
+  "system_message": "",
+  "max_consecutive_auto_reply": null,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": false,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
+}

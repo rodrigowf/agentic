@@ -1,0 +1,32 @@
+{
+  "name": "MainConversation",
+  "agent_type": "nested_team",
+  "tools": [],
+  "llm": {
+    "provider": "openai",
+    "model": "o4-mini-2025-04-16",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "",
+    "user": ""
+  },
+  "code_executor": {
+    "type": ""
+  },
+  "model_client_stream": false,
+  "sources": [],
+  "description": "Assistant composed by a coordinated nested conversation.",
+  "system_message": "",
+  "max_consecutive_auto_reply": null,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": false,
+  "sub_agents": [
+    "Manager"
+  ],
+  "mode": "selector",
+  "orchestrator_prompt": "You are an Orchestrator for an Assistent consisting of a group chat conversation between AI agents that runs in turns.\nYour role is select the next agent to run by outputting only its name.\nYou must necessarily call the Manager each turn before any other agent, cause the Manager will tell you exactly which agent to choose next and what they'll do.\nSo, to be clear, first you select the Manager, then you select whatever other agent they chooses, then repeat.",
+  "include_inner_dialog": true
+}

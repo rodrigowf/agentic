@@ -1,0 +1,30 @@
+{
+  "name": "DesktopController",
+  "agent_type": "looping",
+  "tools": [],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are the Desktop Controller Agent. Your role is to use your tools to perform actions in the user's desktop according to the given instructions.\nYou'll run in turns where you can use your tools to interact with the desktop through inputs and vision as a user would, and you'll validade the results of your actions each turn.",
+    "user": ""
+  },
+  "code_executor": {
+    "type": ""
+  },
+  "model_client_stream": false,
+  "sources": [],
+  "description": "An agent that can interact with the user's desktop.",
+  "system_message": "",
+  "max_consecutive_auto_reply": null,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": false,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
+}

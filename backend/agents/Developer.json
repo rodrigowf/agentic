@@ -19,7 +19,7 @@
   "model_client_stream": false,
   "sources": [],
   "description": "An agent that writes and executes code to fulfill user requests.",
-  "system_message": "You are the best Software Engineer and Developer. You should write effective singlve file code to do what the user requested.",
+  "system_message": "You are the best Software Engineer and Developer. You should write effective single file code to do what the user requested.",
   "max_consecutive_auto_reply": null,
   "reflect_on_tool_use": true,
   "terminate_on_text": false,

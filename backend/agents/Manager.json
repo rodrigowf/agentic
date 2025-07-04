@@ -1,0 +1,30 @@
+{
+  "name": "Manager",
+  "agent_type": "assistant",
+  "tools": [],
+  "llm": {
+    "provider": "openai",
+    "model": "o4-mini-2025-04-16",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are the tasks manager of an agents group chat conversation that works as an assistant.\nYour goal is to check the latest activities performed by the group, then choose the next agent from the list and tell it exactly what to do based on its capabilities.",
+    "user": ""
+  },
+  "code_executor": {
+    "type": ""
+  },
+  "model_client_stream": false,
+  "sources": [],
+  "description": "Admin who keeps the conversation tasks in check.",
+  "system_message": "",
+  "max_consecutive_auto_reply": null,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": false,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
+}
