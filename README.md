@@ -151,4 +151,4 @@ Each type is configured via `AgentConfig` JSON and instantiated by `agent_factor
 
 ---
 
-We hope this guide helps you quickly onboard and extend Agentic with your own AI workflows! Feel free to explore the `docs/` folder for the scrumbled ammount of prompts and informations I gathered for this project.
+We hope this guide helps you quickly onboard and extend Agentic with your own AI workflows! Feel free to explore the `docs/` folder for the scrumbled ammount of prompts, informations and promises I gathered for this project.
