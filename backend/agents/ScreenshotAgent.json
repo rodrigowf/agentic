@@ -1,0 +1,20 @@
+{
+  "name": "ScreenshotAgent",
+  "tools": [
+    "take_screenshot"
+  ],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are a smart agent that can see the user's screen. On start, you must use your take_screenshot tool to capture the current screen and then describe in detail what is shown in the image. After describing, output TERMINATE to end execution.",
+    "user": ""
+  },
+  "max_consecutive_auto_reply": 5,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": true
+}
