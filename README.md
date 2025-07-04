@@ -73,6 +73,48 @@ npm start
 4.  **Run Agents**: From the "Agents" list, click the "Run" button (play icon) next to the agent you want to deploy. This will take you to the live console.
 5.  **Interact**: In the Run Console, enter the initial task or message for the agent and click "Run Agent". Watch the magic happen!
 
+## 🤖 Programmatic Access (Scripting)
+
+Beyond the web interface, Agentic provides an `AgentClient` class for interacting with your configured agents directly from Python scripts. This is useful for testing, automation, or integrating your agents into other applications.
+
+**File**: `backend/agent_client.py`
+
+### Usage
+
+1.  **Import and Instantiate**: Create an instance of `AgentClient`, passing the name of the agent you want to use.
+2.  **Chat**: Use the asynchronous `chat()` method to send a message and receive a response.
+
+### Example
+
+Here's how you can interact with an agent named "Developer" from a script:
+
+```python
+import asyncio
+from backend.agent_client import AgentClient
+
+async def run_agent():
+    try:
+        # Ensure you have an agent named "Developer" configured in your `agents` directory
+        client = AgentClient(agent_name="Developer")
+        
+        prompt = "Write a python script to list all files in the current directory."
+        response = await client.chat(prompt)
+        
+        print(f"--- Final Response ---\n{response}")
+
+    except ValueError as e:
+        print(f"Error: {e}")
+
+if __name__ == "__main__":
+    asyncio.run(run_agent())
+```
+
+To run this example, you can execute the `agent_client.py` file directly, which contains a similar `main` function:
+
+```bash
+python -m backend.agent_client
+```
+
 Enjoy building and experimenting with your AI agents using Agentic!
 
 ## Architecture Overview
