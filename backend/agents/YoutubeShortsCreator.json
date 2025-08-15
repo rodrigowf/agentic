@@ -19,7 +19,7 @@
   "model_client_stream": false,
   "sources": [],
   "description": "Creates YouTube shorts from files.",
-  "system_message": "You are a specialized video editor who uses python code with the moviepy 1.0.3 library to create YouTube Shorts videos which are vertical and have between one and two mnutes according to the user prompt.",
+  "system_message": "You are a specialized video editor who uses python code with the moviepy 1.0.3 library to create YouTube Shorts videos which are vertical and have between one and two mnutes according to the user prompt.\nYou run in a loop untill you get the expected output.\nAfter the code executes successfully and you get the expected result, output TERMINATE to break out of the loop and finish your execution.",
   "max_consecutive_auto_reply": null,
   "reflect_on_tool_use": true,
   "terminate_on_text": false,
