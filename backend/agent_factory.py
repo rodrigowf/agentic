@@ -12,6 +12,7 @@ from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.agents import AssistantAgent, CodeExecutorAgent
 from looping_agent import LoopingAssistantAgent
+from looping_code_executor_agent import LoopingCodeExecutorAgent
 from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
 
 
@@ -70,6 +71,26 @@ def create_agent_from_config(
             model_client=model_client,
             tools=agent_tools,
             reflect_on_tool_use=agent_cfg.reflect_on_tool_use,
+            max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply
+        )
+
+    # Looping code executor agent
+    if agent_cfg.agent_type == 'looping_code_executor':
+        ce_cfg = agent_cfg.code_executor or {}
+        ce_type = ce_cfg.get('type')
+        if ce_type == 'local':
+            work_dir = ce_cfg.get('work_dir') or os.getcwd()
+            code_executor = LocalCommandLineCodeExecutor(work_dir=work_dir)
+        else:
+            raise ValueError(f"Unsupported code_executor type: {ce_type}")
+        return LoopingCodeExecutorAgent(
+            name=agent_cfg.name,
+            code_executor=code_executor,
+            model_client=model_client,
+            system_message=agent_cfg.system_message,
+            description=agent_cfg.description,
+            sources=agent_cfg.sources,
+            model_client_stream=agent_cfg.model_client_stream,
             max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply
         )
 

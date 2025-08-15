@@ -30,7 +30,7 @@ class PromptConfig(BaseSchema):
 
 class AgentConfig(BaseSchema):
     name: str
-    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent")
+    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent, 'looping' for looping agent, 'looping_code_executor' for looping code executor agent")
     tools: List[str]
     llm: Optional[LLMConfig] = None
     prompt: Optional[PromptConfig] = None
