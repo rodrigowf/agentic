@@ -2,7 +2,6 @@
 fastapi
 arxiv~=1.4.7
 uvicorn[standard]
-pydantic
 python-dotenv
 python-multipart
 openai
