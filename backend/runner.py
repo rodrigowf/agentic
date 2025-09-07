@@ -40,7 +40,6 @@ def _recursive_serialize(obj):
         try:
             return obj.model_dump()
         except Exception:
-            # Fallback for older pydantic versions or other model_dump implementations
             return obj.dict() if hasattr(obj, 'dict') else str(obj)
     elif isinstance(obj, dict):
         return {k: _recursive_serialize(v) for k, v in obj.items()}
@@ -48,7 +47,6 @@ def _recursive_serialize(obj):
         return [_recursive_serialize(item) for item in obj]
     elif isinstance(obj, (str, int, float, bool, type(None))):
         return obj
-    # Handle any other types by converting to string
     return str(obj)
 
 # --- WebSocket Event Helper ---
@@ -57,7 +55,6 @@ async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: a
         logger.warning(f"Attempted to send event '{event_type}' but WebSocket was not connected.")
         return
     try:
-        # Serialize data into JSON-compatible structure
         if isinstance(data, dict):
             event_data = data
         elif hasattr(data, 'model_dump'):
@@ -71,13 +68,10 @@ async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: a
             "timestamp": datetime.utcnow().isoformat() + "Z"
         }
         await websocket.send_json(payload)
-        logger.debug(f"Sent event '{event_type}' with payload")
     except Exception as e:
         logger.error(f"Error sending event '{event_type}' via WebSocket: {e}")
-        # Fallback minimal payload
         try:
-            error_payload = {"type": "error", "data": {"message": str(e)}, "timestamp": datetime.utcnow().isoformat() + "Z"}
-            await websocket.send_json(error_payload)
+            await websocket.send_json({"type": "error", "data": {"message": str(e)}, "timestamp": datetime.utcnow().isoformat() + "Z"})
         except Exception:
             pass
 
@@ -85,59 +79,44 @@ async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: a
 async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], websocket: WebSocket):
     logger.info(f"Starting run_agent_ws for agent: {agent_cfg.name} (v0.4+ style)")
     agent_tools = [t for t in all_tools if t.name in agent_cfg.tools]
-    logger.info(f"Filtered tools for agent '{agent_cfg.name}': {[t.name for t in agent_tools]}")
 
     if len(agent_tools) != len(agent_cfg.tools):
         missing = set(agent_cfg.tools) - {t.name for t in agent_tools}
-        warning_msg = f"Agent '{agent_cfg.name}' configured with tools that couldn't be loaded: {missing}"
-        logger.warning(warning_msg)
-        await send_event_to_websocket(websocket, "warning", {"message": warning_msg})
+        await send_event_to_websocket(websocket, "warning", {"message": f"Agent '{agent_cfg.name}' configured with tools that couldn't be loaded: {missing}"})
 
     # --- Model Client Setup (v0.4+) ---
     model_client = None
     prov = agent_cfg.llm.provider.lower()
     model_name = agent_cfg.llm.model
     api_key = None
-    logger.info(f"Attempting to create model client for provider: {prov}, model: {model_name}")
     try:
         if prov == 'openai':
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
                 raise ValueError("OPENAI_API_KEY not found in environment.")
             try:
-                # First attempt: Initialize directly (works for known models)
                 model_client = OpenAIChatCompletionClient(model=model_name, api_key=api_key)
-                logger.info(f"Using OpenAIChatCompletionClient for known OpenAI model.")
             except ValueError as ve:
-                # Second attempt: If model_info is required (unknown/new model)
                 if "model_info is required" in str(ve):
-                    logger.warning(f"Model '{model_name}' not recognized by autogen_ext, providing default model_info.")
-                    # Define default model_info assuming modern capabilities
-                    # Adjust these based on actual o4-mini capabilities if needed
                     openai_model_info = ModelInfo(
                         vision=True,
                         function_calling=True,
                         json_output=True,
-                        family="openai", # Specify family as openai
+                        family="openai",
                         structured_output=True
                     )
-                    openai_base_url = "https://api.openai.com/v1" # Standard OpenAI base URL
                     model_client = OpenAIChatCompletionClient(
                         model=model_name,
                         api_key=api_key,
-                        base_url=openai_base_url,
+                        base_url="https://api.openai.com/v1",
                         model_info=openai_model_info
                     )
-                    logger.info(f"Using OpenAIChatCompletionClient with explicit model_info for OpenAI model.")
                 else:
-                    # Re-raise other ValueErrors
                     raise ve
-
         elif prov == 'gemini':
             api_key = os.getenv('GEMINI_API_KEY')
             if not api_key:
                 raise ValueError("GEMINI_API_KEY not found in environment.")
-
             gemini_model_info = ModelInfo(
                 vision=True,
                 function_calling=True,
@@ -145,29 +124,17 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                 family="gemini",
                 structured_output=True
             )
-            gemini_base_url = "https://generativelanguage.googleapis.com/v1beta/openai"  # remove trailing slash
-            logger.info(f"Using OpenAIChatCompletionClient for Gemini model via compatible endpoint: {gemini_base_url}")
             model_client = OpenAIChatCompletionClient(
                 model=model_name,
                 api_key=api_key,
-                base_url=gemini_base_url,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai",
                 model_info=gemini_model_info
             )
-
         else:
-            error_msg = f"Unsupported or unavailable LLM provider: {prov}"
-            logger.error(error_msg)
-            await send_event_to_websocket(websocket, "error", {"message": error_msg})
+            await send_event_to_websocket(websocket, "error", {"message": f"Unsupported or unavailable LLM provider: {prov}"})
             await websocket.close()
             return
-
-        if model_client is None:
-             raise ValueError(f"Failed to initialize model client for provider: {prov}")
-
-        logger.info(f"Successfully created model client for {prov}")
-
     except Exception as e:
-        logger.exception(f"Error setting up LLM Client for agent '{agent_cfg.name}': {e}")
         await send_event_to_websocket(websocket, "error", {"message": f"Error setting up LLM Client: {str(e)}"})
         await websocket.close()
         return
@@ -175,116 +142,129 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
     # --- Agent Instantiation via factory ---
     try:
         assistant = create_agent_from_config(agent_cfg, all_tools, model_client)
-        logger.info(f"Agent '{agent_cfg.name}' instantiated as type '{agent_cfg.agent_type}' using factory.")
-        # Set current agent in context for tool access
         CURRENT_AGENT.set(assistant)
     except Exception as e:
-        logger.exception(f"Error creating agent instance '{agent_cfg.name}': {e}")
         await send_event_to_websocket(websocket, "error", {"message": f"Failed to create agent: {e}"})
         await websocket.close()
         if model_client and hasattr(model_client, 'close'):
             await model_client.close()
         return
 
-    # --- Run Interaction using agent's run_stream ---
-    cancellation_token = CancellationToken()
-    message_count = 0
-    stream_finished_naturally = False
-    error_occurred = False
+    # --- Multi-run loop with cancel and incremental user messages ---
+    pending_run: str | None = None
+    pending_user_messages: list[str] = []
 
     try:
-        logger.info(f"Waiting for initial 'run' message from client for agent '{agent_cfg.name}'")
-        initial_message_data = await websocket.receive_json()
-        logger.info(f"Received initial message: {initial_message_data}")
-
-        if initial_message_data.get("type") != "run":
-            error_msg = "Expected 'run' message type to start agent"
-            logger.error(error_msg)
-            await send_event_to_websocket(websocket, "error", {"message": error_msg})
-            await websocket.close()
-            return
-
-        task_message_content = initial_message_data.get("data")
-        if not task_message_content:
-            task_message_content = agent_cfg.prompt.user
-            if not task_message_content:
-                error_msg = "No task message provided in 'run' message and agent config's 'prompt.user' is also empty."
-                logger.error(error_msg)
-                await send_event_to_websocket(websocket, "error", {"message": error_msg})
-                await websocket.close()
-                return
+        while websocket.client_state == WebSocketState.CONNECTED:
+            # Determine next task to run:
+            if pending_run is not None:
+                task_message_content = pending_run
+                pending_run = None
+            elif pending_user_messages:
+                # Incremental turn from queued user messages
+                task_message_content = pending_user_messages.pop(0)
             else:
-                logger.info(f"Using default task from agent config: {task_message_content[:100]}...")
-        else:
-            logger.info(f"Using task from client message: {task_message_content[:100]}...")
+                # Wait for next command
+                try:
+                    cmd = await websocket.receive_json()
+                except WebSocketDisconnect:
+                    break
+                ctype = (cmd.get("type") or "").lower()
+                if ctype == "run":
+                    task_message_content = cmd.get("data")
+                    if not task_message_content:
+                        # Fallback to config
+                        task_message_content = agent_cfg.prompt.user
+                        if not task_message_content:
+                            await send_event_to_websocket(websocket, "error", {"message": "Empty task and no default prompt.user in config."})
+                            continue
+                elif ctype == "user_message":
+                    # Start a turn immediately when idle
+                    task_message_content = cmd.get("data") or ""
+                elif ctype == "cancel":
+                    await send_event_to_websocket(websocket, "system", {"message": "No active run to cancel."})
+                    continue
+                else:
+                    await send_event_to_websocket(websocket, "error", {"message": "Unknown command. Use 'run' or 'user_message'."})
+                    continue
 
-        await send_event_to_websocket(websocket, "system", {"message": f"Initiating agent run with task: {task_message_content[:100]}..."})
+            await send_event_to_websocket(websocket, "system", {"message": f"Initiating agent run with task: {str(task_message_content)[:100]}..."})
 
-        # Use the instantiated assistant's run_stream method
-        # Both AssistantAgent and LoopingAssistantAgent should have this method
-        stream = assistant.run_stream(task=task_message_content, cancellation_token=cancellation_token)
+            cancellation_token = CancellationToken()
+            message_count = 0
+            stream_finished_naturally = False
 
-        message_count = 0
-        async for event in stream:
-            event_type = event.__class__.__name__.lower()
-            await send_event_to_websocket(websocket, event_type, event)
+            # Control listener: cancel, queue run (preemptive), queue user_message (incremental)
+            async def control_listener():
+                nonlocal pending_run, pending_user_messages
+                try:
+                    while True:
+                        ctrl = await websocket.receive_json()
+                        ctype = (ctrl.get("type") or "").lower()
+                        if ctype == "cancel":
+                            cancellation_token.cancel()
+                            await send_event_to_websocket(websocket, "system", {"message": "Cancellation requested."})
+                        elif ctype == "run":
+                            pending_run = ctrl.get("data") or ""
+                            cancellation_token.cancel()
+                            await send_event_to_websocket(websocket, "system", {"message": "New run requested. Current run will stop and restart."})
+                        elif ctype == "user_message":
+                            # Queue incremental turn without cancelling current run
+                            msg = ctrl.get("data") or ""
+                            pending_user_messages.append(msg)
+                            await send_event_to_websocket(websocket, "system", {"message": "User message queued for next turn."})
+                        else:
+                            # Ignore other messages
+                            pass
+                except WebSocketDisconnect:
+                    pass
+                except Exception as e:
+                    logger.debug(f"Control listener ended: {e}")
 
-            # Increment message count for relevant events
-            if isinstance(event, (BaseChatMessage, ToolCallRequestEvent, ToolCallExecutionEvent)):
-                message_count += 1
+            listener_task = asyncio.create_task(control_listener())
 
-        stream_finished_naturally = True
-
-    except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected by client during run for agent '{agent_cfg.name}'.")
-        cancellation_token.cancel()
-    except asyncio.CancelledError:
-        logger.info(f"Agent run for '{agent_cfg.name}' was cancelled externally.")
-        await send_event_to_websocket(websocket, "system", {"message": "Agent run cancelled externally."})
-    except Exception as e:
-        # Quota error detection for both OpenAI and Gemini
-        err_str = str(e)
-        if isinstance(e, openai.RateLimitError) or 'RESOURCE_EXHAUSTED' in err_str or 'QuotaFailure' in err_str:
-            logger.error(f"Quota exceeded for agent '{agent_cfg.name}': {e}")
-            await send_event_to_websocket(websocket, "error", {"message": "Quota exceeded, please check your plan or try again later."})
-            await websocket.close()
-            return
-        # Handle model not found errors
-        if isinstance(e, openai.NotFoundError) or 'model_not_found' in err_str.lower():
-            logger.error(f"Model not found or unauthorized for agent '{agent_cfg.name}': {e}")
-            await send_event_to_websocket(websocket, "error", {"message": "Specified model does not exist or you do not have access to it."})
-            await websocket.close()
-            return
-        # Fallback for other exceptions
-        error_occurred = True # Set flag on error
-        logger.exception(f"Error during agent run/streaming for '{agent_cfg.name}': {e}.")
-        try:
-            await send_event_to_websocket(websocket, "error", {"message": f"Error during agent run: {str(e)}"})
-        except Exception as send_err:
-            logger.error(f"Failed to send error details over WebSocket after run error: {send_err}")
+            try:
+                stream = assistant.run_stream(task=task_message_content, cancellation_token=cancellation_token)
+                async for event in stream:
+                    event_type = event.__class__.__name__.lower()
+                    await send_event_to_websocket(websocket, event_type, event)
+                    if isinstance(event, (BaseChatMessage, ToolCallRequestEvent, ToolCallExecutionEvent)):
+                        message_count += 1
+                stream_finished_naturally = True
+            except asyncio.CancelledError:
+                logger.info("Agent stream task cancelled.")
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                err_str = str(e)
+                if isinstance(e, openai.RateLimitError) or 'RESOURCE_EXHAUSTED' in err_str or 'QuotaFailure' in err_str:
+                    await send_event_to_websocket(websocket, "error", {"message": "Quota exceeded, please check your plan or try again later."})
+                    break
+                if isinstance(e, openai.NotFoundError) or 'model_not_found' in err_str.lower():
+                    await send_event_to_websocket(websocket, "error", {"message": "Specified model does not exist or you do not have access to it."})
+                    break
+                await send_event_to_websocket(websocket, "error", {"message": f"Error during agent run: {str(e)}"})
+            finally:
+                if not listener_task.done():
+                    listener_task.cancel()
+                    try:
+                        await listener_task
+                    except Exception:
+                        pass
+                if stream_finished_naturally:
+                    await send_event_to_websocket(websocket, "system", {"message": "Agent run finished."})
+                else:
+                    await send_event_to_websocket(websocket, "system", {"message": "Agent run interrupted."})
+            # Loop continues; queued user messages will start next, else wait for command
     finally:
-        # Reset current agent context
         CURRENT_AGENT.set(None)
-        if not error_occurred:
-            if stream_finished_naturally:
-                 logger.info(f"Agent stream finished naturally for '{agent_cfg.name}'. Total messages/tool events processed by runner: {message_count}")
-                 await send_event_to_websocket(websocket, "system", {"message": "Agent run finished."})
-            else:
-                 logger.info(f"Agent stream processing stopped for '{agent_cfg.name}'. Total messages/tool events processed before stop: {message_count}")
-        else:
-             logger.warning(f"Agent run for '{agent_cfg.name}' ended due to an error.")
-
-        logger.info(f"Agent run processing finished or errored for {agent_cfg.name}.")
         if model_client and hasattr(model_client, 'close'):
             try:
                 await model_client.close()
-                logger.info(f"Closed model client for agent '{agent_cfg.name}'.")
-            except Exception as close_err:
-                logger.error(f"Error closing model client for agent '{agent_cfg.name}': {close_err}")
-        # Ensure websocket is closed in finally block if still connected
+            except Exception:
+                pass
         if websocket.client_state == WebSocketState.CONNECTED:
             try:
                 await websocket.close()
-                logger.info(f"Closed WebSocket connection for agent '{agent_cfg.name}' in finally block.")
-            except Exception as ws_close_err:
-                logger.error(f"Error closing WebSocket in finally block for agent '{agent_cfg.name}': {ws_close_err}")
+            except Exception:
+                pass

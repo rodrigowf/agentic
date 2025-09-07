@@ -41,6 +41,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount realtime voice router under /api/realtime
+try:
+    # Prefer relative import when running as package (uvicorn backend.main:app)
+    from .realtime_voice import router as realtime_router  # type: ignore
+except Exception:
+    try:
+        # Fallback to absolute if executed differently
+        from realtime_voice import router as realtime_router  # type: ignore
+    except Exception as e:
+        realtime_router = None
+        logger.warning(f"Failed to import realtime voice router: {e}")
+
+if realtime_router is not None:
+    app.include_router(realtime_router, prefix="/api/realtime")
+    logger.info("Realtime voice router mounted at /api/realtime")
+
 # Startup cache
 TOOLS_DIR = "tools"
 AGENTS_DIR = "agents"

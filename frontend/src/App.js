@@ -22,6 +22,7 @@ import AgentList from './components/AgentList';
 import AgentEditor from './components/AgentEditor';
 import RunConsole from './components/RunConsole';
 import AgentDashboard from './components/AgentDashboard';
+import VoiceAssistant from './pages/VoiceAssistant';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -186,6 +187,7 @@ export default function App() {
               </Typography>
               <Button color="inherit" component={RouterLink} to="/">Agents</Button>
               <Button color="inherit" component={RouterLink} to="/tools">Tools</Button>
+              <Button color="inherit" component={RouterLink} to="/voice">Voice</Button>
               <IconButton sx={{ ml: 1 }} onClick={colorMode.toggleColorMode} color="inherit">
                 {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
               </IconButton>
@@ -209,6 +211,7 @@ export default function App() {
                 <Route path="/tools" element={<ToolList />} />
                 <Route path="/tools/new" element={<ToolEditor />} />
                 <Route path="/tools/edit/:filename" element={<ToolEditor />} />
+                <Route path="/voice" element={<VoiceAssistant />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Container>
