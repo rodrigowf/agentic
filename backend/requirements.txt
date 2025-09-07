@@ -1,6 +1,6 @@
 # autogenstudio
 fastapi
-arxiv~=1.4.7
+arxiv
 uvicorn[standard]
 python-dotenv
 python-multipart
