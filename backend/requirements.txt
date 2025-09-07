@@ -5,7 +5,7 @@ uvicorn[standard]
 python-dotenv
 python-multipart
 openai
-anthropic
+# anthropic
 google-generativeai
 # Added missing dependencies
 pydantic>=2.0
