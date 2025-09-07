@@ -403,6 +403,7 @@ export default function AgentEditor({nested = false}) {
             <MenuItem value="looping">Looping Assistant</MenuItem>
             <MenuItem value="nested_team">Nested Team Agent</MenuItem>
             <MenuItem value="code_executor">Code Executor</MenuItem>
+            <MenuItem value="looping_code_executor">Looping Code Executor</MenuItem>
           </Select>
          </FormControl>
         {/* General Description for all agent types */}
@@ -612,7 +613,7 @@ export default function AgentEditor({nested = false}) {
         )}
 
         {/* Code Executor specific configuration */}
-        {cfg.agent_type === 'code_executor' && (
+        {(cfg.agent_type === 'code_executor' || cfg.agent_type === 'looping_code_executor') && (
           <React.Fragment>
             <Box>
               <Typography variant="h6" sx={{ mb: 2 }}>Code Executor Settings</Typography>
