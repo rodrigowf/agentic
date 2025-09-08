@@ -1,0 +1,21 @@
+# autogenstudio
+fastapi
+arxiv
+uvicorn[standard]
+python-dotenv
+python-multipart
+openai
+# anthropic
+# google-generativeai
+# Added missing dependencies
+pydantic
+requests
+beautifulsoup4
+autogen-agentchat>=0.5.7
+autogen-core>=0.5.7
+autogen-ext>=0.5.7
+tiktoken
+
+# For Tools:
+duckduckgo-search
+wikipedia
