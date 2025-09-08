@@ -17,5 +17,5 @@ autogen-ext>=0.5.7
 tiktoken
 
 # For Tools:
-duckduckgo-search
+# duckduckgo-search # breaks on jetson rust
 wikipedia
