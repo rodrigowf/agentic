@@ -24,7 +24,7 @@ def _manager_only_termination():
         lambda msgs: any(
             isinstance(m, BaseChatMessage)
             and getattr(m, "source", "") == "Manager"
-            and "terminate" in (getattr(m, "content", "") or "").lower()
+            and "TERMINATE" in (getattr(m, "content", "") or "")
             for m in msgs
         )
     )
