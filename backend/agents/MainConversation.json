@@ -4,7 +4,7 @@
   "tools": [],
   "llm": {
     "provider": "openai",
-    "model": "o4-mini",
+    "model": "gpt-4-turbo-2024-04-09",
     "temperature": 0.0,
     "max_tokens": null
   },
@@ -19,7 +19,7 @@
   "sources": [],
   "description": "Assistant composed by a coordinated nested conversation.",
   "system_message": "",
-  "max_consecutive_auto_reply": null,
+  "max_consecutive_auto_reply": 20,
   "reflect_on_tool_use": true,
   "terminate_on_text": false,
   "tool_call_loop": false,
@@ -29,6 +29,6 @@
     "Developer"
   ],
   "mode": "selector",
-  "orchestrator_prompt": "You are an orchestrator. Your job is to select the next agent to speak from the following list: Manager, Researcher, Developer.\n\n1.  The first agent to speak is always the 'Manager'.\n2.  After the 'Manager' speaks, read its message. If the message contains 'NEXT AGENT: <name>', select that agent.\n3.  If the 'Manager' does not specify a next agent, or if any other agent has just spoken, select the 'Manager'.\n\nOutput only the name of the agent to speak next.",
+  "orchestrator_prompt": "__function__",
   "include_inner_dialog": true
 }

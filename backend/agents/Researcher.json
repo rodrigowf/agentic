@@ -9,7 +9,7 @@
   ],
   "llm": {
     "provider": "openai",
-    "model": "gpt-4.1-mini",
+    "model": "gpt-5-mini-2025-08-07",
     "temperature": 0.0,
     "max_tokens": null
   },
@@ -28,5 +28,6 @@
   "tool_call_loop": true,
   "sub_agents": null,
   "mode": null,
-  "orchestrator_prompt": null
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
 }

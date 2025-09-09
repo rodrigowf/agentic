@@ -12,6 +12,7 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 from agent_factory import create_agent_from_config  # centralized agent instantiation
 import types
 from context import CURRENT_AGENT
+import re  # <-- added for pattern matching
 
 # Helper to wrap an agent so its run/run_stream set the context var to itself
 def _wrap_agent_with_context(agent):
@@ -38,6 +39,29 @@ def _wrap_agent_with_context(agent):
         agent.run_stream = types.MethodType(stream_with_context, agent)
     return agent
 
+def _custom_agent_selector(messages):
+    """
+    A custom selector function that selects the next agent based on a marker
+    in the last message. Defaults to a 'Manager' agent if no marker is found.
+    """
+    from typing import Sequence
+    from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
+    
+    if not messages:
+        # If no messages, start with the default agent
+        return "Manager"
+
+    last_content = messages[-1].content.strip()
+    
+    match = re.search(r"NEXT AGENT:\s*([A-Za-z0-9_ \-]+)\.?$", last_content)
+    if match:
+        agent_name = match.group(1).strip()
+        return agent_name
+
+    # Default case: select the Manager
+    return "Manager"
+
+
 class NestedTeamAgent(BaseChatAgent):
     """An agent that delegates to a nested team of sub-agents."""
     def __init__(self, agent_cfg: AgentConfig, all_tools: List[FunctionTool], default_model_client: OpenAIChatCompletionClient):
@@ -46,7 +70,6 @@ class NestedTeamAgent(BaseChatAgent):
         self.agent_cfg = agent_cfg
         self.all_tools = all_tools
         self.default_model_client = default_model_client
-        # Initialize inner team
         self._init_team()
 
     def _init_team(self):
@@ -57,18 +80,29 @@ class NestedTeamAgent(BaseChatAgent):
         ]
         # Wrap sub-agents so tools see the correct CURRENT_AGENT inside nested runs
         sub_agents = [_wrap_agent_with_context(sa) for sa in sub_agents]
-        # Determine termination and mode
+        
         term_cond = MaxMessageTermination(self.agent_cfg.max_consecutive_auto_reply or 5)
         mode = self.agent_cfg.mode or "round_robin"
+
         if mode == "selector":
-            self._team = SelectorGroupChat(
-                sub_agents,
-                model_client=self.default_model_client,
-                termination_condition=term_cond,
-                selector_prompt=self.agent_cfg.orchestrator_prompt
-            )
+            use_custom_selector = (not self.agent_cfg.orchestrator_prompt or self.agent_cfg.orchestrator_prompt.strip() in {"", "__function__"})
+            
+            if use_custom_selector:
+                self._team = SelectorGroupChat(
+                    sub_agents,
+                    termination_condition=term_cond,
+                    selector_func=_custom_agent_selector,
+                    model_client=self.default_model_client
+                )
+            else:
+                self._team = SelectorGroupChat(
+                    sub_agents,
+                    termination_condition=term_cond,
+                    selector_prompt=self.agent_cfg.orchestrator_prompt,
+                    model_client=self.default_model_client
+                )
         else:
-            self._team = RoundRobinGroupChat(sub_agents, termination_condition=term_cond)
+            self._team = RoundRobinGroupChat(agents=sub_agents, termination_condition=term_cond)
         
 
     async def on_messages(

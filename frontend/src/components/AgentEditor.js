@@ -563,18 +563,64 @@ export default function AgentEditor({nested = false}) {
                   </Select>
                 </FormControl>
               </Grid>
-              {cfg.mode === 'selector' && (
-              <Grid item xs={12}>
+              {/* New field: max_consecutive_auto_reply for nested teams */}
+              <Grid item xs={24} sm={12}>
                 <TextField
-                label="Selector Prompt"
-                value={cfg.orchestrator_prompt || ''}
-                onChange={(e) => handleInputChange('orchestrator_prompt', e.target.value)}
-                multiline
-                minRows={2}
-                maxRows={12}
-                fullWidth
+                  fullWidth
+                  type="number"
+                  label="Max Consecutive Auto-Reply"
+                  value={cfg.max_consecutive_auto_reply ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleInputChange('max_consecutive_auto_reply', val === '' ? null : (Number.isInteger(parseInt(val)) ? parseInt(val) : val));
+                  }}
+                  inputProps={{ min: '1' }}
+                  helperText="Optional. Team message limit (default 5)."
+                  disabled={loading}
                 />
               </Grid>
+              {cfg.mode === 'selector' && (
+              <>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth size='small'>
+                    <InputLabel>Selection Strategy</InputLabel>
+                    <Select
+                      label="Selection Strategy"
+                      value={(cfg.orchestrator_prompt && !['', '__function__'].includes(cfg.orchestrator_prompt.trim())) ? 'llm' : 'pattern'}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === 'pattern') {
+                          // Use function-based selector
+                          handleInputChange('orchestrator_prompt', '__function__');
+                        } else {
+                          // Switch to LLM prompt strategy, clear current prompt for user input
+                          if (!cfg.orchestrator_prompt || cfg.orchestrator_prompt.trim() in ['', '__function__']) {
+                            handleInputChange('orchestrator_prompt', '');
+                          }
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      <MenuItem value='pattern'>Pattern (NEXT AGENT: &lt;Name&gt;)</MenuItem>
+                      <MenuItem value='llm'>LLM Prompt</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                { (cfg.orchestrator_prompt && !['', '__function__'].includes(cfg.orchestrator_prompt.trim())) && (
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Selector Prompt"
+                      value={cfg.orchestrator_prompt || ''}
+                      onChange={(e) => handleInputChange('orchestrator_prompt', e.target.value)}
+                      multiline
+                      minRows={2}
+                      maxRows={12}
+                      fullWidth
+                      helperText="LLM decides next agent. Leave empty & switch strategy to use pattern-based selection."
+                    />
+                  </Grid>
+                )}
+              </>
               )}
               <Grid item xs={12}>
               <Typography variant="h6" sx={{ mb: 2 }}>Sub-Agents</Typography>

@@ -4,7 +4,7 @@
   "tools": [],
   "llm": {
     "provider": "openai",
-    "model": "o4-mini",
+    "model": "gpt-5-mini",
     "temperature": 0.0,
     "max_tokens": null
   },
