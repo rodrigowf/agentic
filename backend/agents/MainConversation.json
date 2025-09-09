@@ -24,9 +24,11 @@
   "terminate_on_text": false,
   "tool_call_loop": false,
   "sub_agents": [
-    "Manager"
+    "Manager",
+    "Researcher",
+    "Developer"
   ],
   "mode": "selector",
-  "orchestrator_prompt": "You are an Orchestrator for an Assistent consisting of a group chat conversation between AI agents that runs in turns.\nYour role is select the next agent to run by outputting only its name.\nYou must necessarily call the Manager each turn before any other agent, cause the Manager will tell you exactly which agent to choose next and what they'll do.\nSo, to be clear, first you select the Manager, then you select whatever other agent they chooses, then repeat.",
+  "orchestrator_prompt": "You are an Orchestrator for an Assistent consisting of a group chat conversation between AI agents that runs in turns.\nYour role is select the next agent to run by outputting only its name.\nYou must necessarily call the Manager each turn before any other agent, cause the Manager will tell you exactly which agent to choose next and what they'll do.\nSo, to be clear, first you select the Manager, then you select whatever other agent they chooses, then repeat.\nOutput only the name of the next agent ('Manager' or whateaver the 'Manager' tells you to call).",
   "include_inner_dialog": true
 }

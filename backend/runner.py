@@ -4,7 +4,7 @@ import logging
 from fastapi import WebSocket
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 from schemas import AgentConfig
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import json
 import openai
@@ -36,11 +36,15 @@ logger = logging.getLogger(__name__)
 # Helper function for recursive serialization
 def _recursive_serialize(obj):
     """Recursively serialize objects to JSON-compatible format"""
+    from datetime import datetime, date
+    
     if hasattr(obj, 'model_dump'):
         try:
             return obj.model_dump()
         except Exception:
             return obj.dict() if hasattr(obj, 'dict') else str(obj)
+    elif isinstance(obj, (datetime, date)):
+        return obj.isoformat()
     elif isinstance(obj, dict):
         return {k: _recursive_serialize(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
@@ -55,23 +59,24 @@ async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: a
         logger.warning(f"Attempted to send event '{event_type}' but WebSocket was not connected.")
         return
     try:
-        if isinstance(data, dict):
-            event_data = data
-        elif hasattr(data, 'model_dump'):
-            event_data = data.model_dump()
-        else:
-            event_data = _recursive_serialize(data)
+        # Always use recursive serialization to handle datetime and complex objects
+        event_data = _recursive_serialize(data)
 
         payload = {
             "type": event_type,
             "data": event_data,
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await websocket.send_json(payload)
     except Exception as e:
         logger.error(f"Error sending event '{event_type}' via WebSocket: {e}")
         try:
-            await websocket.send_json({"type": "error", "data": {"message": str(e)}, "timestamp": datetime.utcnow().isoformat() + "Z"})
+            error_payload = {
+                "type": "error", 
+                "data": {"message": str(e)}, 
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            await websocket.send_json(error_payload)
         except Exception:
             pass
 
@@ -216,7 +221,8 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                         else:
                             # Ignore other messages
                             pass
-                except WebSocketDisconnect:
+                except (WebSocketDisconnect, asyncio.CancelledError):
+                    # Normal cancellation when stream finishes or WebSocket disconnects
                     pass
                 except Exception as e:
                     logger.debug(f"Control listener ended: {e}")
@@ -227,6 +233,7 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                 stream = assistant.run_stream(task=task_message_content, cancellation_token=cancellation_token)
                 async for event in stream:
                     event_type = event.__class__.__name__.lower()
+                    # Use recursive serialization for all stream events
                     await send_event_to_websocket(websocket, event_type, event)
                     if isinstance(event, (BaseChatMessage, ToolCallRequestEvent, ToolCallExecutionEvent)):
                         message_count += 1
@@ -249,7 +256,8 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                     listener_task.cancel()
                     try:
                         await listener_task
-                    except Exception:
+                    except (asyncio.CancelledError, Exception):
+                        # Properly handle cancellation and any other exceptions
                         pass
                 if stream_finished_naturally:
                     await send_event_to_websocket(websocket, "system", {"message": "Agent run finished."})
