@@ -5,7 +5,7 @@ from autogen_agentchat.agents import BaseChatAgent  # Base class for custom agen
 # Team classes and termination conditions
 from autogen_agentchat.teams import RoundRobinGroupChat, SelectorGroupChat
 from autogen_agentchat.conditions import MaxMessageTermination
-from autogen_agentchat.conditions import TextMentionTermination  # added
+from autogen_agentchat.conditions import FunctionalTermination  # use documented functional termination
 from typing import List
 from schemas import AgentConfig
 from autogen_core.tools import FunctionTool
@@ -13,10 +13,21 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 from agent_factory import create_agent_from_config  # centralized agent instantiation
 import types
 from context import CURRENT_AGENT
-import re  # <-- added for pattern matching
+import re  # ensure regex available
 
 # Track current team agent names for selector validation
 _TEAM_AGENT_NAMES: set[str] = set()
+
+# Build manager-only termination condition (case-insensitive 'terminate')
+def _manager_only_termination():
+    return FunctionalTermination(
+        lambda msgs: any(
+            isinstance(m, BaseChatMessage)
+            and getattr(m, "source", "") == "Manager"
+            and "terminate" in (getattr(m, "content", "") or "").lower()
+            for m in msgs
+        )
+    )
 
 # Helper to wrap an agent so its run/run_stream set the context var to itself
 def _wrap_agent_with_context(agent):
@@ -45,21 +56,17 @@ def _wrap_agent_with_context(agent):
 
 def _custom_agent_selector(messages):
     """Deterministic custom selector with safeguards.
-    Fixes:
-      - Never return external sources like 'user'.
-      - Case-insensitive TERMINATE detection.
-      - First agent turn after user -> Manager.
+    Manager-only termination: Researcher/Developer saying TERMINATE just hands control back to Manager.
     Logic:
       * If no messages or last speaker not in team (e.g. user) -> Manager.
-      * Manager turn: if TERMINATE -> None (termination stops); else parse NEXT AGENT; else None.
-      * Non-manager agent turn: if TERMINATE -> Manager; else allow same agent (multi-step loop) since allow_repeated_speaker=True.
+      * Manager turn: if TERMINATE -> None (custom ManagerTerminateCondition ends chat); else parse NEXT AGENT; else None.
+      * Non-manager turn: if TERMINATE -> Manager; else allow same agent (loop) since allow_repeated_speaker=True.
     """
     if not messages:
         return "Manager"
 
     last = messages[-1]
     content = (getattr(last, "content", "") or "").strip()
-    lower_content = content.lower()
 
     # If last speaker is outside team (e.g., 'user'), start with Manager
     if last.source not in _TEAM_AGENT_NAMES and last.source != "Manager":
@@ -107,7 +114,7 @@ class NestedTeamAgent(BaseChatAgent):
 
         # Compose termination: stop if Manager (or any agent) says TERMINATE, or after max messages
         max_messages = self.agent_cfg.max_consecutive_auto_reply or 5
-        term_cond = TextMentionTermination("TERMINATE") | MaxMessageTermination(max_messages)
+        term_cond = _manager_only_termination() | MaxMessageTermination(max_messages)
         mode = self.agent_cfg.mode or "round_robin"
 
         if mode == "selector":
