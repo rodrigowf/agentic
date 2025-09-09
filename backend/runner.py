@@ -37,20 +37,36 @@ logger = logging.getLogger(__name__)
 def _recursive_serialize(obj):
     """Recursively serialize objects to JSON-compatible format"""
     from datetime import datetime, date
+    import uuid
     
     if hasattr(obj, 'model_dump'):
         try:
-            return obj.model_dump()
+            # Try model_dump first (Pydantic v2)
+            dumped = obj.model_dump()
+            return _recursive_serialize(dumped)
         except Exception:
-            return obj.dict() if hasattr(obj, 'dict') else str(obj)
+            try:
+                # Fallback to dict() method (Pydantic v1 or other dict-like objects)
+                dumped = obj.dict() if hasattr(obj, 'dict') else str(obj)
+                return _recursive_serialize(dumped)
+            except Exception:
+                return str(obj)
     elif isinstance(obj, (datetime, date)):
         return obj.isoformat()
+    elif isinstance(obj, uuid.UUID):
+        return str(obj)
     elif isinstance(obj, dict):
         return {k: _recursive_serialize(v) for k, v in obj.items()}
-    elif isinstance(obj, (list, tuple)):
+    elif isinstance(obj, (list, tuple, set)):
         return [_recursive_serialize(item) for item in obj]
     elif isinstance(obj, (str, int, float, bool, type(None))):
         return obj
+    elif hasattr(obj, '__dict__'):
+        # Handle objects with __dict__ attribute
+        try:
+            return _recursive_serialize(obj.__dict__)
+        except Exception:
+            return str(obj)
     return str(obj)
 
 # --- WebSocket Event Helper ---
@@ -67,7 +83,9 @@ async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: a
             "data": event_data,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-        await websocket.send_json(payload)
+        # Double-ensure the entire payload is serializable
+        serialized_payload = _recursive_serialize(payload)
+        await websocket.send_json(serialized_payload)
     except Exception as e:
         logger.error(f"Error sending event '{event_type}' via WebSocket: {e}")
         try:
