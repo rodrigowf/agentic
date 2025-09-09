@@ -1,10 +1,10 @@
 {
   "name": "Developer",
-  "agent_type": "code_executor",
+  "agent_type": "looping_code_executor",
   "tools": [],
   "llm": {
     "provider": "openai",
-    "model": "gpt-4.1",
+    "model": "o4-mini",
     "temperature": 0.0,
     "max_tokens": null
   },
@@ -19,7 +19,7 @@
   "model_client_stream": false,
   "sources": [],
   "description": "An agent that writes and executes code to fulfill user requests.",
-  "system_message": "You are the best Software Engineer and Developer. You should write effective single file code to do what the user requested.",
+  "system_message": "You are the best Software Engineer and Developer. You should write effective single file code to do what the user requested. You will run in a loop so you can run as much code you need and check the results as many times you need in order to fulfill the user's request.|\nOutput only TERMINATE (as simple text) as soon as you fulfill the user's intent to break out of your loop.",
   "max_consecutive_auto_reply": null,
   "reflect_on_tool_use": true,
   "terminate_on_text": false,
