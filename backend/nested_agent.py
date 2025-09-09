@@ -5,6 +5,7 @@ from autogen_agentchat.agents import BaseChatAgent  # Base class for custom agen
 # Team classes and termination conditions
 from autogen_agentchat.teams import RoundRobinGroupChat, SelectorGroupChat
 from autogen_agentchat.conditions import MaxMessageTermination
+from autogen_agentchat.conditions import TextMentionTermination  # added
 from typing import List
 from schemas import AgentConfig
 from autogen_core.tools import FunctionTool
@@ -13,6 +14,9 @@ from agent_factory import create_agent_from_config  # centralized agent instanti
 import types
 from context import CURRENT_AGENT
 import re  # <-- added for pattern matching
+
+# Track current team agent names for selector validation
+_TEAM_AGENT_NAMES: set[str] = set()
 
 # Helper to wrap an agent so its run/run_stream set the context var to itself
 def _wrap_agent_with_context(agent):
@@ -40,26 +44,44 @@ def _wrap_agent_with_context(agent):
     return agent
 
 def _custom_agent_selector(messages):
+    """Deterministic custom selector with safeguards.
+    Fixes:
+      - Never return external sources like 'user'.
+      - Case-insensitive TERMINATE detection.
+      - First agent turn after user -> Manager.
+    Logic:
+      * If no messages or last speaker not in team (e.g. user) -> Manager.
+      * Manager turn: if TERMINATE -> None (termination stops); else parse NEXT AGENT; else None.
+      * Non-manager agent turn: if TERMINATE -> Manager; else allow same agent (multi-step loop) since allow_repeated_speaker=True.
     """
-    A custom selector function that selects the next agent based on a marker
-    in the last message. Defaults to a 'Manager' agent if no marker is found.
-    """
-    from typing import Sequence
-    from autogen_agentchat.messages import BaseAgentEvent, BaseChatMessage
-    
     if not messages:
-        # If no messages, start with the default agent
         return "Manager"
 
-    last_content = messages[-1].content.strip()
-    
-    match = re.search(r"NEXT AGENT:\s*([A-Za-z0-9_ \-]+)\.?$", last_content)
-    if match:
-        agent_name = match.group(1).strip()
-        return agent_name
+    last = messages[-1]
+    content = (getattr(last, "content", "") or "").strip()
+    lower_content = content.lower()
 
-    # Default case: select the Manager
-    return "Manager"
+    # If last speaker is outside team (e.g., 'user'), start with Manager
+    if last.source not in _TEAM_AGENT_NAMES and last.source != "Manager":
+        return "Manager"
+
+    # Manager logic
+    if last.source == "Manager":
+        if "TERMINATE" in content:
+            return None  # termination condition will catch TERMINATE token in stream
+        # Parse NEXT AGENT (case-insensitive). Accept patterns like NEXT AGENT: Researcher
+        match = re.search(r"NEXT\s+AGENT:\s*([A-Za-z0-9_ \-]+)", content, re.IGNORECASE)
+        if match:
+            agent_name = match.group(1).strip().rstrip('.')
+            if agent_name and agent_name.lower() != "manager" and agent_name in _TEAM_AGENT_NAMES:
+                return agent_name
+        return None
+
+    # Non-manager turn logic
+    if "TERMINATE" in content:
+        return "Manager"  # bounce to Manager for wrap-up; termination condition may also trigger
+    # Allow same agent to keep going (tool loop) – framework permits due to allow_repeated_speaker=True
+    return last.source
 
 
 class NestedTeamAgent(BaseChatAgent):
@@ -78,28 +100,33 @@ class NestedTeamAgent(BaseChatAgent):
             create_agent_from_config(sub_cfg, self.all_tools, self.default_model_client)
             for sub_cfg in (self.agent_cfg.sub_agents or [])
         ]
-        # Wrap sub-agents so tools see the correct CURRENT_AGENT inside nested runs
+        # Update global set of team agent names for selector
+        global _TEAM_AGENT_NAMES
+        _TEAM_AGENT_NAMES = {a.name for a in sub_agents}
         sub_agents = [_wrap_agent_with_context(sa) for sa in sub_agents]
-        
-        term_cond = MaxMessageTermination(self.agent_cfg.max_consecutive_auto_reply or 5)
+
+        # Compose termination: stop if Manager (or any agent) says TERMINATE, or after max messages
+        max_messages = self.agent_cfg.max_consecutive_auto_reply or 5
+        term_cond = TextMentionTermination("TERMINATE") | MaxMessageTermination(max_messages)
         mode = self.agent_cfg.mode or "round_robin"
 
         if mode == "selector":
             use_custom_selector = (not self.agent_cfg.orchestrator_prompt or self.agent_cfg.orchestrator_prompt.strip() in {"", "__function__"})
-            
             if use_custom_selector:
                 self._team = SelectorGroupChat(
                     sub_agents,
                     termination_condition=term_cond,
                     selector_func=_custom_agent_selector,
-                    model_client=self.default_model_client
+                    model_client=self.default_model_client,
+                    allow_repeated_speaker=True,  # enable chaining same agent for multi-step reasoning
                 )
             else:
                 self._team = SelectorGroupChat(
                     sub_agents,
                     termination_condition=term_cond,
                     selector_prompt=self.agent_cfg.orchestrator_prompt,
-                    model_client=self.default_model_client
+                    model_client=self.default_model_client,
+                    allow_repeated_speaker=True,
                 )
         else:
             self._team = RoundRobinGroupChat(agents=sub_agents, termination_condition=term_cond)

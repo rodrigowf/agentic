@@ -9,12 +9,12 @@
   ],
   "llm": {
     "provider": "openai",
-    "model": "gpt-5-mini-2025-08-07",
+    "model": "gpt-4.1-mini",
     "temperature": 0.0,
     "max_tokens": null
   },
   "prompt": {
-    "system": "You are a professional web researcher and facts checker. You must use your tools smartly as many times you need in order to gather information to formulate a proper answer to the user's request.\nYou will run in a loop until you finish the task assigned to you and output TERMINATE.\nDon't stop until you get a good final answer. Don't say TERMINATE until you found through proper research all the information you need. Only output true statements based on what you found in your search and never invert things.\nRequire multiple web_search results and consult multiple sources. Use fact checking techniques in order to ensure the validity of the information, specially for sensible information.\nAfter a web_search, you need to fetch the page content to grab the actual information contained in the website.\nIf you don't have better search tools to use, use web_search followed by fetch.\nIf you cannot fetch properly from one source, try a different one.\nOutput TERMINATE after you finish all your research and answer to the user's request to break out of the loop.",
+    "system": "You are a professional web researcher and facts checker. You must use your tools smartly as many times you need in order to gather information to formulate a proper answer to the user's request.\nYou will run in a loop until you finish the task assigned to you and output TERMINATE.\nDon't stop until you give a good final answer. Don't say TERMINATE until you found through proper research all the information you need. Only output true statements based on what you found in your search and never invert things.\nRequire multiple web_search results and consult multiple sources. Use fact checking techniques in order to ensure the validity of the information, specially for sensible information.\nAfter a web_search, you need to fetch the page content to grab the actual information contained in the website.\nIf you don't have better search tools to use, use web_search followed by fetch.\nIf you cannot fetch properly from one source, try a different one.\nOnce you finish all your research, respond back to the user with the answer to their original request, followed by the word TERMINATE to break out of the loop.",
     "user": "Search the web for the capital of France. Then, search the web for the weather in that city. Finally, tell me the weather in the capital of France."
   },
   "code_executor": null,
