@@ -1,21 +1,21 @@
 # autogenstudio
 fastapi
-arxiv~=1.4.7
+arxiv
 uvicorn[standard]
 python-dotenv
 python-multipart
 openai
-anthropic
-google-generativeai
+# anthropic
+# google-generativeai
 # Added missing dependencies
-pydantic>=2.0
-requests~=2.31.0
-beautifulsoup4~=4.12.2
+pydantic
+requests
+beautifulsoup4
 autogen-agentchat>=0.5.7
 autogen-core>=0.5.7
 autogen-ext>=0.5.7
 tiktoken
 
 # For Tools:
-duckduckgo-search
+# duckduckgo-search # breaks on jetson rust
 wikipedia
