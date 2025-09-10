@@ -60,7 +60,7 @@ export default function AgentList() {
                 <TableCell>{a.llm.provider}</TableCell>
                 <TableCell>{a.llm.model}</TableCell>
                 <TableCell sx={{ textAlign: 'right', whiteSpace: 'nowrap' }}> {/* Prevent wrapping */}
-                  <Button size="small" variant="outlined" component={RouterLink} to={`/agents/${a.name}`} sx={{ mr: 1 }}>Edit</Button> {/* Outlined Edit */}
+                  <Button size="small" variant="outlined" component={RouterLink} to={`/agents/${a.name}/edit`} sx={{ mr: 1 }}>Edit</Button> {/* Outlined Edit */}
                   <Button size="small" variant="contained" component={RouterLink} to={`/runs/${a.name}`}>Run</Button> {/* Contained Run */}
                 </TableCell>
               </TableRow>

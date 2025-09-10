@@ -207,6 +207,7 @@ export default function App() {
                 <Route path="/" element={<AgentList />} />
                 <Route path="/agents/new" element={<AgentEditor />} />
                 <Route path="/agents/:name" element={<AgentDashboard />} />
+                <Route path="/agents/:name/edit" element={<AgentEditor nested={true} />} />
                 <Route path="/runs/:name" element={<RunConsole />} />
                 <Route path="/tools" element={<ToolList />} />
                 <Route path="/tools/new" element={<ToolEditor />} />
