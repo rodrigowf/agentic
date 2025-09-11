@@ -300,9 +300,9 @@ function VoiceAssistant() {
             }));
             return;
           }
-          // Detect run completion and trigger final summary
+          // Detect run completion and trigger final summary (guard against duplicate triggers)
           if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
-            if (dataChannelRef.current) {
+            if (!runCompletedRef.current && dataChannelRef.current) {
               dataChannelRef.current.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
@@ -456,8 +456,9 @@ function VoiceAssistant() {
               }));
               return;
             }
+            // Detect run completion and trigger final summary
             if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
-              if (dataChannelRef.current) {
+              if (!runCompletedRef.current && dataChannelRef.current) {
                 dataChannelRef.current.send(JSON.stringify({
                   type: 'conversation.item.create',
                   item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }] },
