@@ -23,6 +23,7 @@ function VoiceAssistant() {
   // Track accumulating function-call arguments by call id
   const toolCallsRef = useRef({});
   const hasSpokenMidRef = useRef(false);
+  const runCompletedRef = useRef(false);
 
   // Resolve backend base URLs
   const backendBase = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000');
@@ -163,7 +164,10 @@ function VoiceAssistant() {
               const result = await executeToolCall(id, entry.name, argsObj);
               if (dataChannelRef.current) {
                 dataChannelRef.current.send(JSON.stringify({ type: 'tool.output', tool_call_id: id, output: JSON.stringify(result) }));
-                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+                // Do not trigger immediate speech for send_to_nested; wait for [TEAM]/[RUN_FINISHED]
+                if (entry.name !== 'send_to_nested') {
+                  dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+                }
               }
               delete toolCallsRef.current[id];
             }
@@ -192,7 +196,9 @@ function VoiceAssistant() {
               const result = await executeToolCall(id, entry.name, argsObj);
               if (dataChannelRef.current) {
                 dataChannelRef.current.send(JSON.stringify({ type: 'tool.output', tool_call_id: id, output: JSON.stringify(result) }));
-                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+                if (entry.name !== 'send_to_nested') {
+                  dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+                }
               }
               delete toolCallsRef.current[id];
             }
@@ -241,6 +247,7 @@ function VoiceAssistant() {
       nestedWsRef.current = ws;
       setSharedNestedWs(ws);
       hasSpokenMidRef.current = false; // reset for new connection
+      runCompletedRef.current = false;
 
       // Do NOT auto-start a run; wait for explicit user_message or Run action
       ws.onopen = () => {
@@ -257,6 +264,16 @@ function VoiceAssistant() {
             const source = msg.data.source || 'Agent';
             const text = `[TEAM ${source}] ${content}`;
             dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+            // Detect termination marker inside team content
+            try {
+              const cstr = String(content || '');
+              if (!runCompletedRef.current && /\bTERMINATE\b/i.test(cstr)) {
+                dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.' }));
+                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+                runCompletedRef.current = true;
+                hasSpokenMidRef.current = false;
+              }
+            } catch {}
             return;
           }
           // Handle other message types with context
@@ -280,6 +297,17 @@ function VoiceAssistant() {
               dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }));
               dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
               hasSpokenMidRef.current = false; // ready for next task
+              runCompletedRef.current = true;
+            }
+            return;
+          }
+          // Treat explicit interruption as a finish signal for narration
+          if (type === 'system' && msg.data && typeof msg.data.message === 'string' && /run (interrupted|cancelled|canceled)/i.test(msg.data.message)) {
+            if (dataChannelRef.current && !runCompletedRef.current) {
+              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.' }));
+              dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+              hasSpokenMidRef.current = false;
+              runCompletedRef.current = true;
             }
             return;
           }
@@ -288,7 +316,16 @@ function VoiceAssistant() {
         }
       };
       ws.onerror = () => { setMessages((prev) => [...prev, { source: 'nested', type: 'error', data: 'WebSocket error' }]); };
-      ws.onclose = () => { setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'WebSocket closed' }]); };
+      ws.onclose = () => {
+        setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'WebSocket closed' }]);
+        // If the run ended without the explicit finished marker, still prompt a summary
+        if (dataChannelRef.current && !runCompletedRef.current) {
+          dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.' }));
+          dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+          runCompletedRef.current = true;
+          hasSpokenMidRef.current = false;
+        }
+      };
 
     } catch (err) {
       console.error(err);
@@ -309,6 +346,7 @@ function VoiceAssistant() {
         if (!text) throw new Error('Missing text');
         if (nestedWsRef.current && nestedWsRef.current.readyState === WebSocket.OPEN) {
           hasSpokenMidRef.current = false; // new task; allow one mid-run narration
+          runCompletedRef.current = false; // new task; clear completion flag
           nestedWsRef.current.send(JSON.stringify({ type: 'user_message', data: text }));
           setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name, args: argsObj }]);
           return { ok: true };
@@ -335,6 +373,7 @@ function VoiceAssistant() {
         nestedWsRef.current = ws;
         setSharedNestedWs(ws);
         hasSpokenMidRef.current = false;
+        runCompletedRef.current = false;
         ws.onopen = () => {
           setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'Nested connection reset. Awaiting task or user_message.' }]);
         };
@@ -349,6 +388,16 @@ function VoiceAssistant() {
               const source = msg.data.source || 'Agent';
               const text = `[TEAM ${source}] ${content}`;
               dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+              // Detect termination marker inside team content
+              try {
+                const cstr = String(content || '');
+                if (!runCompletedRef.current && /\bTERMINATE\b/i.test(cstr)) {
+                  dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.' }));
+                  dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+                  runCompletedRef.current = true;
+                  hasSpokenMidRef.current = false;
+                }
+              } catch {}
               return;
             }
             // Handle other message types with context
@@ -371,6 +420,16 @@ function VoiceAssistant() {
                 dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }));
                 dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
                 hasSpokenMidRef.current = false;
+                runCompletedRef.current = true;
+              }
+              return;
+            }
+            if (type === 'system' && msg.data && typeof msg.data.message === 'string' && /run (interrupted|cancelled|canceled)/i.test(msg.data.message)) {
+              if (dataChannelRef.current && !runCompletedRef.current) {
+                dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.' }));
+                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+                hasSpokenMidRef.current = false;
+                runCompletedRef.current = true;
               }
               return;
             }
@@ -379,7 +438,15 @@ function VoiceAssistant() {
           }
         };
         ws.onerror = () => { setMessages((prev) => [...prev, { source: 'nested', type: 'error', data: 'WebSocket error' }]); };
-        ws.onclose = () => { setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'WebSocket closed' }]); };
+        ws.onclose = () => {
+          setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'WebSocket closed' }]);
+          if (dataChannelRef.current && !runCompletedRef.current) {
+            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.' }));
+            dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+            runCompletedRef.current = true;
+            hasSpokenMidRef.current = false;
+          }
+        };
         setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name }]);
         return { ok: true };
       }
@@ -394,6 +461,7 @@ function VoiceAssistant() {
     if (nestedWsRef.current) { try { nestedWsRef.current.close(); } catch {} nestedWsRef.current = null; }
     setSharedNestedWs(null);
     hasSpokenMidRef.current = false;
+    runCompletedRef.current = false;
     if (peerRef.current) {
       peerRef.current.getSenders().forEach((sender) => { if (sender.track) sender.track.stop(); });
       try { peerRef.current.close(); } catch {}

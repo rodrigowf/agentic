@@ -33,6 +33,28 @@ from agent_factory import create_agent_from_config
 
 logger = logging.getLogger(__name__)
 
+# Suppress noisy stack traces from expected cancellations inside autogen
+class _DropCancelledErrorFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            msg = record.getMessage()
+        except Exception:
+            msg = ""
+        # Drop logs that are just reporting asyncio.CancelledError from normal cancellation flows
+        if "CancelledError" in msg:
+            return False
+        # Also check exception info when available
+        exc = getattr(record, 'exc_info', None)
+        if exc and isinstance(exc[1], Exception) and exc[1].__class__.__name__ == 'CancelledError':
+            return False
+        return True
+
+for name in ("autogen_core", "autogen_core.events", "autogen_agentchat"):
+    try:
+        logging.getLogger(name).addFilter(_DropCancelledErrorFilter())
+    except Exception:
+        pass
+
 # Helper function for recursive serialization
 def _recursive_serialize(obj):
     """Recursively serialize objects to JSON-compatible format"""
@@ -272,6 +294,12 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                 stream_finished_naturally = True
             except asyncio.CancelledError:
                 logger.info("Agent stream task cancelled.")
+                # If we didn’t explicitly cancel via our token, treat this as a natural finish
+                try:
+                    if not cancellation_token.is_canceled:
+                        stream_finished_naturally = True
+                except Exception:
+                    pass
             except WebSocketDisconnect:
                 break
             except Exception as e:

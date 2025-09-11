@@ -6,6 +6,7 @@ import arxiv # type: ignore
 import inspect
 import os
 import wikipedia # Added for Wikipedia search
+import time
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS # type: ignore
 from pydantic import BaseModel, Field
@@ -173,9 +174,16 @@ class WebSearchInput(BaseModel):
     query: str = Field(description="The search query string.")
     max_results: int = Field(default=5, ge=1, le=25, description="Maximum number of search results to return.")
 
+
 def web_search(query: str, max_results: int = 5) -> str:
     """
-    Performs a web search using the DuckDuckGo Search API (text search) and returns the results.
+    Performs a web search preferring Google Programmable Search (CSE) for high-demand reliability,
+    with automatic fallback to DuckDuckGo when Google credentials are not configured.
+
+    Environment variables for Google CSE:
+      - GOOGLE_CSE_API_KEY: Google API key
+      - GOOGLE_CSE_CX: Programmable Search Engine ID
+      - Optional: GOOGLE_CSE_SAFE (off|medium|high), GOOGLE_CSE_GL (country code), GOOGLE_CSE_LR (e.g. lang_en)
 
     Args:
         query: The search query.
@@ -188,38 +196,140 @@ def web_search(query: str, max_results: int = 5) -> str:
     if not 1 <= max_results <= 25:
         return "Error: max_results must be between 1 and 25."
     try:
-        logger.info(f"Performing DuckDuckGo web search for query: '{query}', max_results={max_results}")
-        # Use text search; other options include answers, images, videos, news, maps, etc.
+        api_key = os.getenv("GOOGLE_CSE_API_KEY")
+        cx = os.getenv("GOOGLE_CSE_CX")
+
+        if api_key and cx:
+            logger.info(
+                f"Using Google Programmable Search (CSE) for query: '{query}', max_results={max_results}"
+            )
+            results: List[Dict[str, str]] = []
+            session = requests.Session()
+            base_url = "https://www.googleapis.com/customsearch/v1"
+            safe = os.getenv("GOOGLE_CSE_SAFE", "off")
+            gl = os.getenv("GOOGLE_CSE_GL")  # e.g., 'us', 'br'
+            lr = os.getenv("GOOGLE_CSE_LR")  # e.g., 'lang_en'
+
+            # Google CSE returns up to 10 results per request; paginate if needed
+            start = 1
+            remaining = max_results
+            while remaining > 0 and start <= 91 and len(results) < max_results:
+                num = min(10, remaining)
+                params = {
+                    "key": api_key,
+                    "cx": cx,
+                    "q": query,
+                    "num": num,
+                    "start": start,
+                    "safe": safe,
+                }
+                if gl:
+                    params["gl"] = gl
+                if lr:
+                    params["lr"] = lr
+
+                # Retry with simple exponential backoff for transient errors/rate limits
+                last_exc: Optional[Exception] = None
+                for attempt in range(3):
+                    try:
+                        resp = session.get(base_url, params=params, timeout=15)
+                        # Handle common throttling explicitly
+                        if resp.status_code in (429, 500, 502, 503, 504):
+                            raise requests.RequestException(
+                                f"Transient HTTP {resp.status_code}: {resp.text[:200]}"
+                            )
+                        resp.raise_for_status()
+                        data = resp.json()
+                        items = data.get("items", []) or []
+                        for it in items:
+                            results.append(
+                                {
+                                    "title": it.get("title") or "N/A",
+                                    "body": it.get("snippet") or "N/A",
+                                    "href": it.get("link") or "N/A",
+                                }
+                            )
+                        # Update counters
+                        if not items:
+                            remaining = 0
+                        else:
+                            remaining = max_results - len(results)
+                            start += len(items)
+                        break  # success
+                    except (requests.Timeout, requests.RequestException) as e:
+                        last_exc = e
+                        # Backoff: 0.8s, 1.6s, 3.2s
+                        time.sleep(0.8 * (2 ** attempt))
+                else:
+                    # Retries exhausted
+                    logger.warning(
+                        f"Google CSE request failed after retries for query '{query}': {last_exc}"
+                    )
+                    break
+
+            results = results[:max_results]
+            if not results:
+                logger.warning(
+                    f"Google CSE returned no results for query '{query}'. Falling back to DuckDuckGo."
+                )
+            else:
+                output_lines = [
+                    f"Web Search Results (Google CSE) for '{query}' (Found {len(results)}):"
+                ]
+                for i, result in enumerate(results):
+                    title = result.get("title", "N/A")
+                    snippet = (result.get("body", "N/A") or "").replace("\n", " ")
+                    url = result.get("href", "N/A")
+                    output_lines.append(
+                        f"{i+1}. Title: {title}\n"
+                        f"   Snippet: {snippet}\n"
+                        f"   URL: {url}"
+                    )
+                logger.info(
+                    f"Successfully retrieved {len(results)} results from Google CSE for query '{query}'."
+                )
+                return "\n---\n".join(output_lines)
+
+        # Fallback to DuckDuckGo if Google CSE is not configured or returned nothing
+        logger.info(
+            f"Falling back to DuckDuckGo for query: '{query}', max_results={max_results}"
+        )
         with DDGS() as ddgs:
-            # Note: ddgs.text() might return fewer results than max_results requested
-            results = list(ddgs.text(query, max_results=max_results))
-
-        if not results:
+            ddg_results = list(ddgs.text(query, max_results=max_results))
+        if not ddg_results:
             logger.warning(f"DuckDuckGo search for '{query}' yielded no results.")
-            return f"No results found on DuckDuckGo for the query: '{query}'"
+            return f"No results found for the query: '{query}'"
 
-        output_lines = [f"Web Search Results for '{query}' (Found {len(results)}):"]
-        for i, result in enumerate(results):
-            # Ensure keys exist before accessing
-            title = result.get('title', 'N/A')
-            snippet = result.get('body', 'N/A').replace("\n", " ") # Clean up snippets
-            url = result.get('href', 'N/A')
+        output_lines = [f"Web Search Results (DuckDuckGo) for '{query}' (Found {len(ddg_results)}):"]
+        for i, result in enumerate(ddg_results):
+            title = result.get("title", "N/A")
+            snippet = (result.get("body", "N/A") or "").replace("\n", " ")
+            url = result.get("href", "N/A")
             output_lines.append(
                 f"{i+1}. Title: {title}\n"
                 f"   Snippet: {snippet}\n"
                 f"   URL: {url}"
             )
-        logger.info(f"Successfully retrieved {len(results)} results from DuckDuckGo for query '{query}'.")
-        return "\n---\n".join(output_lines) # Separate entries clearly
+        logger.info(
+            f"Successfully retrieved {len(ddg_results)} results from DuckDuckGo for query '{query}'."
+        )
+        return "\n---\n".join(output_lines)
 
     except Exception as e:
-        logger.error(f"Error during DuckDuckGo search for '{query}': {e}", exc_info=True)
-        return f"An error occurred during the web search for '{query}': {str(e)}. Please try again later."
+        logger.error(f"Error during web search for '{query}': {e}", exc_info=True)
+        return (
+            f"An error occurred during the web search for '{query}': {str(e)}."
+            " Please try again later."
+        )
 
 # Create FunctionTool instance for web_search
 web_search_tool = FunctionTool(
     func=web_search,
-    description="Performs a web search using DuckDuckGo to find relevant information, articles, or sources online based on a query string. Returns a list of search results including title, snippet, and URL.",
+    description=(
+        "Performs a web search using Google Programmable Search (CSE) for high-demand reliability, "
+        "with automatic fallback to DuckDuckGo when Google credentials are unavailable. Returns a list "
+        "of results including title, snippet, and URL. Configure GOOGLE_CSE_API_KEY and GOOGLE_CSE_CX."
+    ),
 )
 
 # --- Tool 4: Wikipedia Search ---

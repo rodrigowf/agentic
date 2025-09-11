@@ -1,0 +1,2501 @@
+nested
+{
+  "source": "nested",
+  "type": "system",
+  "data": "Nested connection established. Awaiting task or user_message."
+}
+session.created
+{
+  "type": "session.created",
+  "event_id": "event_CEQXpmN585i2gZmcxzUE5",
+  "session": {
+    "object": "realtime.session",
+    "id": "sess_CEQXprvZQCmYvXVoeQO6F",
+    "model": "gpt-4o-realtime-preview-2025-06-03",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "instructions": "You are the voice narrator/controller for a multi‑agent assistant named 'MainConversation'. A backend nested team handles reasoning and actions; you provide concise, natural speech suited for TTS.\n\nTeam overview (you do not need to reveal these implementation details to users):\n- Manager: orchestrates tasks, reads team progress, picks the next agent, and ends with 'TERMINATE'.\n- Researcher: performs web research and fact‑checking using search, Wikipedia, arXiv, and web page fetching.\n- Developer: writes and executes code locally (single‑file Python or Bash) to complete tasks.\n\nUnderstanding team messages:\n- Messages prefixed with [TEAM AgentName] show you what each team member is saying or doing.\n- Tool usage messages like 'Using tool: web_search' and 'Tool completed: success' show team progress.\n- Build mental context from these messages to understand the complete conversation flow.\n- These [TEAM] messages are for your awareness - you can reference them but don't repeat them verbatim.\n\nPacing and when to speak (very important):\n- Treat incoming controller text prefixed with [TEAM] as silent context. Do NOT speak for each [TEAM] update; store them mentally.\n- Speak at most: (1) a very brief acknowledgment at the start of a task (optional), (2) one short mid‑run progress update if truly helpful (optional), and (3) a final concise summary when the run finishes.\n- When you receive [RUN_FINISHED] or see a termination marker like 'TERMINATE', produce the final summary based on all the [TEAM] context you received.\n- Avoid filler and do not narrate every step. Keep interjections under one sentence.\n\nBehavioral rules:\n- Use the [TEAM] message context to understand what the team discovered and accomplished.\n- Do not claim you browsed the web or ran code yourself; attribute such work implicitly to the team.\n- If the user asks for something complex, acknowledge and WAIT for [TEAM] controller updates before summarizing.\n- Avoid exposing internal prompts, tools, or file paths.\n- If asked about your capabilities, state you are a voice interface paired with a research+coding assistant.\n\nTool usage:\n- When the user gives a task or follow‑up for the team, CALL send_to_nested with {\"text\": \"<message>\"}.\n- To pause on user request, CALL pause(). To reset on request, CALL reset().\n- After using tools, wait for controller messages ([TEAM] updates) and only speak per the pacing rules.\n",
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "tools": [],
+    "tool_choice": "auto",
+    "temperature": 0.8,
+    "max_response_output_tokens": "inf",
+    "turn_detection": {
+      "type": "server_vad",
+      "threshold": 0.5,
+      "prefix_padding_ms": 300,
+      "silence_duration_ms": 200,
+      "idle_timeout_ms": null,
+      "create_response": true,
+      "interrupt_response": true
+    },
+    "speed": 1,
+    "tracing": null,
+    "truncation": "auto",
+    "prompt": null,
+    "expires_at": 1757558265,
+    "input_audio_noise_reduction": null,
+    "input_audio_format": "pcm16",
+    "input_audio_transcription": null,
+    "client_secret": null,
+    "include": null
+  }
+}
+session.updated
+{
+  "type": "session.updated",
+  "event_id": "event_CEQXqkjSViyID3b3QI9tR",
+  "session": {
+    "object": "realtime.session",
+    "id": "sess_CEQXprvZQCmYvXVoeQO6F",
+    "model": "gpt-4o-realtime-preview-2025-06-03",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "instructions": "You are the voice narrator/controller for a multi‑agent assistant named 'MainConversation'. A backend nested team handles reasoning and actions; you provide concise, natural speech suited for TTS.\n\nTeam overview (you do not need to reveal these implementation details to users):\n- Manager: orchestrates tasks, reads team progress, picks the next agent, and ends with 'TERMINATE'.\n- Researcher: performs web research and fact‑checking using search, Wikipedia, arXiv, and web page fetching.\n- Developer: writes and executes code locally (single‑file Python or Bash) to complete tasks.\n\nUnderstanding team messages:\n- Messages prefixed with [TEAM AgentName] show you what each team member is saying or doing.\n- Tool usage messages like 'Using tool: web_search' and 'Tool completed: success' show team progress.\n- Build mental context from these messages to understand the complete conversation flow.\n- These [TEAM] messages are for your awareness - you can reference them but don't repeat them verbatim.\n\nPacing and when to speak (very important):\n- Treat incoming controller text prefixed with [TEAM] as silent context. Do NOT speak for each [TEAM] update; store them mentally.\n- Speak at most: (1) a very brief acknowledgment at the start of a task (optional), (2) one short mid‑run progress update if truly helpful (optional), and (3) a final concise summary when the run finishes.\n- When you receive [RUN_FINISHED] or see a termination marker like 'TERMINATE', produce the final summary based on all the [TEAM] context you received.\n- Avoid filler and do not narrate every step. Keep interjections under one sentence.\n\nBehavioral rules:\n- Use the [TEAM] message context to understand what the team discovered and accomplished.\n- Do not claim you browsed the web or ran code yourself; attribute such work implicitly to the team.\n- If the user asks for something complex, acknowledge and WAIT for [TEAM] controller updates before summarizing.\n- Avoid exposing internal prompts, tools, or file paths.\n- If asked about your capabilities, state you are a voice interface paired with a research+coding assistant.\n\nTool usage:\n- When the user gives a task or follow‑up for the team, CALL send_to_nested with {\"text\": \"<message>\"}.\n- To pause on user request, CALL pause(). To reset on request, CALL reset().\n- After using tools, wait for controller messages ([TEAM] updates) and only speak per the pacing rules.\n",
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "tools": [
+      {
+        "type": "function",
+        "name": "send_to_nested",
+        "description": "Send a user message to the nested agents team (MainConversation) via WebSocket.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The user message to send."
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "type": "function",
+        "name": "pause",
+        "description": "Request the controller to pause the current nested conversation (best effort).",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "type": "function",
+        "name": "reset",
+        "description": "Reset the nested team conversation state (best effort).",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      }
+    ],
+    "tool_choice": "auto",
+    "temperature": 0.8,
+    "max_response_output_tokens": "inf",
+    "turn_detection": {
+      "type": "server_vad",
+      "threshold": 0.5,
+      "prefix_padding_ms": 300,
+      "silence_duration_ms": 200,
+      "idle_timeout_ms": null,
+      "create_response": true,
+      "interrupt_response": true
+    },
+    "speed": 1,
+    "tracing": null,
+    "truncation": "auto",
+    "prompt": null,
+    "expires_at": 1757558265,
+    "input_audio_noise_reduction": null,
+    "input_audio_format": "pcm16",
+    "input_audio_transcription": null,
+    "client_secret": null,
+    "include": null
+  }
+}
+input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_CEQXsrTG6HGJSmKfAbfL0",
+  "audio_start_ms": 1236,
+  "item_id": "item_CEQXsXNzjUUhmHqpAjxvj"
+}
+input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_CEQXsJ0Z8PpQguPc7xKx3",
+  "audio_end_ms": 1952,
+  "item_id": "item_CEQXsXNzjUUhmHqpAjxvj"
+}
+input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_CEQXshtTswIblSrfCHUwM",
+  "previous_item_id": null,
+  "item_id": "item_CEQXsXNzjUUhmHqpAjxvj"
+}
+conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_CEQXsU5RgwHIx3XpE8Qxl",
+  "previous_item_id": null,
+  "item": {
+    "id": "item_CEQXsXNzjUUhmHqpAjxvj",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+response.created
+{
+  "type": "response.created",
+  "event_id": "event_CEQXsoT8vdUptrLsMHqi1",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQXsKsmjA4u1nON4r2H6",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_CEQXtWWAc4ZQ9Gi79AbN5",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_CEQXtxLJuHeLrH7bH9oEE",
+  "previous_item_id": "item_CEQXsXNzjUUhmHqpAjxvj",
+  "item": {
+    "id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_CEQXto92PbJzTvgQusf1C",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtjIcbi0n0YntGLFt4",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "Hi",
+  "obfuscation": "CJG8hHSRDBhjqp"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtU9m8P7ZpUGI4BAna",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " there",
+  "obfuscation": "NkQnfYS5Tq"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtNHlVRwoEOFZtVU14",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "!",
+  "obfuscation": "8eXnIs5csdD7RTs"
+}
+output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_d5088830c06a4679",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtC0zfNlmtkl0feo6e",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " What",
+  "obfuscation": "7T9Bd0VCJCz"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXt6Md6ZUPrh67nyBg6",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " can",
+  "obfuscation": "f6M1Y2OxxolN"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtyM2LOCg79scQbS09",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " I",
+  "obfuscation": "eFkwj472WnhtB4"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXt6dRkWkNllQQ0kxen",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " help",
+  "obfuscation": "z2bO1rhTswx"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtFn85sEfEhxZePSBT",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " you",
+  "obfuscation": "sOojiDjYii1j"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtZFKf3pVFe3pTi3hf",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " with",
+  "obfuscation": "DYEnKlYX5E1"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtpGLWGXO4SLxFOQc1",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " today",
+  "obfuscation": "tr6bWLBMAO"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQXtcoUTxZZTenuOOe08",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "?",
+  "obfuscation": "njtug3bdT0n5OIj"
+}
+response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_CEQXuPpbBnSGid8t2ZsPi",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0
+}
+response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_CEQXuBJfeAu8KCQKQ3axF",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "Hi there! What can I help you with today?"
+}
+response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_CEQXuv4We4m3J5CUmtAcI",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "Hi there! What can I help you with today?"
+  }
+}
+response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_CEQXuBReTZakJY7ebdaQJ",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "Hi there! What can I help you with today?"
+      }
+    ]
+  }
+}
+response.done
+{
+  "type": "response.done",
+  "event_id": "event_CEQXuICbYYnyYpcIpxbil",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQXsKsmjA4u1nON4r2H6",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "Hi there! What can I help you with today?"
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 694,
+      "input_tokens": 620,
+      "output_tokens": 74,
+      "input_token_details": {
+        "text_tokens": 614,
+        "audio_tokens": 6,
+        "image_tokens": 0,
+        "cached_tokens": 64,
+        "cached_tokens_details": {
+          "text_tokens": 64,
+          "audio_tokens": 0,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 23,
+        "audio_tokens": 51
+      }
+    },
+    "metadata": null
+  }
+}
+rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_CEQXu98128v4QDjCiDKZr",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799432,
+      "reset_seconds": 0.042
+    }
+  ]
+}
+output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_3c5b59a1ecf14f6c",
+  "response_id": "resp_CEQXsKsmjA4u1nON4r2H6"
+}
+input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_CEQXxtX67HkmoNq2PA6AJ",
+  "audio_start_ms": 6900,
+  "item_id": "item_CEQXxLzhDpKp4X8b3glKO"
+}
+input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_CEQY0rMhigpdY4tfEWZ8q",
+  "audio_end_ms": 10144,
+  "item_id": "item_CEQXxLzhDpKp4X8b3glKO"
+}
+input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_CEQY0hIys30BB2yV1WmSi",
+  "previous_item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "item_id": "item_CEQXxLzhDpKp4X8b3glKO"
+}
+conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_CEQY0il2L3lwyXX7G9I4C",
+  "previous_item_id": "item_CEQXsJlUZ0FE5FA0RpVSx",
+  "item": {
+    "id": "item_CEQXxLzhDpKp4X8b3glKO",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+response.created
+{
+  "type": "response.created",
+  "event_id": "event_CEQY0EYHR1xsJoCaH6dUE",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQY0iL4xXpT2SpsqbhVl",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_CEQY0Nvz3628PLUCIB9dH",
+  "audio_start_ms": 10068,
+  "item_id": "item_CEQY0GkMKaPZBbvmZY4id"
+}
+response.done
+{
+  "type": "response.done",
+  "event_id": "event_CEQY0jRfUARsI0sfmGoF8",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQY0iL4xXpT2SpsqbhVl",
+    "status": "cancelled",
+    "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+    },
+    "output": [],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 740,
+      "input_tokens": 736,
+      "output_tokens": 4,
+      "input_token_details": {
+        "text_tokens": 647,
+        "audio_tokens": 89,
+        "image_tokens": 0,
+        "cached_tokens": 64,
+        "cached_tokens_details": {
+          "text_tokens": 64,
+          "audio_tokens": 0,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 4,
+        "audio_tokens": 0
+      }
+    },
+    "metadata": null
+  }
+}
+input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_CEQY2RpOBG50KvDa3yfPE",
+  "audio_end_ms": 11872,
+  "item_id": "item_CEQY0GkMKaPZBbvmZY4id"
+}
+input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_CEQY2lDD6E3vB59ylwLfX",
+  "previous_item_id": "item_CEQXxLzhDpKp4X8b3glKO",
+  "item_id": "item_CEQY0GkMKaPZBbvmZY4id"
+}
+conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_CEQY2L4wd7K90Vnn0fWbR",
+  "previous_item_id": "item_CEQXxLzhDpKp4X8b3glKO",
+  "item": {
+    "id": "item_CEQY0GkMKaPZBbvmZY4id",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+response.created
+{
+  "type": "response.created",
+  "event_id": "event_CEQY2BhPgaZNMdzNvQssE",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_CEQY2FYONGH5ZmEcB6Yc3",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQY2VGtJfJLvI4mK2pdx",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "in_progress",
+    "name": "send_to_nested",
+    "call_id": "call_KKuja8U01Jkc0f5S",
+    "arguments": ""
+  }
+}
+conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_CEQY2Mprxwx2UdPsFU9Iv",
+  "previous_item_id": "item_CEQY0GkMKaPZBbvmZY4id",
+  "item": {
+    "id": "item_CEQY2VGtJfJLvI4mK2pdx",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "in_progress",
+    "name": "send_to_nested",
+    "call_id": "call_KKuja8U01Jkc0f5S",
+    "arguments": ""
+  }
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2HR56hXcyVEVfO7tX",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": "{\"",
+  "obfuscation": "dQqywf9ZaQLOFH"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2KvrOUPHGHVGjEoXK",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": "text",
+  "obfuscation": "gcUfvhxrjAMV"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2gAmglNO5KUCwvKUR",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": "\":\"",
+  "obfuscation": "dzjxo8s5XTAIc"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2OTjdStM5XNVeYOy2",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": "Can",
+  "obfuscation": "k65lPEsnNxR5X"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2fA9C8FJV9bwAb9q7",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " we",
+  "obfuscation": "CQrTjz7A2w88r"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY22oHj3hIAsEpekysp",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " find",
+  "obfuscation": "duEZeUgBJYM"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2ZquZFuFwVxZDAhfV",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " the",
+  "obfuscation": "3fbaks5QMWFn"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2w1TuYYgrGWQNs5Mm",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " current",
+  "obfuscation": "0ErIJyBw"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2h06XYm0PlO8ykDte",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " climate",
+  "obfuscation": "bwRHxKf1"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2JCEqLg4k248lrUWO",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " or",
+  "obfuscation": "KwXcRRyGWyBUu"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2FswK85QOacloSxqL",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " weather",
+  "obfuscation": "ESYNdAzR"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2WthwPQ11R0gM4Mep",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " conditions",
+  "obfuscation": "GnovU"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2f2rK3J8qImS5Xzye",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " in",
+  "obfuscation": "a32n0Walwxs7W"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2TKVvKmKXdDKBgpir",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " Paris",
+  "obfuscation": "iLzd4GOHwU"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY257BVLtWN2NbTOzM0",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " right",
+  "obfuscation": "ScJS8scxIP"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2Yyg9Lck4KobIiwfY",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": " now",
+  "obfuscation": "S3ONkeIXoMUa"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY29MWGg9XMzcc0TYio",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": "?\"",
+  "obfuscation": "dv8LfF69ftj0DZ"
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQY2jwhyB4RUEjoDY3oX",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "delta": "}",
+  "obfuscation": "h7Ghc55tH0fLMij"
+}
+response.function_call_arguments.done
+{
+  "type": "response.function_call_arguments.done",
+  "event_id": "event_CEQY2VDxv9pjR6Eh4hdZE",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "output_index": 0,
+  "call_id": "call_KKuja8U01Jkc0f5S",
+  "name": "send_to_nested",
+  "arguments": "{\"text\":\"Can we find the current climate or weather conditions in Paris right now?\"}"
+}
+controller
+{
+  "source": "controller",
+  "type": "tool_exec",
+  "tool": "send_to_nested",
+  "args": {
+    "text": "Can we find the current climate or weather conditions in Paris right now?"
+  }
+}
+response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_CEQY28qPsPMygGnBmbZfv",
+  "response_id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQY2VGtJfJLvI4mK2pdx",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "completed",
+    "name": "send_to_nested",
+    "call_id": "call_KKuja8U01Jkc0f5S",
+    "arguments": "{\"text\":\"Can we find the current climate or weather conditions in Paris right now?\"}"
+  }
+}
+response.done
+{
+  "type": "response.done",
+  "event_id": "event_CEQY2JMYEQCKhyDylaxW0",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQY2m4k9xkFoDIJWcRMw",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_CEQY2VGtJfJLvI4mK2pdx",
+        "object": "realtime.item",
+        "type": "function_call",
+        "status": "completed",
+        "name": "send_to_nested",
+        "call_id": "call_KKuja8U01Jkc0f5S",
+        "arguments": "{\"text\":\"Can we find the current climate or weather conditions in Paris right now?\"}"
+      }
+    ],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 790,
+      "input_tokens": 761,
+      "output_tokens": 29,
+      "input_token_details": {
+        "text_tokens": 655,
+        "audio_tokens": 106,
+        "image_tokens": 0,
+        "cached_tokens": 704,
+        "cached_tokens_details": {
+          "text_tokens": 640,
+          "audio_tokens": 64,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 29,
+        "audio_tokens": 0
+      }
+    },
+    "metadata": null
+  }
+}
+nested
+{
+  "source": "nested",
+  "type": "system",
+  "data": {
+    "message": "Initiating agent run with task: Can we find the current climate or weather conditions in Paris right now?..."
+  },
+  "timestamp": "2025-09-11T01:37:58.926312+00:00"
+}
+nested
+{
+  "source": "nested",
+  "type": "textmessage",
+  "data": {
+    "id": "abb8773e-7190-4a1e-a159-5f81e0f0e2fc",
+    "source": "user",
+    "models_usage": null,
+    "metadata": {},
+    "created_at": "2025-09-11T01:37:58.926525+00:00",
+    "content": "Can we find the current climate or weather conditions in Paris right now?",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-09-11T01:37:58.926563+00:00"
+}
+rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_CEQY2CbIfcXg0SZDUIYUK",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799477,
+      "reset_seconds": 0.039
+    }
+  ]
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQY34PI0XASChm4ZedYu",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'tool.output'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+response.created
+{
+  "type": "response.created",
+  "event_id": "event_CEQY35tJEQwOaXKg7UT1l",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQY32Y95sdZgBHDOWceq",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQY3V8MqwbZvzPtvwShn",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'input_text'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+nested
+{
+  "source": "nested",
+  "type": "textmessage",
+  "data": {
+    "id": "abb8773e-7190-4a1e-a159-5f81e0f0e2fc",
+    "source": "user",
+    "models_usage": null,
+    "metadata": {},
+    "created_at": "2025-09-11T01:37:58.926525+00:00",
+    "content": "Can we find the current climate or weather conditions in Paris right now?",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-09-11T01:37:59.113529+00:00"
+}
+response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_CEQY3OE7ocFbrVII9onIf",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQY302oyFcVhuGb4NgoT",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_CEQY3euzFE4OLkT8i3kpL",
+  "previous_item_id": "item_CEQY2VGtJfJLvI4mK2pdx",
+  "item": {
+    "id": "item_CEQY302oyFcVhuGb4NgoT",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQY3Bbi0lh5nranoX7gp",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'input_text'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_CEQY3wM2lsucHV9LvHu8R",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQY3WVD6UdCeSlBkr9q9",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "Let",
+  "obfuscation": "mD9f0OUzGG80H"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQY3S8GhQj76IcCFAOxc",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " me",
+  "obfuscation": "Wd4G5COEfPk8h"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQY3oWVnBaIl8E1wreQo",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " check",
+  "obfuscation": "sAnSYYH4ZV"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQY32Mdphi2Ig0VdRYB8",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " that",
+  "obfuscation": "6B9wSgHmU9q"
+}
+output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_78f3bbcb30df4e4f",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQY3wTrtwZ5NRNoIuNAm",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " for",
+  "obfuscation": "0g4ZYqcZbBUM"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQY3v6vD9odjQ9B6kcW2",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " you",
+  "obfuscation": "xN8d3TcWr9mB"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQY3sCedMtUnnHj4HMGl",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "MGfVEd6IYblEPPG"
+}
+response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_CEQY3MMTI3rQiZSteNzCk",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0
+}
+response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_CEQY3UUgRn5L6f4zlBqIA",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "Let me check that for you."
+}
+response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_CEQY3mZJ6P4JyGksGQJ6O",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "Let me check that for you."
+  }
+}
+response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_CEQY3P6r1eE6bnIUpEwZM",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQY302oyFcVhuGb4NgoT",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "Let me check that for you."
+      }
+    ]
+  }
+}
+response.done
+{
+  "type": "response.done",
+  "event_id": "event_CEQY3VbYNCH7gfGmzC7r6",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQY32Y95sdZgBHDOWceq",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_CEQY302oyFcVhuGb4NgoT",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "Let me check that for you."
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 835,
+      "input_tokens": 792,
+      "output_tokens": 43,
+      "input_token_details": {
+        "text_tokens": 686,
+        "audio_tokens": 106,
+        "image_tokens": 0,
+        "cached_tokens": 704,
+        "cached_tokens_details": {
+          "text_tokens": 640,
+          "audio_tokens": 64,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 15,
+        "audio_tokens": 28
+      }
+    },
+    "metadata": null
+  }
+}
+rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_CEQY32KNP0gslvw7k4iFw",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799463,
+      "reset_seconds": 0.04
+    }
+  ]
+}
+nested
+{
+  "source": "nested",
+  "type": "textmessage",
+  "data": {
+    "id": "a09e0ca0-3134-4131-9505-9463d869927f",
+    "source": "Manager",
+    "models_usage": {
+      "prompt_tokens": 238,
+      "completion_tokens": 18
+    },
+    "metadata": {},
+    "created_at": "2025-09-11T01:38:00.263083+00:00",
+    "content": "TASK: Find the current climate or weather conditions in Paris.\nNEXT AGENT: Researcher",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-09-11T01:38:00.265676+00:00"
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQY4goucCnbkfuuLKbWb",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'input_text'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_66a9bc327de947bb",
+  "response_id": "resp_CEQY32Y95sdZgBHDOWceq"
+}
+nested
+{
+  "source": "nested",
+  "type": "toolcallrequestevent",
+  "data": {
+    "id": "68bc6dc6-4399-4fa6-96ec-0c6dfb00a825",
+    "source": "Researcher",
+    "models_usage": {
+      "prompt_tokens": 677,
+      "completion_tokens": 62
+    },
+    "metadata": {},
+    "created_at": "2025-09-11T01:38:02.719579+00:00",
+    "content": [
+      {
+        "id": "call_RrYTxSkzPnafpsmLw7Fay90b",
+        "arguments": "{\"query\": \"current weather in Paris\", \"max_results\": 5}",
+        "name": "web_search"
+      },
+      {
+        "id": "call_knkI793N30aI2WDGpuQfoEg3",
+        "arguments": "{\"query\": \"climate of Paris\", \"lang\": \"en\", \"max_results\": 1}",
+        "name": "wikipedia_search"
+      }
+    ],
+    "type": "ToolCallRequestEvent"
+  },
+  "timestamp": "2025-09-11T01:38:02.729266+00:00"
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQY6dIAj5CuVE28JeyXG",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'input_text'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+nested
+{
+  "source": "nested",
+  "type": "toolcallexecutionevent",
+  "data": {
+    "id": "6181f11f-3387-42d3-92f2-481926f8fe9c",
+    "source": "Researcher",
+    "models_usage": null,
+    "metadata": {},
+    "created_at": "2025-09-11T01:38:04.147496+00:00",
+    "content": [
+      {
+        "content": "Web Search Results (Google CSE) for 'current weather in Paris' (Found 5):\n---\n1. Title: 10-Day Weather Forecast for Paris, France - The Weather Channel ...\n   Snippet: Be prepared with the most accurate 10-day forecast for Paris, France ... Hourly · 10 Day · Radar · Floods. 10 Day Weather-Paris, France. As of 1:11 am CEST ...\n   URL: https://weather.com/weather/tenday/l/1a8af5b9d8971c46dd5a52547f9221e22cd895d8d8639267a87df614d0912830\n---\n2. Title: Paris, Ville de Paris, France Weather Forecast | AccuWeather\n   Snippet: Paris, Ville de Paris, France Weather Forecast, with current conditions, wind, air quality, and what to expect for the next 3 days.\n   URL: https://www.accuweather.com/en/fr/paris/623/weather-forecast/623\n---\n3. Title: 10-Day Weather Forecast for Invalides, Île-de-France, France - The ...\n   Snippet: Today · Hourly · 10 Day · Radar · Video. 10 Day Weather-Invalides, Île-de-France, France. As of 6:33 pm CEST. Tonight. --/56 ...\n   URL: https://weather.com/weather/tenday/l/Invalides+%C3%8Ele+de+France+France?canonicalCityId=7d97072e1a70b2509c7929462089bb8c\n---\n4. Title: Paris, IDF, FR Current Weather - The Weather Network\n   Snippet: H: 21° L: 12°. Hourly. Full 72 hours · 1am. Cloudy with showers. 16°. Feels 15. POP. 60%. 0.1mm. 2am. Mainly clear. 16°. Feels 15.\n   URL: https://www.theweathernetwork.com/en/city/fr/ile-de-france/paris/current\n---\n5. Title: Weather Forecast and Conditions for Paris, France - The Weather ...\n   Snippet: Weather Today in Paris, France ; High / Low. 69°/56° ; Wind. 11 mph ; Humidity. 62% ; Dew Point. 51° ; Pressure. 29.77 in.\n   URL: https://weather.com/weather/today/l/1a8af5b9d8971c46dd5a52547f9221e22cd895d8d8639267a87df614d0912830",
+        "name": "web_search",
+        "call_id": "call_RrYTxSkzPnafpsmLw7Fay90b",
+        "is_error": false
+      },
+      {
+        "content": "Wikipedia Search Results for 'climate of Paris' (Lang: en, Top 1):\n---\n1. Title: Climate of Paris\n   Summary: Paris has a typical oceanic climate (Köppen climate classification: Cfb), affected by the North Atlantic Current. The overall climate throughout the year is mild and moderately wet. Summer days are usually warm and pleasant with average temperatures between 15 and 25 °C (59 and 77 °F), and a fair amount of sunshine. Each year, however, there are a few days when the temperature rises above 32 °C (90 °F). Longer periods of more intense heat sometimes occur, such as the heat wave of 2003 when tempe...\n   URL: https://en.wikipedia.org/wiki/Climate_of_Paris",
+        "name": "wikipedia_search",
+        "call_id": "call_knkI793N30aI2WDGpuQfoEg3",
+        "is_error": false
+      }
+    ],
+    "type": "ToolCallExecutionEvent"
+  },
+  "timestamp": "2025-09-11T01:38:04.156983+00:00"
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQY8h4IoZKtcJHNdQWe2",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'input_text'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+nested
+{
+  "source": "nested",
+  "type": "textmessage",
+  "data": {
+    "id": "f1f5d256-8a6c-4917-8dd8-6126662ec5b6",
+    "source": "Researcher",
+    "models_usage": {
+      "prompt_tokens": 1197,
+      "completion_tokens": 234
+    },
+    "metadata": {},
+    "created_at": "2025-09-11T01:38:13.260124+00:00",
+    "content": "The current weather in Paris, France, features a high of 69°F (21°C) and a low of 56°F (12°C). The current condition is cloudy with occasional showers, with a wind speed of 11 mph and humidity at 62% as per the latest data from The Weather Channel.\n\nRegarding the overall climate, Paris has a temperate oceanic climate, influenced by the North Atlantic Current. This results in mild and moderately wet conditions throughout the year. The average summer temperatures range between 15°C (59°F) and 25°C (77°F), with periodic spikes above 32°C (90°F), particularly during heat waves like the one in 2003.\n\nFor further details on Paris' climate and current weather, you can explore the dedicated article on Wikipedia [here](https://en.wikipedia.org/wiki/Climate_of_Paris) or access real-time weather updates [here](https://weather.com/weather/today/l/1a8af5b9d8971c46dd5a52547f9221e22cd895d8d8639267a87df614d0912830).\n\nTERMINATE",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-09-11T01:38:13.265228+00:00"
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQYHDVrsTRX00d89PK27",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'input_text'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+nested
+{
+  "source": "nested",
+  "type": "textmessage",
+  "data": {
+    "id": "9a2f6bff-2bff-4112-aaf4-68ab44e11ba4",
+    "source": "Manager",
+    "models_usage": {
+      "prompt_tokens": 501,
+      "completion_tokens": 119
+    },
+    "metadata": {},
+    "created_at": "2025-09-11T01:38:16.774876+00:00",
+    "content": "The current weather in Paris, France, is cloudy with occasional showers. It features a high of 69°F (21°C) and a low of 56°F (12°C). Wind speed is noted at 11 mph with humidity at 62%. Paris typically experiences a temperate oceanic climate, marked by mild, moderately wet conditions influenced by the North Atlantic Current. During summer, average temperatures fluctuate between 59°F (15°C) and 77°F (25°C). You can get more real-time weather updates and details about Paris' climate through dedicated platforms.\n\nTERMINATE",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-09-11T01:38:16.778473+00:00"
+}
+nested
+{
+  "source": "nested",
+  "type": "taskresult",
+  "data": {
+    "messages": [
+      {
+        "id": "abb8773e-7190-4a1e-a159-5f81e0f0e2fc",
+        "source": "user",
+        "models_usage": null,
+        "metadata": {},
+        "created_at": "2025-09-11T01:37:58.926525+00:00",
+        "content": "Can we find the current climate or weather conditions in Paris right now?",
+        "type": "TextMessage"
+      },
+      {
+        "id": "a09e0ca0-3134-4131-9505-9463d869927f",
+        "source": "Manager",
+        "models_usage": {
+          "prompt_tokens": 238,
+          "completion_tokens": 18
+        },
+        "metadata": {},
+        "created_at": "2025-09-11T01:38:00.263083+00:00",
+        "content": "TASK: Find the current climate or weather conditions in Paris.\nNEXT AGENT: Researcher",
+        "type": "TextMessage"
+      },
+      {
+        "id": "68bc6dc6-4399-4fa6-96ec-0c6dfb00a825",
+        "source": "Researcher",
+        "models_usage": {
+          "prompt_tokens": 677,
+          "completion_tokens": 62
+        },
+        "metadata": {},
+        "created_at": "2025-09-11T01:38:02.719579+00:00",
+        "content": [
+          {
+            "id": "call_RrYTxSkzPnafpsmLw7Fay90b",
+            "arguments": "{\"query\": \"current weather in Paris\", \"max_results\": 5}",
+            "name": "web_search"
+          },
+          {
+            "id": "call_knkI793N30aI2WDGpuQfoEg3",
+            "arguments": "{\"query\": \"climate of Paris\", \"lang\": \"en\", \"max_results\": 1}",
+            "name": "wikipedia_search"
+          }
+        ],
+        "type": "ToolCallRequestEvent"
+      },
+      {
+        "id": "6181f11f-3387-42d3-92f2-481926f8fe9c",
+        "source": "Researcher",
+        "models_usage": null,
+        "metadata": {},
+        "created_at": "2025-09-11T01:38:04.147496+00:00",
+        "content": [
+          {
+            "content": "Web Search Results (Google CSE) for 'current weather in Paris' (Found 5):\n---\n1. Title: 10-Day Weather Forecast for Paris, France - The Weather Channel ...\n   Snippet: Be prepared with the most accurate 10-day forecast for Paris, France ... Hourly · 10 Day · Radar · Floods. 10 Day Weather-Paris, France. As of 1:11 am CEST ...\n   URL: https://weather.com/weather/tenday/l/1a8af5b9d8971c46dd5a52547f9221e22cd895d8d8639267a87df614d0912830\n---\n2. Title: Paris, Ville de Paris, France Weather Forecast | AccuWeather\n   Snippet: Paris, Ville de Paris, France Weather Forecast, with current conditions, wind, air quality, and what to expect for the next 3 days.\n   URL: https://www.accuweather.com/en/fr/paris/623/weather-forecast/623\n---\n3. Title: 10-Day Weather Forecast for Invalides, Île-de-France, France - The ...\n   Snippet: Today · Hourly · 10 Day · Radar · Video. 10 Day Weather-Invalides, Île-de-France, France. As of 6:33 pm CEST. Tonight. --/56 ...\n   URL: https://weather.com/weather/tenday/l/Invalides+%C3%8Ele+de+France+France?canonicalCityId=7d97072e1a70b2509c7929462089bb8c\n---\n4. Title: Paris, IDF, FR Current Weather - The Weather Network\n   Snippet: H: 21° L: 12°. Hourly. Full 72 hours · 1am. Cloudy with showers. 16°. Feels 15. POP. 60%. 0.1mm. 2am. Mainly clear. 16°. Feels 15.\n   URL: https://www.theweathernetwork.com/en/city/fr/ile-de-france/paris/current\n---\n5. Title: Weather Forecast and Conditions for Paris, France - The Weather ...\n   Snippet: Weather Today in Paris, France ; High / Low. 69°/56° ; Wind. 11 mph ; Humidity. 62% ; Dew Point. 51° ; Pressure. 29.77 in.\n   URL: https://weather.com/weather/today/l/1a8af5b9d8971c46dd5a52547f9221e22cd895d8d8639267a87df614d0912830",
+            "name": "web_search",
+            "call_id": "call_RrYTxSkzPnafpsmLw7Fay90b",
+            "is_error": false
+          },
+          {
+            "content": "Wikipedia Search Results for 'climate of Paris' (Lang: en, Top 1):\n---\n1. Title: Climate of Paris\n   Summary: Paris has a typical oceanic climate (Köppen climate classification: Cfb), affected by the North Atlantic Current. The overall climate throughout the year is mild and moderately wet. Summer days are usually warm and pleasant with average temperatures between 15 and 25 °C (59 and 77 °F), and a fair amount of sunshine. Each year, however, there are a few days when the temperature rises above 32 °C (90 °F). Longer periods of more intense heat sometimes occur, such as the heat wave of 2003 when tempe...\n   URL: https://en.wikipedia.org/wiki/Climate_of_Paris",
+            "name": "wikipedia_search",
+            "call_id": "call_knkI793N30aI2WDGpuQfoEg3",
+            "is_error": false
+          }
+        ],
+        "type": "ToolCallExecutionEvent"
+      },
+      {
+        "id": "f1f5d256-8a6c-4917-8dd8-6126662ec5b6",
+        "source": "Researcher",
+        "models_usage": {
+          "prompt_tokens": 1197,
+          "completion_tokens": 234
+        },
+        "metadata": {},
+        "created_at": "2025-09-11T01:38:13.260124+00:00",
+        "content": "The current weather in Paris, France, features a high of 69°F (21°C) and a low of 56°F (12°C). The current condition is cloudy with occasional showers, with a wind speed of 11 mph and humidity at 62% as per the latest data from The Weather Channel.\n\nRegarding the overall climate, Paris has a temperate oceanic climate, influenced by the North Atlantic Current. This results in mild and moderately wet conditions throughout the year. The average summer temperatures range between 15°C (59°F) and 25°C (77°F), with periodic spikes above 32°C (90°F), particularly during heat waves like the one in 2003.\n\nFor further details on Paris' climate and current weather, you can explore the dedicated article on Wikipedia [here](https://en.wikipedia.org/wiki/Climate_of_Paris) or access real-time weather updates [here](https://weather.com/weather/today/l/1a8af5b9d8971c46dd5a52547f9221e22cd895d8d8639267a87df614d0912830).\n\nTERMINATE",
+        "type": "TextMessage"
+      },
+      {
+        "id": "9a2f6bff-2bff-4112-aaf4-68ab44e11ba4",
+        "source": "Manager",
+        "models_usage": {
+          "prompt_tokens": 501,
+          "completion_tokens": 119
+        },
+        "metadata": {},
+        "created_at": "2025-09-11T01:38:16.774876+00:00",
+        "content": "The current weather in Paris, France, is cloudy with occasional showers. It features a high of 69°F (21°C) and a low of 56°F (12°C). Wind speed is noted at 11 mph with humidity at 62%. Paris typically experiences a temperate oceanic climate, marked by mild, moderately wet conditions influenced by the North Atlantic Current. During summer, average temperatures fluctuate between 59°F (15°C) and 77°F (25°C). You can get more real-time weather updates and details about Paris' climate through dedicated platforms.\n\nTERMINATE",
+        "type": "TextMessage"
+      }
+    ],
+    "stop_reason": "Functional termination condition met"
+  },
+  "timestamp": "2025-09-11T01:38:16.780774+00:00"
+}
+nested
+{
+  "source": "nested",
+  "type": "system",
+  "data": {
+    "message": "Agent run finished."
+  },
+  "timestamp": "2025-09-11T01:38:16.781851+00:00"
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQYKARTq96WLqQcntHOD",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'input_text'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQYKUVLDTvTiCI1tKMzI",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'input_text'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+response.created
+{
+  "type": "response.created",
+  "event_id": "event_CEQYKmky4ZjTLw3kSFvBt",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQYKaEs3dbbRQOX11exS",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_CEQYLe73Kw6Zj1qLtLEe7",
+  "response_id": "resp_CEQYKaEs3dbbRQOX11exS",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQYKQmS2V5PAb67f2jzg",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "in_progress",
+    "name": "pause",
+    "call_id": "call_lsri9fu9cgoBFbGJ",
+    "arguments": ""
+  }
+}
+conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_CEQYL3425jJMwuTSNYwWh",
+  "previous_item_id": "item_CEQY302oyFcVhuGb4NgoT",
+  "item": {
+    "id": "item_CEQYKQmS2V5PAb67f2jzg",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "in_progress",
+    "name": "pause",
+    "call_id": "call_lsri9fu9cgoBFbGJ",
+    "arguments": ""
+  }
+}
+response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_CEQYLAbSBVnKZGovTk1mj",
+  "response_id": "resp_CEQYKaEs3dbbRQOX11exS",
+  "item_id": "item_CEQYKQmS2V5PAb67f2jzg",
+  "output_index": 0,
+  "call_id": "call_lsri9fu9cgoBFbGJ",
+  "delta": "{}",
+  "obfuscation": "UpKFILRbbs6wIJ"
+}
+response.function_call_arguments.done
+{
+  "type": "response.function_call_arguments.done",
+  "event_id": "event_CEQYL9fGoFMxU1N8iaIg4",
+  "response_id": "resp_CEQYKaEs3dbbRQOX11exS",
+  "item_id": "item_CEQYKQmS2V5PAb67f2jzg",
+  "output_index": 0,
+  "call_id": "call_lsri9fu9cgoBFbGJ",
+  "name": "pause",
+  "arguments": "{}"
+}
+controller
+{
+  "source": "controller",
+  "type": "tool_exec",
+  "tool": "pause",
+  "message": "Pause command sent to nested team"
+}
+response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_CEQYLivdJ7XlFhgyGi7NS",
+  "response_id": "resp_CEQYKaEs3dbbRQOX11exS",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQYKQmS2V5PAb67f2jzg",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "completed",
+    "name": "pause",
+    "call_id": "call_lsri9fu9cgoBFbGJ",
+    "arguments": "{}"
+  }
+}
+response.done
+{
+  "type": "response.done",
+  "event_id": "event_CEQYL8uTdTZcCh5J8rrPx",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQYKaEs3dbbRQOX11exS",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_CEQYKQmS2V5PAb67f2jzg",
+        "object": "realtime.item",
+        "type": "function_call",
+        "status": "completed",
+        "name": "pause",
+        "call_id": "call_lsri9fu9cgoBFbGJ",
+        "arguments": "{}"
+      }
+    ],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 847,
+      "input_tokens": 837,
+      "output_tokens": 10,
+      "input_token_details": {
+        "text_tokens": 703,
+        "audio_tokens": 134,
+        "image_tokens": 0,
+        "cached_tokens": 768,
+        "cached_tokens_details": {
+          "text_tokens": 640,
+          "audio_tokens": 128,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 10,
+        "audio_tokens": 0
+      }
+    },
+    "metadata": null
+  }
+}
+rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_CEQYLT7r05ioi0f74uVyo",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799496,
+      "reset_seconds": 0.037
+    }
+  ]
+}
+nested
+{
+  "source": "nested",
+  "type": "system",
+  "data": {
+    "message": "No active run to cancel."
+  },
+  "timestamp": "2025-09-11T01:38:17.377972+00:00"
+}
+error
+{
+  "type": "error",
+  "event_id": "event_CEQYLYQl36gugOwPPLWSd",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "Invalid value: 'tool.output'. Supported values are: 'session.update', 'transcription_session.update', 'input_audio_buffer.append', 'input_audio_buffer.commit', 'input_audio_buffer.clear', 'conversation.item.create', 'conversation.item.truncate', 'conversation.item.delete', 'conversation.item.retrieve', 'response.create', and 'response.cancel'.",
+    "param": "type",
+    "event_id": null
+  }
+}
+response.created
+{
+  "type": "response.created",
+  "event_id": "event_CEQYLdWWJxd3lvcAx6HET",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQYLimGjIye2Y77PRLPt",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_CEQYL8P74MmCBfGC1f3NO",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQYLCUk6YiNSsBpkqRaj",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_CEQYLUk0ktZfHDkjwdjXv",
+  "previous_item_id": "item_CEQYKQmS2V5PAb67f2jzg",
+  "item": {
+    "id": "item_CEQYLCUk6YiNSsBpkqRaj",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_CEQYLDFl2KlakaOv9ASSb",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYLOs6qcLDw8wkSNpuC",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "It",
+  "obfuscation": "uaC6I2ppY5utMD"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYLTFVBaRonlkrLZWdx",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " looks",
+  "obfuscation": "v0gHKfGCWY"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYL60y4yWPIhS1a5zH0",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " like",
+  "obfuscation": "rHSBvTcVkhq"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYLJYUEH7c5iWEiRpSJ",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " I",
+  "obfuscation": "9lF1bwnVsnU9nq"
+}
+output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_884771ac032c4e50",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYLENqJIYswnPWNhTJc",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " can't",
+  "obfuscation": "nbzG8V2ssG"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYLYxu0bYo7OSd8bgvx",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " provide",
+  "obfuscation": "06keKAlA"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMGHyk5AjzkbCTgj4J",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " real",
+  "obfuscation": "0pPKqVsmx6Z"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMcCswsdUgMNXYRrEu",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "-",
+  "obfuscation": "olyVQ3Jm2QQAUli"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMFHFIrWGDIxYY1iZI",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "time",
+  "obfuscation": "xkIFOdbOo4kF"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYML7DjNIPIrLbEGT5C",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " weather",
+  "obfuscation": "eVFs1kQe"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMJYR3XDvh0dDSPDri",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " updates",
+  "obfuscation": "vZu2GLZA"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMCjFxEC3Itqv47GmP",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " at",
+  "obfuscation": "veo1xjityFMuk"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMd6iBMtQa9XEFp5Sw",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " the",
+  "obfuscation": "PiKEJvDmngzz"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMrbjyENapUghCTZjl",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " moment",
+  "obfuscation": "ngQdlQnIK"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMcITMBQbchkTJf9YO",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "BL0JZt1YwNdrFAh"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMDpQOrf1lLJfnpx2Z",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " You",
+  "obfuscation": "NXwlrjluLUcK"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMullDNUbT55brTt6r",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " may",
+  "obfuscation": "6Mtc7RCUl9QJ"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMPHsByrqZlFZextUV",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " want",
+  "obfuscation": "UshCPXwL8bb"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMPaDyyd18wlxaan4w",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " to",
+  "obfuscation": "I51G0fVRm6J75"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMVPHtZDLTV9ilM5ft",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " check",
+  "obfuscation": "x3B34Q56L5"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMRHYSEJm1utcWVWuV",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " a",
+  "obfuscation": "kZYxMIQtp6R5tJ"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYM7mySYIO4WO7DF9Ur",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " weather",
+  "obfuscation": "YJo1eaDW"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYM2lG8WBwJxymTM4gq",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " website",
+  "obfuscation": "M2hLLAP6"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYMl9xrjqA5Ut2IfoDU",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " or",
+  "obfuscation": "k8d8eBpFzl8Op"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYN8Imnt1ldc98Id68M",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " app",
+  "obfuscation": "CsrH3pU2Ayc1"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNSdRc6G0zMsZKwDFw",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " for",
+  "obfuscation": "CL44geVHXiIL"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNLEY5maZZPQDImwJ1",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " the",
+  "obfuscation": "fCMFpiDaAJYZ"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYN83LSf6aVf37qrfgL",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " latest",
+  "obfuscation": "WjPXNJVSF"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNY1znqjzLM9xByAC2",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " conditions",
+  "obfuscation": "f1sn8"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNdDU62RkeJSAFMt1e",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " in",
+  "obfuscation": "gN1sU8FKO1VxD"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYN3inzM5VjbEqOV3qG",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Paris",
+  "obfuscation": "5uXFo06J5B"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNSJigCXrwUjaoYhCo",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "JWb9sofC1XkCuea"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNKVJc9gnr8dAndrvS",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Let",
+  "obfuscation": "uy3KBPF2wOgg"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNDkgKNrbWesrq20pC",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " me",
+  "obfuscation": "HQ7mde1iBI0RY"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNDNimcjTl4SodPOLX",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " know",
+  "obfuscation": "uHXZ47j8pZY"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNsowhoAV1hbSYu7VH",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " if",
+  "obfuscation": "wwuhqCsh9IeYE"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNvoyr28wtfyyD7wjd",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " there's",
+  "obfuscation": "BJ3C8gjb"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNlLN6L2rPX1cfy7jd",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " anything",
+  "obfuscation": "EJ2wQcL"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYN7EtNc7Vp3pnr38ID",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " else",
+  "obfuscation": "e6OylpkJagn"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYNV8BA8mDDWPmXZIr4",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " you'd",
+  "obfuscation": "nEddlQ72jD"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYOaO6t5CLJhiAUpyBC",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " like",
+  "obfuscation": "XhH60ZBBNaN"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYOkqVZ8rPHgeYcOYx9",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " help",
+  "obfuscation": "ECZ4m4BqOVE"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYOpNBCUJAeHEjftmab",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " with",
+  "obfuscation": "mUpbupraQGB"
+}
+response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_CEQYO8IMfoj4QYyAA2n1U",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "!",
+  "obfuscation": "BcO2hoa7FQ6MFDm"
+}
+response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_CEQYONWf67m1a8z3rYlIp",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0
+}
+response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_CEQYOrnr3F3xGT8R2xUrV",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "It looks like I can't provide real-time weather updates at the moment. You may want to check a weather website or app for the latest conditions in Paris. Let me know if there's anything else you'd like help with!"
+}
+response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_CEQYO3L4ga6Qc37hdBemk",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "item_id": "item_CEQYLCUk6YiNSsBpkqRaj",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "It looks like I can't provide real-time weather updates at the moment. You may want to check a weather website or app for the latest conditions in Paris. Let me know if there's anything else you'd like help with!"
+  }
+}
+response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_CEQYONwmjcJOqIFL964kI",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt",
+  "output_index": 0,
+  "item": {
+    "id": "item_CEQYLCUk6YiNSsBpkqRaj",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "It looks like I can't provide real-time weather updates at the moment. You may want to check a weather website or app for the latest conditions in Paris. Let me know if there's anything else you'd like help with!"
+      }
+    ]
+  }
+}
+response.done
+{
+  "type": "response.done",
+  "event_id": "event_CEQYOTWtUQAFoChlqUvJ4",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_CEQYLimGjIye2Y77PRLPt",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_CEQYLCUk6YiNSsBpkqRaj",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "It looks like I can't provide real-time weather updates at the moment. You may want to check a weather website or app for the latest conditions in Paris. Let me know if there's anything else you'd like help with!"
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_CEQXpM166Q1cAq6qtVNeX",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "alloy",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 1158,
+      "input_tokens": 849,
+      "output_tokens": 309,
+      "input_token_details": {
+        "text_tokens": 715,
+        "audio_tokens": 134,
+        "image_tokens": 0,
+        "cached_tokens": 832,
+        "cached_tokens_details": {
+          "text_tokens": 704,
+          "audio_tokens": 128,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 64,
+        "audio_tokens": 245
+      }
+    },
+    "metadata": null
+  }
+}
+rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_CEQYOhuBd7lyTFESLrdCa",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799197,
+      "reset_seconds": 0.06
+    }
+  ]
+}
+output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_dfdcced0a4174f43",
+  "response_id": "resp_CEQYLimGjIye2Y77PRLPt"
+}
+nested
+{
+  "source": "nested",
+  "type": "system",
+  "data": "WebSocket closed"
+}
