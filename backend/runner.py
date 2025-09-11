@@ -194,16 +194,23 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                     break
                 ctype = (cmd.get("type") or "").lower()
                 if ctype == "run":
-                    task_message_content = cmd.get("data")
+                    task_message_content = (cmd.get("data") or "").strip()
                     if not task_message_content:
-                        # Fallback to config
-                        task_message_content = agent_cfg.prompt.user
-                        if not task_message_content:
-                            await send_event_to_websocket(websocket, "error", {"message": "Empty task and no default prompt.user in config."})
+                        # Try default; if not present, inform and continue without error
+                        default_prompt = getattr(agent_cfg, 'prompt', None)
+                        default_user = (getattr(default_prompt, 'user', None) or '').strip() if default_prompt else ''
+                        if default_user:
+                            task_message_content = default_user
+                        else:
+                            await send_event_to_websocket(websocket, "system", {"message": "Run requested without a task. Awaiting non-empty task or user_message."})
                             continue
                 elif ctype == "user_message":
-                    # Start a turn immediately when idle
-                    task_message_content = cmd.get("data") or ""
+                    # Start a turn immediately when idle, but ignore empty/whitespace
+                    msg = (cmd.get("data") or "").strip()
+                    if not msg:
+                        await send_event_to_websocket(websocket, "system", {"message": "Ignored empty user_message."})
+                        continue
+                    task_message_content = msg
                 elif ctype == "cancel":
                     await send_event_to_websocket(websocket, "system", {"message": "No active run to cancel."})
                     continue
@@ -228,14 +235,21 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
                             cancellation_token.cancel()
                             await send_event_to_websocket(websocket, "system", {"message": "Cancellation requested."})
                         elif ctype == "run":
-                            pending_run = ctrl.get("data") or ""
-                            cancellation_token.cancel()
-                            await send_event_to_websocket(websocket, "system", {"message": "New run requested. Current run will stop and restart."})
+                            pending_run = (ctrl.get("data") or "").strip()
+                            if not pending_run:
+                                pending_run = None
+                                await send_event_to_websocket(websocket, "system", {"message": "Ignored empty run request."})
+                            else:
+                                cancellation_token.cancel()
+                                await send_event_to_websocket(websocket, "system", {"message": "New run requested. Current run will stop and restart."})
                         elif ctype == "user_message":
-                            # Queue incremental turn without cancelling current run
-                            msg = ctrl.get("data") or ""
-                            pending_user_messages.append(msg)
-                            await send_event_to_websocket(websocket, "system", {"message": "User message queued for next turn."})
+                            # Queue incremental turn without cancelling current run; ignore empty
+                            msg = (ctrl.get("data") or "").strip()
+                            if msg:
+                                pending_user_messages.append(msg)
+                                await send_event_to_websocket(websocket, "system", {"message": "User message queued for next turn."})
+                            else:
+                                await send_event_to_websocket(websocket, "system", {"message": "Ignored empty user_message."})
                         else:
                             # Ignore other messages
                             pass

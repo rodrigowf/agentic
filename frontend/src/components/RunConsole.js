@@ -19,8 +19,9 @@ import DownloadIcon from '@mui/icons-material/Download';
 import api from '../api';
 import LogEntry from './LogMessageDisplay';
 
-export default function RunConsole({nested = false}) {
-  const { name } = useParams();
+export default function RunConsole({ nested = false, agentName, sharedSocket, readOnlyControls }) {
+  const params = useParams();
+  const name = agentName || params.name;
   const [logs, setLogs] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
@@ -30,9 +31,91 @@ export default function RunConsole({nested = false}) {
   const [taskInput, setTaskInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
 
+  // Keep local refs to listeners so we can remove them on cleanup when sharing
+  const listenersRef = useRef({ open: null, message: null, error: null, close: null });
+
+  const attachSharedSocket = useCallback((socket) => {
+    if (!socket) return;
+    ws.current = socket;
+
+    // Remove previous listeners if any
+    const prev = listenersRef.current;
+    if (prev.open) socket.removeEventListener('open', prev.open);
+    if (prev.message) socket.removeEventListener('message', prev.message);
+    if (prev.error) socket.removeEventListener('error', prev.error);
+    if (prev.close) socket.removeEventListener('close', prev.close);
+
+    // Define listeners
+    const onOpen = () => {
+      setIsConnected(true);
+      setIsConnecting(false);
+      setError(null);
+      setLogs((prev) => [
+        ...prev,
+        { type: 'system', data: 'Connection established. Enter task and click Run.', timestamp: new Date().toISOString() },
+      ]);
+    };
+    const onMessage = (event) => {
+      try {
+        const messageData = JSON.parse(event.data);
+        if (!messageData.timestamp) messageData.timestamp = new Date().toISOString();
+        setLogs((prev) => [...prev, messageData]);
+        const t = messageData.type?.toLowerCase();
+        if (t?.includes('error')) {
+          setError(messageData.data?.message || messageData.data || 'An error occurred.');
+          setIsRunning(false);
+        } else if (t === 'system' && messageData.data?.message?.includes('Agent run finished')) {
+          setIsRunning(false);
+        } else if (t === 'websocketdisconnect') {
+          setIsRunning(false);
+        }
+      } catch (e) {
+        const errorMsg = `Received unparsable message: ${event.data}`;
+        setError('Received an invalid message from the backend.');
+        setLogs((prev) => [
+          ...prev,
+          { type: 'system_error', data: errorMsg, timestamp: new Date().toISOString() },
+        ]);
+        setIsRunning(false);
+      }
+    };
+    const onError = () => {
+      setError('WebSocket connection error. Check backend logs and network.');
+      setIsConnected(false);
+      setIsConnecting(false);
+      setIsRunning(false);
+      setLogs((prev) => [
+        ...prev,
+        { type: 'system_error', data: 'WebSocket connection error occurred.', timestamp: new Date().toISOString() },
+      ]);
+    };
+    const onClose = (event) => {
+      setIsConnected(false);
+      setIsConnecting(false);
+      setIsRunning(false);
+      if (event.code !== 1000) {
+        setError(`WebSocket disconnected unexpectedly: ${event.reason || 'Unknown reason'} (Code: ${event.code})`);
+      }
+    };
+
+    // Attach and save
+    socket.addEventListener('open', onOpen);
+    socket.addEventListener('message', onMessage);
+    socket.addEventListener('error', onError);
+    socket.addEventListener('close', onClose);
+    listenersRef.current = { open: onOpen, message: onMessage, error: onError, close: onClose };
+
+    // If already open, run onOpen immediately
+    if (socket.readyState === WebSocket.OPEN) onOpen();
+    else if (socket.readyState === WebSocket.CONNECTING) setIsConnecting(true);
+  }, []);
+
   const connectWebSocket = useCallback(() => {
+    if (sharedSocket) {
+      attachSharedSocket(sharedSocket);
+      return;
+    }
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      console.log("WebSocket already open.");
       return;
     }
 
@@ -41,33 +124,25 @@ export default function RunConsole({nested = false}) {
     setError(null);
     setLogs([]);
 
-    console.log(`Attempting to connect WebSocket for agent: ${name}`);
     ws.current = api.runAgent(name);
 
     ws.current.onopen = () => {
-      console.log('WebSocket Connected');
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
-      setLogs(prevLogs => [
+      setLogs((prevLogs) => [
         ...prevLogs,
-        { type: 'system', data: 'Connection established. Enter task and click Run.', timestamp: new Date().toISOString() }
+        { type: 'system', data: 'Connection established. Enter task and click Run.', timestamp: new Date().toISOString() },
       ]);
     };
 
     ws.current.onmessage = (event) => {
       try {
         const messageData = JSON.parse(event.data);
-        console.log('Message received:', messageData);
-
-        if (!messageData.timestamp) {
-          messageData.timestamp = new Date().toISOString();
-        }
-
-        setLogs(prevLogs => [...prevLogs, messageData]);
+        if (!messageData.timestamp) messageData.timestamp = new Date().toISOString();
+        setLogs((prevLogs) => [...prevLogs, messageData]);
 
         const messageTypeLower = messageData.type?.toLowerCase();
-
         if (messageTypeLower?.includes('error')) {
           setError(messageData.data?.message || messageData.data || 'An error occurred.');
           setIsRunning(false);
@@ -77,28 +152,28 @@ export default function RunConsole({nested = false}) {
           setIsRunning(false);
         }
       } catch (e) {
-        console.error('Failed to parse message or invalid message format:', event.data, e);
         const errorMsg = `Received unparsable message: ${event.data}`;
         setError('Received an invalid message from the backend.');
-        setLogs(prevLogs => [...prevLogs, { type: 'system_error', data: errorMsg, timestamp: new Date().toISOString() }]);
+        setLogs((prevLogs) => [
+          ...prevLogs,
+          { type: 'system_error', data: errorMsg, timestamp: new Date().toISOString() },
+        ]);
         setIsRunning(false);
       }
     };
 
-    ws.current.onerror = (event) => {
-      console.error('WebSocket Error:', event);
+    ws.current.onerror = () => {
       setError('WebSocket connection error. Check backend logs and network.');
       setIsConnected(false);
       setIsConnecting(false);
       setIsRunning(false);
-      setLogs(prevLogs => [
+      setLogs((prevLogs) => [
         ...prevLogs,
-        { type: 'system_error', data: 'WebSocket connection error occurred.', timestamp: new Date().toISOString() }
+        { type: 'system_error', data: 'WebSocket connection error occurred.', timestamp: new Date().toISOString() },
       ]);
     };
 
     ws.current.onclose = (event) => {
-      console.log('WebSocket Disconnected', event.code, event.reason);
       setIsConnected(false);
       setIsConnecting(false);
       setIsRunning(false);
@@ -106,50 +181,53 @@ export default function RunConsole({nested = false}) {
         setError(`WebSocket disconnected unexpectedly: ${event.reason || 'Unknown reason'} (Code: ${event.code})`);
       }
     };
-
-  }, [name, error]);
+  }, [name, sharedSocket, attachSharedSocket]);
 
   const handleRunAgent = () => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-      setError("WebSocket is not connected. Cannot run agent.");
-      console.error("Attempted to run agent while WebSocket is not open.");
+    const socket = ws.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      setError('WebSocket is not connected. Cannot run agent.');
       return;
     }
     if (!taskInput.trim()) {
-      setError("Please enter a task for the agent.");
+      setError('Please enter a task for the agent.');
       return;
     }
-
     try {
       const runMessage = JSON.stringify({ type: 'run', data: taskInput });
-      console.log('Sending run message:', runMessage);
-      ws.current.send(runMessage);
+      socket.send(runMessage);
       setIsRunning(true);
       setError(null);
       setLogs([{ type: 'system', data: `Sending run command with task: ${taskInput.substring(0, 100)}...`, timestamp: new Date().toISOString() }]);
     } catch (e) {
-      console.error('Failed to send run message:', e);
       setError('Failed to send run command to backend.');
       setIsRunning(false);
-      setLogs(prevLogs => [
+      setLogs((prevLogs) => [
         ...prevLogs,
-        { type: 'system_error', data: `Failed to send run command: ${e.message}`, timestamp: new Date().toISOString() }
+        { type: 'system_error', data: `Failed to send run command: ${e.message}`, timestamp: new Date().toISOString() },
       ]);
     }
   };
 
   const handleClearLogs = () => {
+    // If sharing a socket, do not close it; just clear logs
+    if (sharedSocket) {
+      setLogs([]);
+      return;
+    }
     if (ws.current) {
-      ws.current.close();
+      try { ws.current.close(); } catch {}
     }
     connectWebSocket();
   };
 
   const handleDownloadLogs = () => {
-    const logText = logs.map(log => {
-      const timestamp = new Date(log.timestamp).toLocaleString();
-      return `[${timestamp}] [${log.type}] ${typeof log.data === 'string' ? log.data : JSON.stringify(log.data)}`;
-    }).join('\n');
+    const logText = logs
+      .map((log) => {
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        return `[${timestamp}] [${log.type}] ${typeof log.data === 'string' ? log.data : JSON.stringify(log.data)}`;
+      })
+      .join('\n');
 
     const blob = new Blob([logText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -165,18 +243,29 @@ export default function RunConsole({nested = false}) {
   useEffect(() => {
     connectWebSocket();
     return () => {
-      if (ws.current) {
-        console.log("Closing WebSocket connection.");
-        ws.current.close();
+      // Only close socket if we created it; never close a shared one
+      if (!sharedSocket && ws.current) {
+        try { ws.current.close(); } catch {}
+      }
+      // Clean up listeners on a shared socket
+      if (sharedSocket) {
+        const s = sharedSocket;
+        const { open, message, error, close } = listenersRef.current;
+        if (open) s.removeEventListener('open', open);
+        if (message) s.removeEventListener('message', message);
+        if (error) s.removeEventListener('error', error);
+        if (close) s.removeEventListener('close', close);
       }
     };
-  }, [connectWebSocket]);
+  }, [connectWebSocket, sharedSocket]);
 
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [logs]);
+
+  const controlsReadOnly = readOnlyControls ?? Boolean(sharedSocket);
 
   return (
     <Stack spacing={2} sx={{ height: '100%', overflowX: 'hidden' }}>
@@ -193,7 +282,7 @@ export default function RunConsole({nested = false}) {
           ) : (
             <Chip label="Disconnected" color="error" size="small" />
           )}
-          <IconButton onClick={connectWebSocket} size="small" title="Reconnect" disabled={isConnecting || isConnected}>
+          <IconButton onClick={connectWebSocket} size="small" title="Reconnect" disabled={controlsReadOnly || isConnecting || isConnected}>
             <ReplayIcon />
           </IconButton>
           <IconButton onClick={handleClearLogs} size="small" title="Clear Logs" disabled={logs.length === 0}>
@@ -227,7 +316,7 @@ export default function RunConsole({nested = false}) {
           variant="contained"
           onClick={handleRunAgent}
           disabled={!isConnected || isRunning || !taskInput.trim()}
-          sx={{ height: '86px', px: 4}}
+          sx={{ height: '86px', px: 4 }}
         >
           {isRunning ? <CircularProgress size={24} color="inherit" /> : 'Run'}
         </Button>
@@ -238,7 +327,7 @@ export default function RunConsole({nested = false}) {
       <Paper ref={logContainerRef} sx={{
         flexGrow: 1,
         p: 2,
-        overflowY: 'auto', 
+        overflowY: 'auto',
         overflowX: 'hidden',
         fontFamily: 'inherit',
         fontSize: '0.9rem',

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Box, Paper, Stack, Typography, Button, TextField, Chip, Alert } from '@mui/material';
+import RunConsole from '../components/RunConsole';
 
 /**
  * A simple React component that demonstrates how to connect to the
@@ -16,10 +17,12 @@ function VoiceAssistant() {
   const peerRef = useRef(null);
   const dataChannelRef = useRef(null);
   const nestedWsRef = useRef(null);
+  const [sharedNestedWs, setSharedNestedWs] = useState(null);
   const audioRef = useRef(null);
 
   // Track accumulating function-call arguments by call id
   const toolCallsRef = useRef({});
+  const hasSpokenMidRef = useRef(false);
 
   // Resolve backend base URLs
   const backendBase = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000');
@@ -88,57 +91,6 @@ function VoiceAssistant() {
     return bodyText; // Backend returns application/sdp
   };
 
-  // Execute a completed tool call from the voice model
-  const executeToolCall = async (callId, name, argsObj) => {
-    try {
-      if (name === 'send_to_nested') {
-        const text = (argsObj && typeof argsObj.text === 'string') ? argsObj.text : '';
-        if (!text) throw new Error('Missing text');
-        if (nestedWsRef.current && nestedWsRef.current.readyState === WebSocket.OPEN) {
-          nestedWsRef.current.send(JSON.stringify({ type: 'user_message', data: text }));
-          setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name, args: argsObj }]);
-          return { ok: true };
-        } else {
-          throw new Error('Nested WebSocket not connected');
-        }
-      }
-      if (name === 'pause') {
-        // No explicit pause endpoint; best effort: notify UI and model
-        setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name }]);
-        return { ok: true };
-      }
-      if (name === 'reset') {
-        // Best effort: close and reopen WS
-        try { if (nestedWsRef.current) nestedWsRef.current.close(); } catch {}
-        const wsBase = (process.env.REACT_APP_WS_URL || derivedWsBase);
-        const nestedUrl = `${wsBase}/api/runs/MainConversation`;
-        const ws = new WebSocket(nestedUrl);
-        nestedWsRef.current = ws;
-        ws.onopen = () => { ws.send(JSON.stringify({ type: 'run', data: '' })); };
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            setMessages((prev) => [...prev, { source: 'nested', ...msg }]);
-            const type = (msg.type || '').toLowerCase();
-            if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
-              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: msg.data.content }));
-              dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-            }
-          } catch (e) {
-            setMessages((prev) => [...prev, { source: 'nested', type: 'parse_error', raw: event.data }]);
-          }
-        };
-        ws.onerror = () => { setMessages((prev) => [...prev, { source: 'nested', type: 'error', data: 'WebSocket error' }]); };
-        ws.onclose = () => { setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'WebSocket closed' }]); };
-        setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name }]);
-        return { ok: true };
-      }
-      throw new Error(`Unknown tool: ${name}`);
-    } catch (e) {
-      return { ok: false, error: String(e?.message || e) };
-    }
-  };
-
   const startSession = async () => {
     if (isRunning) return;
     setIsRunning(true);
@@ -184,8 +136,41 @@ function VoiceAssistant() {
           const payload = JSON.parse(event.data);
           setMessages((msgs) => [...msgs, payload]);
 
-          // Handle function-call events
+          // Handle function-call events (support current schema)
           const t = payload?.type;
+          // New schema: function call item added to response output
+          if (t === 'response.output_item.added' && payload?.item?.type === 'function_call') {
+            const callItem = payload.item;
+            const name = callItem?.name;
+            const callId = callItem?.call_id;
+            if (name && callId) toolCallsRef.current[callId] = { name, args: '' };
+            return;
+          }
+          // New schema: argument deltas come via response.function_call_arguments.delta
+          if (t === 'response.function_call_arguments.delta') {
+            const id = payload?.call_id || payload?.function_call_id || payload?.id;
+            const delta = payload?.delta || payload?.arguments || '';
+            if (id && toolCallsRef.current[id]) toolCallsRef.current[id].args += String(delta);
+            return;
+          }
+          // New schema: arguments done (finalize and execute)
+          if (t === 'response.function_call_arguments.done') {
+            const id = payload?.call_id || payload?.function_call_id || payload?.id;
+            const entry = id ? toolCallsRef.current[id] : undefined;
+            if (entry) {
+              let argsObj = {};
+              try { argsObj = entry.args ? JSON.parse(entry.args) : {}; } catch {}
+              const result = await executeToolCall(id, entry.name, argsObj);
+              if (dataChannelRef.current) {
+                dataChannelRef.current.send(JSON.stringify({ type: 'tool.output', tool_call_id: id, output: JSON.stringify(result) }));
+                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+              }
+              delete toolCallsRef.current[id];
+            }
+            return;
+          }
+
+          // Legacy schema support (older events)
           if (t === 'response.function_call') {
             const id = payload?.id || payload?.function_call_id || payload?.call_id;
             const name = payload?.name;
@@ -254,17 +239,32 @@ function VoiceAssistant() {
       const nestedUrl = `${wsBase}/api/runs/MainConversation`;
       const ws = new WebSocket(nestedUrl);
       nestedWsRef.current = ws;
+      setSharedNestedWs(ws);
+      hasSpokenMidRef.current = false; // reset for new connection
 
-      ws.onopen = () => { ws.send(JSON.stringify({ type: 'run', data: '' })); };
+      // Do NOT auto-start a run; wait for explicit user_message or Run action
+      ws.onopen = () => {
+        setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'Nested connection established. Awaiting task or user_message.' }]);
+      };
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
           setMessages((prev) => [...prev, { source: 'nested', ...msg }]);
           const type = (msg.type || '').toLowerCase();
           if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
-            // Forward nested text to voice model
-            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: msg.data.content }));
-            dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+            // Forward nested text as silent context; do NOT trigger immediate speech
+            const text = `[TEAM] ${msg.data.content}`;
+            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+            return;
+          }
+          // Detect run completion and trigger final summary
+          if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
+            if (dataChannelRef.current) {
+              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED]' }));
+              dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+              hasSpokenMidRef.current = false; // ready for next task
+            }
+            return;
           }
         } catch (e) {
           setMessages((prev) => [...prev, { source: 'nested', type: 'parse_error', raw: event.data }]);
@@ -284,9 +284,81 @@ function VoiceAssistant() {
     }
   };
 
+  // Execute a completed tool call from the voice model
+  const executeToolCall = async (callId, name, argsObj) => {
+    try {
+      if (name === 'send_to_nested') {
+        const text = (argsObj && typeof argsObj.text === 'string') ? argsObj.text : '';
+        if (!text) throw new Error('Missing text');
+        if (nestedWsRef.current && nestedWsRef.current.readyState === WebSocket.OPEN) {
+          hasSpokenMidRef.current = false; // new task; allow one mid-run narration
+          nestedWsRef.current.send(JSON.stringify({ type: 'user_message', data: text }));
+          setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name, args: argsObj }]);
+          return { ok: true };
+        } else {
+          throw new Error('Nested WebSocket not connected');
+        }
+      }
+      if (name === 'pause') {
+        // Send cancel command to the nested WebSocket to pause the current run
+        if (nestedWsRef.current && nestedWsRef.current.readyState === WebSocket.OPEN) {
+          nestedWsRef.current.send(JSON.stringify({ type: 'cancel' }));
+          setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name, message: 'Pause command sent to nested team' }]);
+        } else {
+          setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name, message: 'No active nested connection to pause' }]);
+        }
+        return { ok: true };
+      }
+      if (name === 'reset') {
+        // Best effort: close and reopen WS without auto-running
+        try { if (nestedWsRef.current) nestedWsRef.current.close(); } catch {}
+        const wsBase = (process.env.REACT_APP_WS_URL || derivedWsBase);
+        const nestedUrl = `${wsBase}/api/runs/MainConversation`;
+        const ws = new WebSocket(nestedUrl);
+        nestedWsRef.current = ws;
+        setSharedNestedWs(ws);
+        hasSpokenMidRef.current = false;
+        ws.onopen = () => {
+          setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'Nested connection reset. Awaiting task or user_message.' }]);
+        };
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            setMessages((prev) => [...prev, { source: 'nested', ...msg }]);
+            const type = (msg.type || '').toLowerCase();
+            if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
+              const text = `[TEAM] ${msg.data.content}`;
+              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+              return;
+            }
+            if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
+              if (dataChannelRef.current) {
+                dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED]' }));
+                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+                hasSpokenMidRef.current = false;
+              }
+              return;
+            }
+          } catch (e) {
+            setMessages((prev) => [...prev, { source: 'nested', type: 'parse_error', raw: event.data }]);
+          }
+        };
+        ws.onerror = () => { setMessages((prev) => [...prev, { source: 'nested', type: 'error', data: 'WebSocket error' }]); };
+        ws.onclose = () => { setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'WebSocket closed' }]); };
+        setMessages((prev) => [...prev, { source: 'controller', type: 'tool_exec', tool: name }]);
+        return { ok: true };
+      }
+      throw new Error(`Unknown tool: ${name}`);
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  };
+
   const stopSession = () => {
     setIsRunning(false);
     if (nestedWsRef.current) { try { nestedWsRef.current.close(); } catch {} nestedWsRef.current = null; }
+    setSharedNestedWs(null);
+    hasSpokenMidRef.current = false;
     if (peerRef.current) {
       peerRef.current.getSenders().forEach((sender) => { if (sender.track) sender.track.stop(); });
       try { peerRef.current.close(); } catch {}
@@ -366,6 +438,12 @@ function VoiceAssistant() {
             </Box>
           ))
         )}
+      </Box>
+
+      {/* Embedded nested team console, sharing the same WebSocket */}
+      <Box component={Paper} sx={{ p: 1 }}>
+        <Typography variant="subtitle1" sx={{ mb: 1 }}>Nested Team Console</Typography>
+        <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
       </Box>
     </Stack>
   );
