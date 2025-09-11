@@ -252,15 +252,32 @@ function VoiceAssistant() {
           setMessages((prev) => [...prev, { source: 'nested', ...msg }]);
           const type = (msg.type || '').toLowerCase();
           if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
-            // Forward nested text as silent context; do NOT trigger immediate speech
-            const text = `[TEAM] ${msg.data.content}`;
+            // Forward nested text with more context about the speaker
+            const content = msg.data.content;
+            const source = msg.data.source || 'Agent';
+            const text = `[TEAM ${source}] ${content}`;
+            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+            return;
+          }
+          // Handle other message types with context
+          if (type === 'toolcallrequestevent' && msg.data && dataChannelRef.current) {
+            const toolName = msg.data.name || 'unknown_tool';
+            const source = msg.data.source || 'Agent';
+            const text = `[TEAM ${source}] Using tool: ${toolName}`;
+            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+            return;
+          }
+          if (type === 'toolcallexecutionevent' && msg.data && dataChannelRef.current) {
+            const result = msg.data.result || 'completed';
+            const source = msg.data.source || 'Agent';
+            const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
             dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
             return;
           }
           // Detect run completion and trigger final summary
           if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
             if (dataChannelRef.current) {
-              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED]' }));
+              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }));
               dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
               hasSpokenMidRef.current = false; // ready for next task
             }
@@ -327,13 +344,31 @@ function VoiceAssistant() {
             setMessages((prev) => [...prev, { source: 'nested', ...msg }]);
             const type = (msg.type || '').toLowerCase();
             if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
-              const text = `[TEAM] ${msg.data.content}`;
+              // Forward nested text with more context about the speaker
+              const content = msg.data.content;
+              const source = msg.data.source || 'Agent';
+              const text = `[TEAM ${source}] ${content}`;
+              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+              return;
+            }
+            // Handle other message types with context
+            if (type === 'toolcallrequestevent' && msg.data && dataChannelRef.current) {
+              const toolName = msg.data.name || 'unknown_tool';
+              const source = msg.data.source || 'Agent';
+              const text = `[TEAM ${source}] Using tool: ${toolName}`;
+              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+              return;
+            }
+            if (type === 'toolcallexecutionevent' && msg.data && dataChannelRef.current) {
+              const result = msg.data.result || 'completed';
+              const source = msg.data.source || 'Agent';
+              const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
               dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
               return;
             }
             if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
               if (dataChannelRef.current) {
-                dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED]' }));
+                dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }));
                 dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
                 hasSpokenMidRef.current = false;
               }
