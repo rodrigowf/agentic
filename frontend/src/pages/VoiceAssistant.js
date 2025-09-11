@@ -162,13 +162,7 @@ function VoiceAssistant() {
               let argsObj = {};
               try { argsObj = entry.args ? JSON.parse(entry.args) : {}; } catch {}
               const result = await executeToolCall(id, entry.name, argsObj);
-              if (dataChannelRef.current) {
-                dataChannelRef.current.send(JSON.stringify({ type: 'tool.output', tool_call_id: id, output: JSON.stringify(result) }));
-                // Do not trigger immediate speech for send_to_nested; wait for [TEAM]/[RUN_FINISHED]
-                if (entry.name !== 'send_to_nested') {
-                  dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-                }
-              }
+              // Do not send unsupported 'tool.output' events. For our side-effect tools, we also avoid auto response.create here.
               delete toolCallsRef.current[id];
             }
             return;
@@ -194,12 +188,7 @@ function VoiceAssistant() {
               let argsObj = {};
               try { argsObj = entry.args ? JSON.parse(entry.args) : {}; } catch {}
               const result = await executeToolCall(id, entry.name, argsObj);
-              if (dataChannelRef.current) {
-                dataChannelRef.current.send(JSON.stringify({ type: 'tool.output', tool_call_id: id, output: JSON.stringify(result) }));
-                if (entry.name !== 'send_to_nested') {
-                  dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-                }
-              }
+              // No 'tool.output' and no auto response here.
               delete toolCallsRef.current[id];
             }
             return;
@@ -263,12 +252,26 @@ function VoiceAssistant() {
             const content = msg.data.content;
             const source = msg.data.source || 'Agent';
             const text = `[TEAM ${source}] ${content}`;
-            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+            dataChannelRef.current.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'message',
+                role: 'system',
+                content: [{ type: 'input_text', text }],
+              },
+            }));
             // Detect termination marker inside team content
             try {
               const cstr = String(content || '');
               if (!runCompletedRef.current && /\bTERMINATE\b/i.test(cstr)) {
-                dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.' }));
+                dataChannelRef.current.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: {
+                    type: 'message',
+                    role: 'system',
+                    content: [{ type: 'input_text', text: '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.' }],
+                  },
+                }));
                 dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
                 runCompletedRef.current = true;
                 hasSpokenMidRef.current = false;
@@ -281,20 +284,33 @@ function VoiceAssistant() {
             const toolName = msg.data.name || 'unknown_tool';
             const source = msg.data.source || 'Agent';
             const text = `[TEAM ${source}] Using tool: ${toolName}`;
-            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+            dataChannelRef.current.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: { type: 'message', role: 'system', content: [{ type: 'input_text', text }] },
+            }));
             return;
           }
           if (type === 'toolcallexecutionevent' && msg.data && dataChannelRef.current) {
             const result = msg.data.result || 'completed';
             const source = msg.data.source || 'Agent';
             const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
-            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+            dataChannelRef.current.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: { type: 'message', role: 'system', content: [{ type: 'input_text', text }] },
+            }));
             return;
           }
           // Detect run completion and trigger final summary
           if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
             if (dataChannelRef.current) {
-              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }));
+              dataChannelRef.current.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'message',
+                  role: 'system',
+                  content: [{ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }],
+                },
+              }));
               dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
               hasSpokenMidRef.current = false; // ready for next task
               runCompletedRef.current = true;
@@ -304,7 +320,14 @@ function VoiceAssistant() {
           // Treat explicit interruption as a finish signal for narration
           if (type === 'system' && msg.data && typeof msg.data.message === 'string' && /run (interrupted|cancelled|canceled)/i.test(msg.data.message)) {
             if (dataChannelRef.current && !runCompletedRef.current) {
-              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.' }));
+              dataChannelRef.current.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'message',
+                  role: 'system',
+                  content: [{ type: 'input_text', text: '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.' }],
+                },
+              }));
               dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
               hasSpokenMidRef.current = false;
               runCompletedRef.current = true;
@@ -320,7 +343,14 @@ function VoiceAssistant() {
         setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'WebSocket closed' }]);
         // If the run ended without the explicit finished marker, still prompt a summary
         if (dataChannelRef.current && !runCompletedRef.current) {
-          dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.' }));
+          dataChannelRef.current.send(JSON.stringify({
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'system',
+              content: [{ type: 'input_text', text: '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.' }],
+            },
+          }));
           dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
           runCompletedRef.current = true;
           hasSpokenMidRef.current = false;
@@ -328,7 +358,6 @@ function VoiceAssistant() {
       };
 
     } catch (err) {
-      console.error(err);
       // Surface first 200 chars of SDP if available
       try {
         setMessages((prev) => [...prev, { source: 'controller', type: 'sdp_debug', data: (err?.detail || err?.message || '').toString().slice(0, 200) }]);
@@ -387,12 +416,18 @@ function VoiceAssistant() {
               const content = msg.data.content;
               const source = msg.data.source || 'Agent';
               const text = `[TEAM ${source}] ${content}`;
-              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+              dataChannelRef.current.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: { type: 'message', role: 'system', content: [{ type: 'input_text', text }] },
+              }));
               // Detect termination marker inside team content
               try {
                 const cstr = String(content || '');
                 if (!runCompletedRef.current && /\bTERMINATE\b/i.test(cstr)) {
-                  dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.' }));
+                  dataChannelRef.current.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.' }] },
+                  }));
                   dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
                   runCompletedRef.current = true;
                   hasSpokenMidRef.current = false;
@@ -405,19 +440,28 @@ function VoiceAssistant() {
               const toolName = msg.data.name || 'unknown_tool';
               const source = msg.data.source || 'Agent';
               const text = `[TEAM ${source}] Using tool: ${toolName}`;
-              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+              dataChannelRef.current.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: { type: 'message', role: 'system', content: [{ type: 'input_text', text }] },
+              }));
               return;
             }
             if (type === 'toolcallexecutionevent' && msg.data && dataChannelRef.current) {
               const result = msg.data.result || 'completed';
               const source = msg.data.source || 'Agent';
               const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
-              dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text }));
+              dataChannelRef.current.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: { type: 'message', role: 'system', content: [{ type: 'input_text', text }] },
+              }));
               return;
             }
             if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
               if (dataChannelRef.current) {
-                dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }));
+                dataChannelRef.current.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: '[RUN_FINISHED] Team has completed the task. Please provide a summary.' }] },
+                }));
                 dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
                 hasSpokenMidRef.current = false;
                 runCompletedRef.current = true;
@@ -426,7 +470,10 @@ function VoiceAssistant() {
             }
             if (type === 'system' && msg.data && typeof msg.data.message === 'string' && /run (interrupted|cancelled|canceled)/i.test(msg.data.message)) {
               if (dataChannelRef.current && !runCompletedRef.current) {
-                dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.' }));
+                dataChannelRef.current.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.' }] },
+                }));
                 dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
                 hasSpokenMidRef.current = false;
                 runCompletedRef.current = true;
@@ -441,7 +488,10 @@ function VoiceAssistant() {
         ws.onclose = () => {
           setMessages((prev) => [...prev, { source: 'nested', type: 'system', data: 'WebSocket closed' }]);
           if (dataChannelRef.current && !runCompletedRef.current) {
-            dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.' }));
+            dataChannelRef.current.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.' }] },
+            }));
             dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
             runCompletedRef.current = true;
             hasSpokenMidRef.current = false;
@@ -472,8 +522,11 @@ function VoiceAssistant() {
 
   const sendText = () => {
     if (dataChannelRef.current && transcript.trim()) {
-      // Follow recommended event pattern: send text, then request a response
-      dataChannelRef.current.send(JSON.stringify({ type: 'input_text', text: transcript }));
+      // Follow recommended event pattern: add a conversation item, then request a response
+      dataChannelRef.current.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: transcript }] },
+      }));
       dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
       setTranscript('');
     }
