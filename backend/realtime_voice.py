@@ -34,16 +34,20 @@ tool execution.  See the `frontend` counterpart for a
 proof‑of‑concept WebRTC client.
 """
 
+import asyncio
 import os
 import json
 import time
-from typing import List, Optional, Dict, Any
+from collections import defaultdict
+from datetime import datetime
+from typing import Dict, List, Optional, Any, Set
 
 import requests
-from fastapi import APIRouter, FastAPI, HTTPException, Query, Body
+from fastapi import APIRouter, FastAPI, HTTPException, Query, Body, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from starlette.websockets import WebSocketDisconnect
 
 # ---------------------------------------------------------------------------
 # Environment configuration
@@ -80,6 +84,55 @@ VOICE_SYSTEM_PROMPT = (
     "- pause() to request pausing; reset() to reset the nested session.\n"
     "After any tool call, wait for new [TEAM] updates before speaking and follow the speaking rules.\n"
 )
+
+
+try:
+    from .voice_conversation_store import store as conversation_store  # type: ignore
+except ImportError:  # pragma: no cover - fallback when running as script
+    from voice_conversation_store import store as conversation_store  # type: ignore
+
+
+class ConversationStreamManager:
+    """Keeps track of WebSocket subscribers for conversation event broadcasts."""
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        self._subscribers: Dict[str, Set[WebSocket]] = defaultdict(set)
+
+    async def subscribe(self, conversation_id: str, websocket: WebSocket) -> None:
+        async with self._lock:
+            self._subscribers[conversation_id].add(websocket)
+
+    async def unsubscribe(self, conversation_id: str, websocket: WebSocket) -> None:
+        async with self._lock:
+            subscribers = self._subscribers.get(conversation_id)
+            if not subscribers:
+                return
+            subscribers.discard(websocket)
+            if not subscribers:
+                self._subscribers.pop(conversation_id, None)
+
+    async def broadcast(self, conversation_id: str, message: Dict[str, Any]) -> None:
+        async with self._lock:
+            subscribers = list(self._subscribers.get(conversation_id, set()))
+        stale: List[WebSocket] = []
+        for websocket in subscribers:
+            try:
+                await websocket.send_json(message)
+            except Exception:
+                stale.append(websocket)
+        if stale:
+            async with self._lock:
+                active = self._subscribers.get(conversation_id)
+                if not active:
+                    return
+                for socket in stale:
+                    active.discard(socket)
+                if not active:
+                    self._subscribers.pop(conversation_id, None)
+
+
+stream_manager = ConversationStreamManager()
 
 
 def _json_headers() -> Dict[str, str]:
@@ -137,11 +190,188 @@ class SessionResponse(BaseModel):
     media_addr: str
     # Additional fields are preserved in the raw dict returned to the client.
 
+
+class CreateConversationRequest(BaseModel):
+    name: Optional[str] = None
+    voice_model: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ConversationSummary(BaseModel):
+    id: str
+    name: str
+    created_at: datetime
+    updated_at: datetime
+    voice_model: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ConversationEvent(BaseModel):
+    id: int
+    conversation_id: str
+    timestamp: datetime
+    source: Optional[str] = None
+    type: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ConversationEventCreate(BaseModel):
+    source: Optional[str] = None
+    type: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    timestamp: Optional[datetime] = None
+
+
+class ConversationDetail(ConversationSummary):
+    events: List[ConversationEvent]
+
+
+class UpdateConversationRequest(BaseModel):
+    name: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
 # ---------------------------------------------------------------------------
 # FastAPI app and router
 # ---------------------------------------------------------------------------
 
 router = APIRouter()
+
+
+@router.post("/conversations", response_model=ConversationSummary, status_code=201)
+def create_conversation(req: CreateConversationRequest = Body(...)) -> ConversationSummary:
+    record = conversation_store.create_conversation(
+        name=req.name,
+        voice_model=req.voice_model,
+        metadata=req.metadata or {},
+    )
+    return ConversationSummary(**record)
+
+
+@router.get("/conversations", response_model=List[ConversationSummary])
+def list_conversations() -> List[ConversationSummary]:
+    conversations = conversation_store.list_conversations()
+    return [ConversationSummary(**c) for c in conversations]
+
+
+@router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
+def get_conversation(
+    conversation_id: str,
+    limit: int = Query(500, ge=1, le=5000),
+    after: Optional[int] = Query(None, ge=0),
+) -> ConversationDetail:
+    conversation = conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    events = conversation_store.list_events(conversation_id, after_id=after, limit=limit)
+    return ConversationDetail(
+        **conversation,
+        events=[ConversationEvent(**e) for e in events],
+    )
+
+
+@router.put("/conversations/{conversation_id}", response_model=ConversationSummary)
+def update_conversation(conversation_id: str, req: UpdateConversationRequest = Body(...)) -> ConversationSummary:
+    existing = conversation_store.get_conversation(conversation_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    current = existing
+    if req.name:
+        renamed = conversation_store.rename_conversation(conversation_id, req.name)
+        if renamed:
+            current = renamed
+    if req.metadata is not None:
+        updated = conversation_store.update_metadata(conversation_id, req.metadata)
+        if updated:
+            current = updated
+    return ConversationSummary(**current)
+
+
+@router.delete("/conversations/{conversation_id}", status_code=204)
+def delete_conversation(conversation_id: str) -> None:
+    deleted = conversation_store.delete_conversation(conversation_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return None
+
+
+@router.get("/conversations/{conversation_id}/events", response_model=List[ConversationEvent])
+def list_conversation_events(
+    conversation_id: str,
+    after: Optional[int] = Query(None, ge=0),
+    limit: Optional[int] = Query(500, ge=1, le=5000),
+) -> List[ConversationEvent]:
+    if not conversation_store.get_conversation(conversation_id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    events = conversation_store.list_events(conversation_id, after_id=after, limit=limit)
+    return [ConversationEvent(**e) for e in events]
+
+
+@router.post("/conversations/{conversation_id}/events", response_model=ConversationEvent, status_code=201)
+async def append_conversation_event(
+    conversation_id: str,
+    event: ConversationEventCreate = Body(...),
+) -> ConversationEvent:
+    if not conversation_store.get_conversation(conversation_id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    timestamp = event.timestamp.isoformat() if isinstance(event.timestamp, datetime) else event.timestamp
+    record = conversation_store.append_event(
+        conversation_id,
+        event.payload,
+        source=event.source,
+        event_type=event.type,
+        timestamp=timestamp,
+    )
+    payload = ConversationEvent(**record)
+    await stream_manager.broadcast(
+        conversation_id,
+        {
+            "type": "event",
+            "event": payload.model_dump(mode="json"),
+        },
+    )
+    return payload
+
+
+@router.websocket("/conversations/{conversation_id}/stream")
+async def conversation_stream(websocket: WebSocket, conversation_id: str) -> None:
+    conversation = conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        await websocket.close(code=4404, reason="Conversation not found")
+        return
+
+    after_param = websocket.query_params.get("after")
+    limit_param = websocket.query_params.get("limit")
+    after_id: Optional[int] = None
+    limit: Optional[int] = None
+    try:
+        if after_param is not None:
+            after_id = int(after_param)
+        if limit_param is not None:
+            limit = max(1, min(5000, int(limit_param)))
+    except ValueError:
+        await websocket.close(code=4400, reason="Invalid query parameters")
+        return
+
+    await websocket.accept()
+    history = conversation_store.list_events(conversation_id, after_id=after_id, limit=limit)
+    await websocket.send_json(
+        {
+            "type": "history",
+            "events": [ConversationEvent(**e).model_dump(mode="json") for e in history],
+        }
+    )
+
+    await stream_manager.subscribe(conversation_id, websocket)
+    try:
+        while True:
+            # Keep the connection alive; we don't expect inbound messages but need to detect disconnects.
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await stream_manager.unsubscribe(conversation_id, websocket)
+
 
 @router.get("/token/openai", response_model=SessionResponse)
 def get_openai_token(

@@ -4,6 +4,10 @@ __pycache__/
 .env
 .venv/
 
+# Local databases
+*.db
+*.db-journal
+
 
 # Node
 node_modules/

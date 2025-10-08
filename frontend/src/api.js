@@ -5,7 +5,7 @@ const API = axios.create({
   withCredentials: true, // Important if backend needs cookies/session
 });
 
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000'; // Add fallback
+const VOICE_BASE = '/realtime';
 
 // Tools
 export const getTools = () => API.get('/tools'); // Returns [{filename: string, definition: ToolDefinition | null}, ...]
@@ -45,5 +45,42 @@ export const runAgent = (name) => {
 // Models
 export const getModelsByProvider = (provider) => API.get(`/models/${provider}`);
 
+// Voice conversations
+export const createVoiceConversation = (payload) => API.post(`${VOICE_BASE}/conversations`, payload);
+export const listVoiceConversations = () => API.get(`${VOICE_BASE}/conversations`);
+export const getVoiceConversation = (conversationId, params = {}) => API.get(`${VOICE_BASE}/conversations/${conversationId}`, { params });
+export const updateVoiceConversation = (conversationId, payload) => API.put(`${VOICE_BASE}/conversations/${conversationId}`, payload);
+export const deleteVoiceConversation = (conversationId) => API.delete(`${VOICE_BASE}/conversations/${conversationId}`);
+export const appendVoiceConversationEvent = (conversationId, payload) => API.post(`${VOICE_BASE}/conversations/${conversationId}/events`, payload);
+export const getVoiceConversationEvents = (conversationId, params = {}) => API.get(`${VOICE_BASE}/conversations/${conversationId}/events`, { params });
+export const connectVoiceConversationStream = (conversationId, params = {}) => {
+  const httpBase = API.defaults.baseURL.replace('/api', '');
+  const wsBase = httpBase.replace(/^http/, 'ws');
+  const searchParams = new URLSearchParams(params);
+  const query = searchParams.toString();
+  const url = `${wsBase}/api${VOICE_BASE}/conversations/${conversationId}/stream${query ? `?${query}` : ''}`;
+  return new WebSocket(url);
+};
+
 // Export API instance and individual functions
-export default { API, getTools, getToolContent, saveToolContent, uploadTool, generateToolCode, getAgents, createAgent, updateAgent, runAgent, getModelsByProvider };
+export default {
+  API,
+  getTools,
+  getToolContent,
+  saveToolContent,
+  uploadTool,
+  generateToolCode,
+  getAgents,
+  createAgent,
+  updateAgent,
+  runAgent,
+  getModelsByProvider,
+  createVoiceConversation,
+  listVoiceConversations,
+  getVoiceConversation,
+  updateVoiceConversation,
+  deleteVoiceConversation,
+  appendVoiceConversationEvent,
+  getVoiceConversationEvents,
+  connectVoiceConversationStream,
+};

@@ -22,6 +22,7 @@ import AgentList from './components/AgentList';
 import AgentEditor from './components/AgentEditor';
 import RunConsole from './components/RunConsole';
 import AgentDashboard from './components/AgentDashboard';
+import VoiceConversationsList from './pages/VoiceConversationsList';
 import VoiceAssistant from './pages/VoiceAssistant';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
@@ -212,7 +213,8 @@ export default function App() {
                 <Route path="/tools" element={<ToolList />} />
                 <Route path="/tools/new" element={<ToolEditor />} />
                 <Route path="/tools/edit/:filename" element={<ToolEditor />} />
-                <Route path="/voice" element={<VoiceAssistant />} />
+                <Route path="/voice" element={<VoiceConversationsList />} />
+                <Route path="/voice/:conversationId" element={<VoiceAssistant />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Container>
