@@ -25,6 +25,7 @@ import {
 
 const MAX_REPLAY_ITEMS = 50;
 const MAX_NESTED_HIGHLIGHTS = 25;
+const TOOL_AUTOPAUSE_WINDOW_MS = 1200;
 
 const truncateText = (value, max = 160) => {
   if (value == null) return '';
@@ -67,9 +68,11 @@ function VoiceAssistant() {
   const streamRef = useRef(null);
   const eventsMapRef = useRef(new Map());
   const replayQueueRef = useRef([]);
+  const nestedScrollRef = useRef(null);
 
   // Track accumulating function-call arguments by call id
   const toolCallsRef = useRef({});
+  const lastVoiceToolCallRef = useRef({ name: null, timestamp: 0 });
   const hasSpokenMidRef = useRef(false);
   const runCompletedRef = useRef(false);
 
@@ -113,8 +116,11 @@ function VoiceAssistant() {
       const data = msg?.data || {};
       const nestedData = (typeof data.data === 'object' && data.data !== null) ? data.data : {};
       const agentName = nestedData.source || data.source || data.agent || 'Nested agent';
-  const role = nestedData.role || nestedData.role_name || data.role;
-  const metadata = [];
+      const role = nestedData.role || nestedData.role_name || data.role;
+      const metadata = [];
+      const contentItems = Array.isArray(data.content) && data.content.length
+        ? data.content
+        : (Array.isArray(nestedData.content) ? nestedData.content : []);
 
       let tone = 'default';
       let typeLabel = 'Nested event';
@@ -143,11 +149,17 @@ function VoiceAssistant() {
         case 'tool_call_request_event': {
           typeLabel = 'Tool request';
           tone = 'warning';
-          const toolName = nestedData.name || data.data?.name || data.name;
-          previewText = toolName ? `Requested ${toolName}` : 'Tool requested';
-          const argPayload = nestedData.arguments ?? nestedData.args ?? nestedData.input ?? data.message;
-          descriptiveText = argPayload != null ? (typeof argPayload === 'string' ? argPayload : safeStringify(argPayload)) : '';
+          const firstContent = contentItems[0] || {};
+          const toolName = firstContent.name || nestedData.name || data.name;
+          const rawArgs = firstContent.arguments ?? nestedData.arguments ?? nestedData.args ?? nestedData.input ?? data.message;
           if (toolName) metadata.push({ label: 'Tool', value: toolName });
+          let argsText = '';
+          if (rawArgs != null) {
+            argsText = typeof rawArgs === 'string' ? rawArgs : safeStringify(rawArgs);
+            metadata.push({ label: 'Args', value: truncateText(argsText, 140) });
+          }
+          previewText = toolName ? `Requested ${toolName}` : 'Tool requested';
+          descriptiveText = argsText || previewText;
           if (nestedData.reason) metadata.push({ label: 'Reason', value: truncateText(nestedData.reason, 120) });
           break;
         }
@@ -155,13 +167,32 @@ function VoiceAssistant() {
         case 'tool_call_execution_event': {
           typeLabel = 'Tool result';
           tone = 'success';
-          const toolName = nestedData.name || nestedData.tool || data.data?.name || data.name;
+          const firstContent = contentItems[0] || {};
+          const toolName = firstContent.name || nestedData.name || nestedData.tool || data.name;
           const result = nestedData.result ?? data.data?.result ?? data.result;
           if (toolName) metadata.push({ label: 'Tool', value: toolName });
           if (nestedData.duration_ms) metadata.push({ label: 'Duration', value: `${nestedData.duration_ms} ms` });
+          const rawArgs = firstContent.arguments ?? nestedData.arguments ?? nestedData.args;
+          if (rawArgs != null) {
+            const argsText = typeof rawArgs === 'string' ? rawArgs : safeStringify(rawArgs);
+            metadata.push({ label: 'Args', value: truncateText(argsText, 140) });
+          }
+          const hasError = firstContent?.is_error === true
+            || firstContent?.status === 'error'
+            || nestedData?.is_error === true
+            || nestedData?.status === 'error'
+            || (Array.isArray(contentItems) && contentItems.some((item) => item?.is_error || item?.status === 'error'));
           const resultText = typeof result === 'string' ? result : safeStringify(result);
-          previewText = toolName ? `Completed ${toolName}` : 'Tool execution';
-          descriptiveText = resultText || descriptiveText;
+          if (hasError) {
+            tone = 'error';
+            if (toolName) metadata.push({ label: 'Status', value: 'Error' });
+            const errorDetail = nestedData.error || nestedData.message || firstContent?.error || resultText;
+            previewText = toolName ? `Error in ${toolName}` : 'Tool execution error';
+            descriptiveText = typeof errorDetail === 'string' ? errorDetail : safeStringify(errorDetail);
+          } else {
+            previewText = toolName ? `Completed ${toolName}` : 'Tool execution';
+            descriptiveText = resultText || descriptiveText;
+          }
           break;
         }
         case 'taskresult': {
@@ -191,6 +222,24 @@ function VoiceAssistant() {
       const preview = truncateText(previewText || descriptiveText, 200) || 'No summary available';
       const detail = descriptiveText && descriptiveText !== preview ? descriptiveText : (descriptiveText || '');
 
+      const modelUsage = data.models_usage || nestedData.models_usage;
+      if (modelUsage) {
+        if (modelUsage.prompt_tokens != null) {
+          metadata.push({ label: 'Prompt tokens', value: String(modelUsage.prompt_tokens) });
+        }
+        if (modelUsage.completion_tokens != null) {
+          metadata.push({ label: 'Completion tokens', value: String(modelUsage.completion_tokens) });
+        }
+        if (modelUsage.total_tokens != null) {
+          metadata.push({ label: 'Total tokens', value: String(modelUsage.total_tokens) });
+        } else if (modelUsage.prompt_tokens != null && modelUsage.completion_tokens != null) {
+          metadata.push({
+            label: 'Total tokens',
+            value: String(modelUsage.prompt_tokens + modelUsage.completion_tokens),
+          });
+        }
+      }
+
       entries.push({
         key: msg.id ?? `${msg.timestamp || 'nested'}-${index}`,
         timestamp: msg.timestamp,
@@ -207,6 +256,15 @@ function VoiceAssistant() {
     });
     return entries.slice(-MAX_NESTED_HIGHLIGHTS);
   }, [messages, formatTimestamp]);
+
+  useEffect(() => {
+    const node = nestedScrollRef.current;
+    if (node) {
+      requestAnimationFrame(() => {
+        node.scrollTop = node.scrollHeight;
+      });
+    }
+  }, [nestedHighlights]);
 
   const buildReplayItems = useCallback(() => {
     if (!messages || messages.length === 0) return [];
@@ -293,14 +351,16 @@ function VoiceAssistant() {
   const forwardToVoice = useCallback((role, rawText, metadata = {}) => {
     const text = (rawText ?? '').toString().trim();
     if (!text) return;
+
+    const kind = metadata?.kind;
+    const trigger = metadata?.trigger;
+    const forceResponse = metadata?.forceResponse === true;
+
     const item = {
       type: 'message',
       role: role || 'system',
       content: [{ type: 'input_text', text }],
     };
-    if (metadata && Object.keys(metadata).length > 0) {
-      item.metadata = metadata;
-    }
 
     let cloneForQueue = item;
     try {
@@ -311,26 +371,59 @@ function VoiceAssistant() {
     replayQueueRef.current = [...(replayQueueRef.current || []), cloneForQueue].slice(-MAX_REPLAY_ITEMS);
 
     const channel = dataChannelRef.current;
+    const diagnostics = { role, text, metadata };
+
+    const errorKinds = new Set(['team_error', 'team_tool_error', 'controller_error', 'controller_tool_error']);
+    let shouldRequestResponse = forceResponse || errorKinds.has(kind);
+    let markMidSpoken = false;
+
+    if (!shouldRequestResponse && kind === 'team_tool_done' && !runCompletedRef.current && !hasSpokenMidRef.current) {
+      shouldRequestResponse = true;
+      markMidSpoken = true;
+    }
+
+    // Allow explicit opt-in via metadata.speak === true
+    if (!shouldRequestResponse && metadata?.speak === true) {
+      shouldRequestResponse = true;
+    }
+
+    // Final summary triggers are handled elsewhere to avoid duplicate response.create
+    if (trigger) {
+      shouldRequestResponse = forceResponse || metadata?.speak === true;
+    }
+
     if (!channel || channel.readyState !== 'open') {
-      void recordEvent('controller', 'voice_forward_pending', { role, text, metadata });
+      void recordEvent('controller', 'voice_forward_pending', { ...diagnostics, requested_response: shouldRequestResponse });
       return;
     }
 
     try {
       channel.send(JSON.stringify({ type: 'conversation.item.create', item }));
-      channel.send(JSON.stringify({ type: 'response.create' }));
-      hasSpokenMidRef.current = true;
-      void recordEvent('controller', 'voice_forward', { role, text, metadata, item });
+      if (shouldRequestResponse) {
+        channel.send(JSON.stringify({ type: 'response.create' }));
+        hasSpokenMidRef.current = true;
+        if (markMidSpoken) {
+          hasSpokenMidRef.current = true;
+        }
+      }
+      void recordEvent('controller', 'voice_forward', { ...diagnostics, item, requested_response: shouldRequestResponse });
     } catch (err) {
       console.error('Failed to forward to voice', err);
       void recordEvent('controller', 'voice_forward_error', {
-        role,
-        text,
-        metadata,
+        ...diagnostics,
         error: err?.message || String(err),
+        requested_response: shouldRequestResponse,
       });
     }
   }, [recordEvent]);
+
+  const notifyVoiceOfError = useCallback((message, metadata = {}) => {
+    const detailText = (message ?? '').toString().trim() || 'An unexpected error occurred.';
+    const formatted = detailText.startsWith('[TEAM ERROR]') ? detailText : `[TEAM ERROR] ${detailText}`;
+    const detailMetadata = { ...metadata };
+    if (!detailMetadata.kind) detailMetadata.kind = 'team_error';
+    forwardToVoice('system', formatted, detailMetadata);
+  }, [forwardToVoice]);
 
   const remoteSessionActive = useMemo(() => {
     let lastStart = null;
@@ -459,13 +552,13 @@ function VoiceAssistant() {
     {
       type: 'function',
       name: 'pause',
-      description: 'Request the controller to pause the current nested conversation (best effort).',
+      description: 'Request the controller to pause the current nested conversation when the user explicitly asks. Automatic calls right after sending a task are ignored.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
     {
       type: 'function',
       name: 'reset',
-      description: 'Reset the nested team conversation state (best effort).',
+      description: 'Reset the nested team conversation state when the user explicitly asks. Automatic calls right after sending a task are ignored.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   ];
@@ -657,7 +750,7 @@ function VoiceAssistant() {
       setSharedNestedWs(ws);
       hasSpokenMidRef.current = false; // reset for new connection
       runCompletedRef.current = false;
-  void recordEvent('controller', 'session_started', { voice, sessionId });
+      void recordEvent('controller', 'session_started', { voice, sessionId });
 
       // Do NOT auto-start a run; wait for explicit user_message or Run action
       ws.onopen = () => {
@@ -668,6 +761,17 @@ function VoiceAssistant() {
           const msg = JSON.parse(event.data);
           void recordEvent('nested', msg.type || 'event', msg);
           const type = (msg.type || '').toLowerCase();
+          if (type === 'error') {
+            const raw = msg.data;
+            const detail = typeof raw === 'string'
+              ? raw
+              : raw?.message || raw?.detail || raw?.error || safeStringify(raw || {});
+            notifyVoiceOfError(detail, { source: raw?.source || 'nested_team' });
+            setError((prev) => prev || `Nested error: ${typeof detail === 'string' ? detail : safeStringify(detail)}`);
+            runCompletedRef.current = true;
+            hasSpokenMidRef.current = false;
+            return;
+          }
           if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
             // Forward nested text with more context about the speaker
             const content = msg.data.content;
@@ -694,15 +798,46 @@ function VoiceAssistant() {
             forwardToVoice('system', text, { source, kind: 'team_tool_start' });
             return;
           }
-          if (type === 'toolcallexecutionevent' && msg.data && dataChannelRef.current) {
-            const result = msg.data.result || 'completed';
+          if (type === 'toolcallexecutionevent' && msg.data) {
             const source = msg.data.source || 'Agent';
-            const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
-            forwardToVoice('system', text, { source, kind: 'team_tool_done' });
+            const toolName = msg.data.name || (Array.isArray(msg.data.content) && msg.data.content[0]?.name) || 'tool';
+            const contentItems = Array.isArray(msg.data.content) ? msg.data.content : [];
+            const hasError = msg.data.is_error === true
+              || msg.data.status === 'error'
+              || msg.data?.result?.is_error === true
+              || contentItems.some((item) => item?.is_error || item?.status === 'error');
+            if (hasError) {
+              const errorDetail = msg.data.error
+                || msg.data.result?.error
+                || contentItems.find((item) => item?.error)?.error
+                || contentItems.find((item) => item?.content)?.content
+                || 'Tool execution failed.';
+              const detailStr = typeof errorDetail === 'string' ? errorDetail : safeStringify(errorDetail);
+              notifyVoiceOfError(`${toolName} reported an error: ${truncateText(detailStr, 220)}`, {
+                source,
+                tool: toolName,
+                kind: 'team_tool_error',
+              });
+              setError((prev) => prev || `Tool error from ${toolName}: ${detailStr}`);
+              runCompletedRef.current = true;
+              hasSpokenMidRef.current = false;
+            } else if (dataChannelRef.current) {
+              const result = msg.data.result || 'completed';
+              const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
+              forwardToVoice('system', text, { source, kind: 'team_tool_done' });
+            }
             return;
           }
           // Detect run completion and trigger final summary (guard against duplicate triggers)
-          if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
+          if (type === 'system' && msg.data && typeof msg.data.message === 'string') {
+            const sysMessage = msg.data.message;
+            if (/error|failed|exception/i.test(sysMessage)) {
+              notifyVoiceOfError(sysMessage, { source: msg.data.source || 'Manager' });
+              setError((prev) => prev || `Nested system error: ${sysMessage}`);
+              runCompletedRef.current = true;
+              hasSpokenMidRef.current = false;
+            }
+            if (sysMessage.includes('Agent run finished')) {
             if (!runCompletedRef.current && dataChannelRef.current) {
               forwardToVoice('system', '[RUN_FINISHED] Team has completed the task. Please provide a summary.', { trigger: 'team_finished' });
               dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
@@ -710,6 +845,7 @@ function VoiceAssistant() {
               runCompletedRef.current = true;
             }
             return;
+          }
           }
           // Treat explicit interruption as a finish signal for narration
           if (type === 'system' && msg.data && typeof msg.data.message === 'string' && /run (interrupted|cancelled|canceled)/i.test(msg.data.message)) {
@@ -725,9 +861,23 @@ function VoiceAssistant() {
           void recordEvent('nested', 'parse_error', { raw: event.data });
         }
       };
-      ws.onerror = () => { void recordEvent('nested', 'error', { message: 'WebSocket error' }); };
-      ws.onclose = () => {
-        void recordEvent('nested', 'system', { message: 'WebSocket closed' });
+      ws.onerror = (errEvent) => {
+        const errorInfo = errEvent?.message || errEvent?.type || 'WebSocket error';
+        void recordEvent('nested', 'error', { message: errorInfo });
+        notifyVoiceOfError('Nested team connection encountered an error and cannot continue until it is reconnected.', { source: 'controller', kind: 'connection_error' });
+        setError((prev) => prev || 'Nested WebSocket encountered an error.');
+        runCompletedRef.current = true;
+        hasSpokenMidRef.current = false;
+      };
+      ws.onclose = (closeEvent) => {
+        void recordEvent('nested', 'system', { message: 'WebSocket closed', code: closeEvent?.code, reason: closeEvent?.reason });
+        if (closeEvent && closeEvent.code !== 1000) {
+          const reason = closeEvent.reason || 'Unexpected disconnection.';
+          notifyVoiceOfError(`Nested connection closed unexpectedly (${closeEvent.code}). ${reason}`, { source: 'controller', kind: 'connection_error', code: closeEvent.code });
+          setError((prev) => prev || `Nested WebSocket closed unexpectedly: ${reason}`);
+          runCompletedRef.current = true;
+          hasSpokenMidRef.current = false;
+        }
         // If the run ended without the explicit finished marker, still prompt a summary
         if (dataChannelRef.current && !runCompletedRef.current) {
           forwardToVoice('system', '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.', { trigger: 'team_socket_closed' });
@@ -743,6 +893,7 @@ function VoiceAssistant() {
         void recordEvent('controller', 'sdp_debug', { detail: (err?.detail || err?.message || '').toString().slice(0, 200) });
       } catch {}
       void recordEvent('controller', 'session_error', { message: err.message || String(err) });
+      notifyVoiceOfError(`Realtime session setup failed: ${err?.message || err}`, { source: 'controller', kind: 'session_error' });
       setError(err.message || String(err));
       setIsRunning(false);
     }
@@ -759,22 +910,36 @@ function VoiceAssistant() {
           runCompletedRef.current = false; // new task; clear completion flag
           nestedWsRef.current.send(JSON.stringify({ type: 'user_message', data: text }));
           void recordEvent('controller', 'tool_exec', { tool: name, args: argsObj });
+          lastVoiceToolCallRef.current = { name, timestamp: Date.now() };
           return { ok: true };
-        } else {
-          throw new Error('Nested WebSocket not connected');
         }
+        throw new Error('Nested WebSocket not connected');
       }
       if (name === 'pause') {
-        // Send cancel command to the nested WebSocket to pause the current run
+        const now = Date.now();
+        const lastCall = lastVoiceToolCallRef.current;
+        if (lastCall?.name === 'send_to_nested' && now - lastCall.timestamp <= TOOL_AUTOPAUSE_WINDOW_MS) {
+          void recordEvent('controller', 'tool_exec', { tool: name, message: 'Ignored automatic pause immediately after send_to_nested.' });
+          lastVoiceToolCallRef.current = { name: 'pause_ignored', timestamp: now };
+          return { ok: true };
+        }
         if (nestedWsRef.current && nestedWsRef.current.readyState === WebSocket.OPEN) {
           nestedWsRef.current.send(JSON.stringify({ type: 'cancel' }));
           void recordEvent('controller', 'tool_exec', { tool: name, message: 'Pause command sent to nested team' });
         } else {
           void recordEvent('controller', 'tool_exec', { tool: name, message: 'No active nested connection to pause' });
         }
+        lastVoiceToolCallRef.current = { name, timestamp: now };
         return { ok: true };
       }
       if (name === 'reset') {
+        const now = Date.now();
+        const lastCall = lastVoiceToolCallRef.current;
+        if (lastCall?.name === 'send_to_nested' && now - lastCall.timestamp <= TOOL_AUTOPAUSE_WINDOW_MS) {
+          void recordEvent('controller', 'tool_exec', { tool: name, message: 'Ignored automatic reset immediately after send_to_nested.' });
+          lastVoiceToolCallRef.current = { name: 'reset_ignored', timestamp: now };
+          return { ok: true };
+        }
         // Best effort: close and reopen WS without auto-running
         try { if (nestedWsRef.current) nestedWsRef.current.close(); } catch {}
         const wsBase = (process.env.REACT_APP_WS_URL || derivedWsBase);
@@ -859,12 +1024,15 @@ function VoiceAssistant() {
           }
         };
         void recordEvent('controller', 'tool_exec', { tool: name });
+        lastVoiceToolCallRef.current = { name, timestamp: now };
         return { ok: true };
       }
       throw new Error(`Unknown tool: ${name}`);
     } catch (e) {
       const message = String(e?.message || e);
       void recordEvent('controller', 'tool_error', { tool: name, error: message });
+      notifyVoiceOfError(`Tool ${name} failed: ${message}`, { source: 'controller', tool: name, kind: 'controller_tool_error' });
+      setError((prev) => prev || `Tool ${name} failed: ${message}`);
       return { ok: false, error: message };
     }
   };
@@ -906,6 +1074,8 @@ function VoiceAssistant() {
         setTranscript('');
       } catch (e) {
         void recordEvent('controller', 'error', { message: `Failed to send to nested: ${e.message}` });
+        notifyVoiceOfError(`Unable to deliver message to nested team: ${e.message || e}`, { source: 'controller', kind: 'controller_error' });
+        setError((prev) => prev || `Failed to send message to nested team: ${e.message || e}`);
       }
     }
   };
@@ -942,7 +1112,7 @@ function VoiceAssistant() {
           Back to conversations
         </Button>
         <audio ref={audioRef} autoPlay />
-  <Button variant="contained" onClick={startSession} disabled={sessionLocked || conversationLoading || Boolean(conversationError)}>Start</Button>
+        <Button variant="contained" onClick={startSession} disabled={sessionLocked || conversationLoading || Boolean(conversationError)}>Start</Button>
         <Button variant="contained" color="error" onClick={stopSession} disabled={!isRunning}>Stop</Button>
       </Box>
 
@@ -960,20 +1130,36 @@ function VoiceAssistant() {
         <Alert severity="error">{error}</Alert>
       )}
 
-      <Box component={Paper} sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+      <Box component={Paper} sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
         <TextField
-          fullWidth
           label="Message"
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
           placeholder="Type a message to send to Voice or Nested"
           multiline
-          minRows={2}
+          minRows={3}
           maxRows={8}
+          sx={{ flexGrow: 1, maxWidth: 'calc(100% - 204px)' }}
         />
-        <Stack direction="column" spacing={1}>
-          <Button variant="contained" color="success" onClick={sendText} disabled={!isRunning || !transcript.trim()}>Send to Voice</Button>
-          <Button variant="contained" color="secondary" onClick={sendToNested} disabled={!isRunning || !transcript.trim() || !nestedWsRef.current}>Send to Nested</Button>
+        <Stack direction="column" spacing={1} sx={{ minWidth: '200px', padding: '2px' }}>
+          <Button 
+            variant="contained" 
+            color="success" 
+            onClick={sendText} 
+            disabled={!isRunning || !transcript.trim()}
+            sx={{ flexGrow: 1 }}
+          >
+            Send to Voice
+          </Button>
+          <Button 
+            variant="contained" 
+            color="secondary" 
+            onClick={sendToNested} 
+            disabled={!isRunning || !transcript.trim() || !nestedWsRef.current}
+            sx={{ flexGrow: 1 }}
+          >
+            Send to Nested
+          </Button>
         </Stack>
       </Box>
       <ConversationHistory
@@ -983,13 +1169,30 @@ function VoiceAssistant() {
         formatTimestamp={formatTimestamp}
       />
 
-      <Box component={Paper} sx={{ p: 2 }}>
-        <Typography variant="subtitle1" sx={{ mb: 1 }}>Nested agent insights</Typography>
-        {nestedHighlights.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No nested activity captured yet.</Typography>
-        ) : (
-          <Stack spacing={1.25}>
-            {nestedHighlights.map((entry) => {
+      <Box
+        component={Paper}
+        sx={{
+          p: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          height: 420,
+        }}
+      >
+        <Typography variant="subtitle1">Nested agent insights</Typography>
+        <Box
+          ref={nestedScrollRef}
+          sx={{
+            mt: 1,
+            flexGrow: 1,
+            overflowY: 'auto',
+            pr: 1,
+          }}
+        >
+          {nestedHighlights.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">No nested activity captured yet.</Typography>
+          ) : (
+            <Stack spacing={1.25}>
+              {nestedHighlights.map((entry) => {
               const chipColor = ['info', 'success', 'warning', 'error'].includes(entry.tone) ? entry.tone : 'default';
               return (
                 <Accordion
@@ -1060,8 +1263,9 @@ function VoiceAssistant() {
                 </Accordion>
               );
             })}
-          </Stack>
-        )}
+            </Stack>
+          )}
+        </Box>
       </Box>
 
       {/* Embedded nested team console, sharing the same WebSocket */}

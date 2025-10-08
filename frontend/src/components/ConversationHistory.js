@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
 	Box,
 	Stack,
@@ -532,40 +532,67 @@ const ConversationHistory = ({
 }) => {
 	const formatter = formatTimestampProp || fallbackFormatTimestamp;
 	const groups = useMemo(() => buildGroupedHistory(messages, formatter), [messages, formatter]);
+	const scrollRef = useRef(null);
+
+	useEffect(() => {
+		const node = scrollRef.current;
+		if (node) {
+			requestAnimationFrame(() => {
+				node.scrollTop = node.scrollHeight;
+			});
+		}
+	}, [groups]);
 
 	return (
-		<Box component={Paper} sx={{ p: 2 }}>
-			<Stack spacing={1.5}>
-				<Stack direction="row" spacing={1} alignItems="center">
-					<Typography variant="subtitle1">Conversation history</Typography>
-					{conversationLoading && <CircularProgress size={18} thickness={5} />}
-					{isRunning && (
-						<Chip size="small" color="success" variant="outlined" label="Live" />
-					)}
-					{Array.isArray(messages) && messages.length > 0 && (
-						<Chip size="small" variant="outlined" label={`${messages.length} event${messages.length === 1 ? '' : 's'}`} />
-					)}
-				</Stack>
-
-				{messages.length === 0 && !conversationLoading && (
-					<Alert severity="info">No events recorded yet. Start a session to populate the history.</Alert>
+		<Box
+			component={Paper}
+			sx={{
+				p: 2,
+				display: 'flex',
+				flexDirection: 'column',
+				height: 420,
+			}}
+		>
+			<Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+				<Typography variant="subtitle1">Conversation history</Typography>
+				{conversationLoading && <CircularProgress size={18} thickness={5} />}
+				{isRunning && (
+					<Chip size="small" color="success" variant="outlined" label="Live" />
 				)}
-
-				{groups.length > 0 ? (
-					<Stack spacing={1.25}>
-						{groups.map((group) => (
-							<ConversationHistoryGroup key={group.key} group={group} formatTimestamp={formatter} />
-						))}
-					</Stack>
-				) : null}
-
-				{conversationLoading && messages.length === 0 && (
-					<Stack spacing={1}>
-						<Typography variant="body2" color="text.secondary">Loading conversation history…</Typography>
-						<CircularProgress size={24} thickness={5} />
-					</Stack>
+				{Array.isArray(messages) && messages.length > 0 && (
+					<Chip size="small" variant="outlined" label={`${messages.length} event${messages.length === 1 ? '' : 's'}`} />
 				)}
 			</Stack>
+
+			<Box
+				ref={scrollRef}
+				sx={{
+					flexGrow: 1,
+					overflowY: 'auto',
+					pr: 1,
+				}}
+			>
+				<Stack spacing={1.25}>
+					{messages.length === 0 && !conversationLoading && (
+						<Alert severity="info">No events recorded yet. Start a session to populate the history.</Alert>
+					)}
+
+					{groups.length > 0 && (
+						<Stack spacing={1.25}>
+							{groups.map((group) => (
+								<ConversationHistoryGroup key={group.key} group={group} formatTimestamp={formatter} />
+							))}
+						</Stack>
+					)}
+
+					{conversationLoading && messages.length === 0 && (
+						<Stack spacing={1}>
+							<Typography variant="body2" color="text.secondary">Loading conversation history…</Typography>
+							<CircularProgress size={24} thickness={5} />
+						</Stack>
+					)}
+				</Stack>
+			</Box>
 		</Box>
 	);
 };
