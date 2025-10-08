@@ -9,7 +9,12 @@ import {
   TextField,
   Chip,
   Alert,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RunConsole from '../components/RunConsole';
 import ConversationHistory from '../components/ConversationHistory';
 import {
@@ -19,6 +24,24 @@ import {
 } from '../api';
 
 const MAX_REPLAY_ITEMS = 50;
+const MAX_NESTED_HIGHLIGHTS = 25;
+
+const truncateText = (value, max = 160) => {
+  if (value == null) return '';
+  const str = typeof value === 'string' ? value.trim() : String(value);
+  if (str.length <= max) return str;
+  return `${str.slice(0, max - 1)}…`;
+};
+
+const safeStringify = (value) => {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (e) {
+    return String(value);
+  }
+};
 
 /**
  * A simple React component that demonstrates how to connect to the
@@ -81,14 +104,109 @@ function VoiceAssistant() {
 
   const nestedHighlights = useMemo(() => {
     if (!messages || messages.length === 0) return [];
-    return messages
-      .filter((msg) => (msg?.source || '').toLowerCase() === 'nested')
-      .filter((msg) => {
-        const type = (msg?.type || '').toLowerCase();
-        return type.includes('textmessage') || type === 'text_message';
-      })
-      .slice(-25);
-  }, [messages]);
+    const entries = [];
+    messages.forEach((msg, index) => {
+      if ((msg?.source || '').toLowerCase() !== 'nested') return;
+
+      const typeRaw = msg?.type || 'event';
+      const typeLower = typeRaw.toLowerCase();
+      const data = msg?.data || {};
+      const nestedData = (typeof data.data === 'object' && data.data !== null) ? data.data : {};
+      const agentName = nestedData.source || data.source || data.agent || 'Nested agent';
+  const role = nestedData.role || nestedData.role_name || data.role;
+  const metadata = [];
+
+      let tone = 'default';
+      let typeLabel = 'Nested event';
+      let descriptiveText = '';
+      let previewText = '';
+
+      switch (typeLower) {
+        case 'textmessage':
+        case 'text_message': {
+          typeLabel = 'Inner thought';
+          tone = 'info';
+          descriptiveText = nestedData.content || nestedData.message || data.message || '';
+          previewText = descriptiveText;
+          if (nestedData.intent) metadata.push({ label: 'Intent', value: nestedData.intent });
+          if (nestedData.channel) metadata.push({ label: 'Channel', value: nestedData.channel });
+          break;
+        }
+        case 'system':
+        case 'systemevent': {
+          typeLabel = 'System notice';
+          descriptiveText = nestedData.message || data.message || '';
+          previewText = descriptiveText;
+          break;
+        }
+        case 'toolcallrequestevent':
+        case 'tool_call_request_event': {
+          typeLabel = 'Tool request';
+          tone = 'warning';
+          const toolName = nestedData.name || data.data?.name || data.name;
+          previewText = toolName ? `Requested ${toolName}` : 'Tool requested';
+          const argPayload = nestedData.arguments ?? nestedData.args ?? nestedData.input ?? data.message;
+          descriptiveText = argPayload != null ? (typeof argPayload === 'string' ? argPayload : safeStringify(argPayload)) : '';
+          if (toolName) metadata.push({ label: 'Tool', value: toolName });
+          if (nestedData.reason) metadata.push({ label: 'Reason', value: truncateText(nestedData.reason, 120) });
+          break;
+        }
+        case 'toolcallexecutionevent':
+        case 'tool_call_execution_event': {
+          typeLabel = 'Tool result';
+          tone = 'success';
+          const toolName = nestedData.name || nestedData.tool || data.data?.name || data.name;
+          const result = nestedData.result ?? data.data?.result ?? data.result;
+          if (toolName) metadata.push({ label: 'Tool', value: toolName });
+          if (nestedData.duration_ms) metadata.push({ label: 'Duration', value: `${nestedData.duration_ms} ms` });
+          const resultText = typeof result === 'string' ? result : safeStringify(result);
+          previewText = toolName ? `Completed ${toolName}` : 'Tool execution';
+          descriptiveText = resultText || descriptiveText;
+          break;
+        }
+        case 'taskresult': {
+          typeLabel = 'Task result';
+          tone = 'success';
+          const status = nestedData.outcome || nestedData.status || data.status;
+          if (status) metadata.push({ label: 'Status', value: status });
+          if (nestedData.score != null) metadata.push({ label: 'Score', value: String(nestedData.score) });
+          const taskPayload = nestedData.message || nestedData.summary || data.message;
+          descriptiveText = taskPayload != null ? (typeof taskPayload === 'string' ? taskPayload : safeStringify(taskPayload)) : safeStringify(nestedData || data);
+          previewText = status ? `${status}: ${truncateText(descriptiveText, 160)}` : descriptiveText;
+          break;
+        }
+        default: {
+          typeLabel = typeRaw;
+          const fallback = nestedData.message || nestedData.content || data.message || data.summary;
+          if (fallback != null) {
+            descriptiveText = typeof fallback === 'string' ? fallback : safeStringify(fallback);
+            previewText = descriptiveText;
+          } else {
+            descriptiveText = '';
+            previewText = 'See raw event details';
+          }
+        }
+      }
+
+      const preview = truncateText(previewText || descriptiveText, 200) || 'No summary available';
+      const detail = descriptiveText && descriptiveText !== preview ? descriptiveText : (descriptiveText || '');
+
+      entries.push({
+        key: msg.id ?? `${msg.timestamp || 'nested'}-${index}`,
+        timestamp: msg.timestamp,
+        timeLabel: formatTimestamp(msg.timestamp),
+        agentName,
+        role,
+        typeLabel,
+        tone,
+        preview,
+        detail,
+        metadata,
+        raw: msg.data ?? msg,
+      });
+    });
+    return entries.slice(-MAX_NESTED_HIGHLIGHTS);
+  }, [messages, formatTimestamp]);
 
   const buildReplayItems = useCallback(() => {
     if (!messages || messages.length === 0) return [];
@@ -866,18 +984,83 @@ function VoiceAssistant() {
       />
 
       <Box component={Paper} sx={{ p: 2 }}>
-        <Typography variant="subtitle1" sx={{ mb: 1 }}>Nested agent outputs</Typography>
+        <Typography variant="subtitle1" sx={{ mb: 1 }}>Nested agent insights</Typography>
         {nestedHighlights.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No nested text messages yet.</Typography>
+          <Typography variant="body2" color="text.secondary">No nested activity captured yet.</Typography>
         ) : (
-          nestedHighlights.slice(-5).map((msg, idx) => (
-            <Box key={msg.id ?? `nested-${idx}`} sx={{ mb: idx === nestedHighlights.length - 1 ? 0 : 1.5 }}>
-              <Typography variant="caption" color="text.secondary">
-                {formatTimestamp(msg.timestamp)} — {msg.data?.data?.source || 'Agent'}
-              </Typography>
-              <Typography variant="body2">{msg.data?.data?.content || JSON.stringify(msg.data)}</Typography>
-            </Box>
-          ))
+          <Stack spacing={1.25}>
+            {nestedHighlights.map((entry) => {
+              const chipColor = ['info', 'success', 'warning', 'error'].includes(entry.tone) ? entry.tone : 'default';
+              return (
+                <Accordion
+                  key={entry.key}
+                  disableGutters
+                  elevation={0}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderLeft: '4px solid',
+                    borderLeftColor: (theme) => (chipColor === 'default' ? theme.palette.divider : theme.palette[chipColor].main),
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
+                    <Stack spacing={0.5} sx={{ width: '100%' }}>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Chip
+                          size="small"
+                          label={entry.typeLabel}
+                          color={chipColor === 'default' ? 'default' : chipColor}
+                          variant={chipColor === 'default' ? 'outlined' : 'filled'}
+                        />
+                        <Chip size="small" label={entry.agentName} variant="outlined" />
+                        {entry.role && (
+                          <Chip size="small" label={entry.role} variant="outlined" />
+                        )}
+                        <Box sx={{ flexGrow: 1 }} />
+                        {entry.timeLabel && (
+                          <Typography variant="caption" color="text.secondary">{entry.timeLabel}</Typography>
+                        )}
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary">{entry.preview}</Typography>
+                    </Stack>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ px: 2, pb: 2 }}>
+                    <Stack spacing={1.25}>
+                      {entry.detail && (
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{entry.detail}</Typography>
+                      )}
+                      {(entry.metadata.length > 0 || entry.role) && (
+                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                          {entry.role && (
+                            <Chip size="small" variant="outlined" label={`Role: ${entry.role}`} />
+                          )}
+                          {entry.metadata.map((meta, metaIdx) => (
+                            <Chip key={`${entry.key}-meta-${metaIdx}`} size="small" variant="outlined" label={`${meta.label}: ${meta.value}`} />
+                          ))}
+                        </Stack>
+                      )}
+                      <Divider />
+                      <Box
+                        component="pre"
+                        sx={{
+                          bgcolor: 'grey.900',
+                          color: 'grey.100',
+                          borderRadius: 1,
+                          p: 1.25,
+                          fontSize: 12,
+                          overflowX: 'auto',
+                          mb: 0,
+                        }}
+                      >
+                        {safeStringify(entry.raw)}
+                      </Box>
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              );
+            })}
+          </Stack>
         )}
       </Box>
 
