@@ -145,7 +145,7 @@ router = APIRouter()
 
 @router.get("/token/openai", response_model=SessionResponse)
 def get_openai_token(
-    model: str = Query(..., description="Name of the realtime model, e.g. gpt-4o-realtime-preview-2025-06-03"),
+    model: str = Query(..., description="Name of the realtime model, e.g. gpt-realtime"),
     voice: Optional[str] = Query("alloy", description="Voice to use (omit or set to 'none' to disable audio)"),
 ) -> Any:
     """Create a realtime session and return the session id and client secret.
