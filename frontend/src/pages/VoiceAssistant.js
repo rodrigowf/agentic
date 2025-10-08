@@ -99,7 +99,7 @@ function VoiceAssistant() {
     try {
       // Request a new realtime session from our backend (mounted under /api/realtime)
       const voice = (process.env.REACT_APP_VOICE || 'alloy');
-      const tokenUrl = `${backendBase}/api/realtime/token/openai?model=gpt-4o-realtime-preview-2025-06-03&voice=${encodeURIComponent(voice)}`;
+      const tokenUrl = `${backendBase}/api/realtime/token/openai?model=gpt-realtime&voice=${encodeURIComponent(voice)}`;
       const tokenResp = await fetch(tokenUrl);
       const tokenBody = await tokenResp.text();
       if (!tokenResp.ok) {
