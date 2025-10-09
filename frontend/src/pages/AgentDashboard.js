@@ -86,6 +86,20 @@ export default function AgentDashboard() {
         overflowY: 'auto',
         borderRight: 1,
         borderColor: 'divider',
+        '&::-webkit-scrollbar': {
+          width: '12px',
+        },
+        '&::-webkit-scrollbar-track': {
+          bgcolor: 'background.paper',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          bgcolor: theme => theme.palette.mode === 'dark' ? '#3a3a3a' : '#c0c0c0',
+          borderRadius: '6px',
+          border: theme => `2px solid ${theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff'}`,
+          '&:hover': {
+            bgcolor: theme => theme.palette.mode === 'dark' ? '#4a4a4a' : '#a0a0a0',
+          },
+        },
       }}>
         <AgentEditor nested/>
       </Box>

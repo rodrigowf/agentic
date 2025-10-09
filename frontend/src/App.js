@@ -49,15 +49,15 @@ const darkPalette = {
     main: '#f48fb1',
   },
   background: {
-    default: '#0a0e27',
-    paper: '#151b3d',
-    subtile: '#1f2847',
+    default: '#0d0d0d',
+    paper: '#1a1a1a',
+    subtile: '#242424',
   },
   text: {
-    primary: '#e8eaf6',
-    secondary: '#9fa4bc',
+    primary: '#e8e8e8',
+    secondary: '#a0a0a0',
   },
-  divider: '#2d3558',
+  divider: '#2d2d2d',
 };
 
 export default function App() {
