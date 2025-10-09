@@ -353,7 +353,7 @@ export default function AgentEditor({nested = false}) {
   });
 
   return (
-    <Box component={Paper} sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box component={nested ? Box : Paper} sx={{ p: { xs: 2, sm: 3 }, ...(nested && { border: 'none' }) }}>
       <Typography variant="h5" gutterBottom mb={4}>
         {isEditMode ? `Edit Agent${nested ? '' : ': '+name}` : 'Create New Agent'}
       </Typography>

@@ -269,7 +269,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
 
   return (
     <Stack spacing={2} sx={{ height: '100%', overflowX: 'hidden' }}>
-      <Box component={Paper} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, overflowX: 'hidden' }}>
+      <Box component={nested ? Box : Paper} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, overflowX: 'hidden', ...(nested && { border: 'none' }) }}>
         <Typography variant="h5">
           Run {!nested ? <Link component={RouterLink} to={`/agents/${name}`} underline="hover">{name}</Link> : ''}
         </Typography>
@@ -297,7 +297,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
         </Box>
       </Box>
 
-      <Box component={Paper} sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'flex-start', flexShrink: 0, overflowX: 'hidden' }}>
+      <Box component={nested ? Box : Paper} sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'flex-start', flexShrink: 0, overflowX: 'hidden', ...(nested && { border: 'none' }) }}>
         <TextField
           fullWidth
           label="Initial Task for Agent"
@@ -324,7 +324,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
 
       {error && <Alert severity="error" sx={{ flexShrink: 0 }}>{error}</Alert>}
 
-      <Paper ref={logContainerRef} sx={{
+      <Box component={nested ? Box : Paper} ref={logContainerRef} sx={{
         flexGrow: 1,
         p: 2,
         overflowY: 'auto',
@@ -332,9 +332,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
         fontFamily: 'inherit',
         fontSize: '0.9rem',
         bgcolor: 'background.default',
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 1,
+        ...(nested ? {} : { border: '1px solid', borderColor: 'divider', borderRadius: 1 }),
       }}>
         {logs.length === 0 && !isConnecting && (
           <Typography sx={{ color: 'text.secondary', fontStyle: 'italic', textAlign: 'center', mt: 2 }}>
@@ -344,7 +342,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
         {logs.map((log, i) => (
           <LogEntry key={i} log={log} />
         ))}
-      </Paper>
+      </Box>
     </Stack>
   );
 }

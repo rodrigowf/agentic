@@ -21,7 +21,7 @@ import ToolEditor from './components/ToolEditor';
 import AgentList from './components/AgentList';
 import AgentEditor from './components/AgentEditor';
 import RunConsole from './components/RunConsole';
-import AgentDashboard from './components/AgentDashboard';
+import AgentDashboard from './pages/AgentDashboard';
 import VoiceConversationsList from './pages/VoiceConversationsList';
 import VoiceAssistant from './pages/VoiceAssistant';
 
@@ -34,11 +34,11 @@ const lightPalette = {
   secondary: {
     main: '#f50057',
   },
-  // background: {
-  //   default: '#f4f6f8',
-  //   paper: '#ffffff',
-  //   subtile: '#e0e0e0',
-  // },
+  background: {
+    default: '#f5f7fa',
+    paper: '#ffffff',
+    subtile: '#e8ecf1',
+  },
 };
 
 const darkPalette = {
@@ -49,15 +49,15 @@ const darkPalette = {
     main: '#f48fb1',
   },
   background: {
-    default: '#121212',
-    paper: '#1e1e1e',
-    subtile: '#2c2c2c',
+    default: '#0a0e27',
+    paper: '#151b3d',
+    subtile: '#1f2847',
   },
   text: {
-    primary: '#ffffff',
-    secondary: '#b0b0b0',
+    primary: '#e8eaf6',
+    secondary: '#9fa4bc',
   },
-  divider: '#373737',
+  divider: '#2d3558',
 };
 
 export default function App() {
@@ -94,8 +94,18 @@ export default function App() {
           },
         },
         shape: {
-          borderRadius: 8,
+          borderRadius: 12,
         },
+        shadows: mode === 'dark'
+          ? [
+              'none',
+              '0px 2px 4px rgba(0,0,0,0.4)',
+              '0px 4px 8px rgba(0,0,0,0.4)',
+              '0px 8px 16px rgba(0,0,0,0.4)',
+              '0px 12px 24px rgba(0,0,0,0.4)',
+              ...Array(20).fill('0px 16px 32px rgba(0,0,0,0.4)')
+            ]
+          : undefined,
         components: {
           MuiAppBar: {
             styleOverrides: {
@@ -113,11 +123,13 @@ export default function App() {
             },
             styleOverrides: {
               root: ({ theme }) => ({
-                transition: 'background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                transition: 'background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
                 backgroundColor: theme.palette.background.paper,
+                backdropFilter: 'blur(10px)',
               }),
               outlined: ({ theme }) => ({
                 borderColor: theme.palette.divider,
+                borderWidth: '1px',
               }),
             },
           },

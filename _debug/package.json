@@ -1,0 +1,9 @@
+{
+  "name": "debug-tools",
+  "version": "1.0.0",
+  "description": "Browser automation and debugging tools",
+  "private": true,
+  "dependencies": {
+    "puppeteer": "^21.0.0"
+  }
+}
