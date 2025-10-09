@@ -16,12 +16,11 @@ import {
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
-import ToolList from './components/ToolList';
-import ToolEditor from './components/ToolEditor';
 import AgentList from './components/AgentList';
 import AgentEditor from './components/AgentEditor';
 import RunConsole from './components/RunConsole';
 import AgentDashboard from './pages/AgentDashboard';
+import ToolsDashboard from './pages/ToolsDashboard';
 import VoiceConversationsList from './pages/VoiceConversationsList';
 import VoiceAssistant from './pages/VoiceAssistant';
 
@@ -382,9 +381,8 @@ export default function App() {
                 <Route path="/agents/:name" element={<AgentDashboard />} />
                 <Route path="/agents/:name/edit" element={<AgentEditor nested={true} />} />
                 <Route path="/runs/:name" element={<RunConsole />} />
-                <Route path="/tools" element={<ToolList />} />
-                <Route path="/tools/new" element={<ToolEditor />} />
-                <Route path="/tools/edit/:filename" element={<ToolEditor />} />
+                <Route path="/tools" element={<ToolsDashboard />} />
+                <Route path="/tools/:filename" element={<ToolsDashboard />} />
                 <Route path="/voice" element={<VoiceConversationsList />} />
                 <Route path="/voice/:conversationId" element={<VoiceAssistant />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

@@ -57,7 +57,7 @@ add_numbers_tool_def = ToolDefinition(
 # You can add more functions and ToolDefinition instances below
 `;
 
-export default function ToolEditor() {
+export default function ToolEditor({ nested = false }) {
   const { filename: routeFilename } = useParams();
   const isEditMode = Boolean(routeFilename);
   const nav = useNavigate();
@@ -153,7 +153,8 @@ export default function ToolEditor() {
         setInitialCode(code); // Update initial code to prevent unsaved changes warning
         // If creating new, navigate to edit mode for the new file
         if (!isEditMode) {
-          setTimeout(() => nav(`/tools/edit/${filename}`, { replace: true }), 1000);
+          const path = nested ? `/tools/${filename}` : `/tools/edit/${filename}`;
+          setTimeout(() => nav(path, { replace: true }), 1000);
         } else {
           // Optional: Add a short delay or keep the success message visible
           setTimeout(() => setSuccess(null), 3000);
@@ -170,7 +171,7 @@ export default function ToolEditor() {
   const hasUnsavedChanges = code !== initialCode;
 
   return (
-    <Box component={Paper} sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box component={nested ? Box : Paper} sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="h5" gutterBottom>
         {isEditMode ? `Edit Tool: ${routeFilename}` : 'Create New Tool'}
       </Typography>
@@ -240,29 +241,42 @@ export default function ToolEditor() {
               language="python"
               value={code}
               onChange={(value) => setCode(value || '')}
-              height="50vh"
+              height={nested ? "calc(100vh - 400px)" : "50vh"}
               options={{ automaticLayout: true }}
             />
           )}
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 1 }}>
-          <Button
-            variant="outlined"
-            component={RouterLink}
-            to="/tools"
-            disabled={saving}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            disabled={loading || saving || !filename || (isEditMode && !hasUnsavedChanges)}
-          >
-            {saving ? <CircularProgress size={24} color="inherit" /> : (isEditMode ? 'Save Changes' : 'Create Tool')}
-          </Button>
-        </Box>
+        {!nested && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 1 }}>
+            <Button
+              variant="outlined"
+              component={RouterLink}
+              to="/tools"
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={loading || saving || !filename || (isEditMode && !hasUnsavedChanges)}
+            >
+              {saving ? <CircularProgress size={24} color="inherit" /> : (isEditMode ? 'Save Changes' : 'Create Tool')}
+            </Button>
+          </Box>
+        )}
+        {nested && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 1, position: 'sticky', bottom: 0, bgcolor: 'background.paper', py: 2, borderTop: 1, borderColor: 'divider', mt: 2 }}>
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={loading || saving || !filename || (isEditMode && !hasUnsavedChanges)}
+            >
+              {saving ? <CircularProgress size={24} color="inherit" /> : (isEditMode ? 'Save Changes' : 'Create Tool')}
+            </Button>
+          </Box>
+        )}
       </Stack>
     </Box>
   );
