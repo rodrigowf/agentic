@@ -106,7 +106,7 @@ export default function AgentDashboard() {
 
       {/* Right Panel - Run Console */}
       <Box sx={{
-        width: '600px',
+        width: '700px',
         height: '100%',
         bgcolor: theme => theme.palette.mode === 'dark'
           ? 'rgba(255, 255, 255, 0.03)'

@@ -176,11 +176,143 @@ export default function App() {
               variant: 'outlined',
               size: 'small',
             },
+            styleOverrides: {
+              root: ({ theme }) => ({
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.05)'
+                    : 'rgba(0, 0, 0, 0.02)',
+                  transition: 'all 0.2s ease-in-out',
+                  '& fieldset': {
+                    borderColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : 'rgba(0, 0, 0, 0.12)',
+                    borderWidth: '1px',
+                  },
+                  '&:hover': {
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.08)'
+                      : 'rgba(0, 0, 0, 0.04)',
+                    '& fieldset': {
+                      borderColor: theme.palette.mode === 'dark'
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : 'rgba(0, 0, 0, 0.23)',
+                    },
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.09)'
+                      : 'rgba(0, 0, 0, 0.05)',
+                    '& fieldset': {
+                      borderColor: theme.palette.primary.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '&.Mui-disabled': {
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.02)'
+                      : 'rgba(0, 0, 0, 0.01)',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: theme.palette.text.secondary,
+                  '&.Mui-focused': {
+                    color: theme.palette.primary.main,
+                  },
+                },
+              }),
+            },
           },
           MuiSelect: {
             defaultProps: {
               variant: 'outlined',
               size: 'small',
+            },
+            styleOverrides: {
+              root: ({ theme }) => ({
+                backgroundColor: theme.palette.mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.05)'
+                  : 'rgba(0, 0, 0, 0.02)',
+                transition: 'all 0.2s ease-in-out',
+                '& fieldset': {
+                  borderColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.1)'
+                    : 'rgba(0, 0, 0, 0.12)',
+                  borderWidth: '1px',
+                },
+                '&:hover': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.08)'
+                    : 'rgba(0, 0, 0, 0.04)',
+                  '& fieldset': {
+                    borderColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : 'rgba(0, 0, 0, 0.23)',
+                  },
+                },
+                '&.Mui-focused': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.09)'
+                    : 'rgba(0, 0, 0, 0.05)',
+                  '& fieldset': {
+                    borderColor: theme.palette.primary.main,
+                    borderWidth: '2px',
+                  },
+                },
+              }),
+            },
+          },
+          MuiOutlinedInput: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                backgroundColor: theme.palette.mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.05)'
+                  : 'rgba(0, 0, 0, 0.02)',
+                transition: 'all 0.2s ease-in-out',
+                '& fieldset': {
+                  borderColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.1)'
+                    : 'rgba(0, 0, 0, 0.12)',
+                  borderWidth: '1px',
+                },
+                '&:hover': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.08)'
+                    : 'rgba(0, 0, 0, 0.04)',
+                  '& fieldset': {
+                    borderColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : 'rgba(0, 0, 0, 0.23)',
+                  },
+                },
+                '&.Mui-focused': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.09)'
+                    : 'rgba(0, 0, 0, 0.05)',
+                  '& fieldset': {
+                    borderColor: theme.palette.primary.main,
+                    borderWidth: '2px',
+                  },
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.02)'
+                    : 'rgba(0, 0, 0, 0.01)',
+                },
+              }),
+              notchedOutline: {
+                transition: 'all 0.2s ease-in-out',
+              },
+            },
+          },
+          MuiInputLabel: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                color: theme.palette.text.secondary,
+                '&.Mui-focused': {
+                  color: theme.palette.primary.main,
+                },
+              }),
             },
           },
         },
@@ -192,6 +324,34 @@ export default function App() {
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <style>
+          {`
+            /* Global scrollbar styling */
+            * {
+              scrollbar-width: thin;
+              scrollbar-color: ${mode === 'dark' ? '#3a3a3a #1a1a1a' : '#c0c0c0 #ffffff'};
+            }
+
+            *::-webkit-scrollbar {
+              width: 12px;
+              height: 12px;
+            }
+
+            *::-webkit-scrollbar-track {
+              background: ${mode === 'dark' ? '#1a1a1a' : '#ffffff'};
+            }
+
+            *::-webkit-scrollbar-thumb {
+              background-color: ${mode === 'dark' ? '#3a3a3a' : '#c0c0c0'};
+              border-radius: 6px;
+              border: 2px solid ${mode === 'dark' ? '#1a1a1a' : '#ffffff'};
+            }
+
+            *::-webkit-scrollbar-thumb:hover {
+              background-color: ${mode === 'dark' ? '#4a4a4a' : '#a0a0a0'};
+            }
+          `}
+        </style>
         <Router>
           <AppBar position="static">
             <Toolbar>
