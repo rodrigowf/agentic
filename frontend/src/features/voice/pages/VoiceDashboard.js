@@ -160,8 +160,10 @@ export default function VoiceDashboard() {
         }}
       >
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6">Voice Chats</Typography>
-          <IconButton size="small" onClick={handleCreate} disabled={isCreating} title="New conversation">
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Voice
+          </Typography>
+          <IconButton size="small" style={{ marginLeft: 'auto' }} onClick={handleCreate} disabled={isCreating} title="New conversation">
             <AddIcon />
           </IconButton>
         </Box>

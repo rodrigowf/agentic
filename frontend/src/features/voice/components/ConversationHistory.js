@@ -213,7 +213,7 @@ const HistoryEventRow = ({ event, formatTimestamp }) => {
 					component="pre"
 					sx={{
 						mt: 1,
-						bgcolor: 'grey.900',
+						bgcolor: 'grey.600',
 						color: 'grey.100',
 						borderRadius: 1,
 						p: 1,
@@ -475,8 +475,26 @@ const ConversationHistoryGroup = ({ group, formatTimestamp }) => {
 		: null;
 
 	return (
-		<Accordion disableGutters elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-			<AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
+		<Accordion
+			disableGutters
+			elevation={0}
+			sx={{
+				border: '1px solid',
+				borderColor: 'divider',
+				borderRadius: 1,
+				backgroundColor: 'rgba(255, 255, 255, 0.02)',
+				'&:before': {
+					display: 'none',
+				},
+			}}
+		>
+			<AccordionSummary
+				expandIcon={<ExpandMoreIcon />}
+				sx={{
+					px: 2,
+					backgroundColor: 'transparent',
+				}}
+			>
 				<Stack spacing={0.75} sx={{ width: '100%' }}>
 					<Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ '& .MuiChip-root': { mr: 0.5, mb: 0.5 } }}>
 						<Chip icon={<Icon fontSize="small" />} size="small" label={group.label} variant="outlined" />
@@ -494,7 +512,13 @@ const ConversationHistoryGroup = ({ group, formatTimestamp }) => {
 					)}
 				</Stack>
 			</AccordionSummary>
-			<AccordionDetails sx={{ px: 2, pb: 2 }}>
+			<AccordionDetails
+				sx={{
+					px: 2,
+					pb: 2,
+					backgroundColor: 'transparent',
+				}}
+			>
 				<Stack spacing={1.5}>
 					{deltaSummary && (
 						<HistoryDeltaGroup entry={deltaSummary} />
@@ -545,7 +569,6 @@ const ConversationHistory = ({
 
 	return (
 		<Box
-			component={Paper}
 			sx={{
 				p: 2,
 				display: 'flex',
@@ -569,9 +592,22 @@ const ConversationHistory = ({
 					flexGrow: 1,
 					overflowY: 'auto',
 					pr: 1,
+					'&::-webkit-scrollbar': {
+						width: '8px',
+					},
+					'&::-webkit-scrollbar-track': {
+						backgroundColor: 'transparent',
+					},
+					'&::-webkit-scrollbar-thumb': {
+						backgroundColor: 'rgba(255, 255, 255, 0.1)',
+						borderRadius: '4px',
+						'&:hover': {
+							backgroundColor: 'rgba(255, 255, 255, 0.15)',
+						},
+					},
 				}}
 			>
-				<Stack spacing={1.25}>
+				<Stack spacing={0.6}>
 					{messages.length === 0 && !conversationLoading && (
 						<Alert severity="info">No events recorded yet. Start a session to populate the history.</Alert>
 					)}

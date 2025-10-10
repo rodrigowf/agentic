@@ -1209,13 +1209,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           }}
         >
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Box sx={{ px: 2, pt: 2 }}>
-              <Typography variant="h6">Team & Code Activity</Typography>
-              <Typography variant="caption" color="text.secondary">
-                Internal agent conversations and self-editing actions
-              </Typography>
-            </Box>
-            <Tabs value={nestedViewTab} onChange={(_, newValue) => setNestedViewTab(newValue)} sx={{ px: 2 }}>
+            <Tabs value={nestedViewTab} onChange={(_, newValue) => setNestedViewTab(newValue)} sx={{ px: 2, pt: 2 }}>
               <Tab label="Team Insights" />
               <Tab label="Team Console" />
               <Tab label="Claude Code" />
@@ -1285,10 +1279,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           }}
         >
           {/* Header with controls */}
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
-            <Typography variant="h6" noWrap sx={{ mb: 2 }}>
-              {conversationTitle}
-            </Typography>
+          <Box sx={{ pt: 2, pb: 1, px: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
             <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
 
             {/* Modern Voice Session Controls */}
@@ -1372,7 +1363,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           </Box>
 
           {/* Conversation History */}
-          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 2 }}>
+          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 0 }}>
             <Box sx={{ flexGrow: 1, overflowY: 'auto', height: "100%"  }}>
               <ConversationHistory
                 messages={messages}

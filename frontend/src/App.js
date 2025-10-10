@@ -352,8 +352,8 @@ export default function App() {
         <Router>
           <AppBar position="static">
             <Toolbar>
-              <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
-                AutoGen Dashboard
+              <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit', pt: 1 }}>
+                Agentic
               </Typography>
               <Button color="inherit" component={RouterLink} to="/">Agents</Button>
               <Button color="inherit" component={RouterLink} to="/tools">Tools</Button>

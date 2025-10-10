@@ -1,0 +1,7 @@
+- clarification on the system prompt, specially on claude usage
+  - it should be aware of using it for self editing
+
+- fix claude permission issue;
+  - debug/db_exports/Permission_Error.json illustrates it
+
+- 
