@@ -5,19 +5,21 @@ from dotenv import load_dotenv
 import os
 import re
 import inspect  # Added inspect
+import asyncio  # Added asyncio
 import google.generativeai as genai
 from openai import OpenAI
 # Updated imports: Use ToolInfo for API, FunctionTool internally
-from schemas import AgentConfig, ToolInfo, GenerateToolRequest
+from config.schemas import AgentConfig, ToolInfo, GenerateToolRequest
 # Updated imports: load_tools now returns List[Tuple[FunctionTool, str]]
 # Add get_tool_infos helper
-from config_loader import load_tools, load_agents, save_agent, save_tool, get_tool_infos, _get_tool_schema
-from runner import run_agent_ws
+from config.config_loader import load_tools, load_agents, save_agent, save_tool, get_tool_infos, _get_tool_schema
+from core.runner import run_agent_ws
 from autogen_core.tools import FunctionTool  # Import FunctionTool
 import logging  # Add logging import
 from starlette.websockets import WebSocketState, WebSocketDisconnect  # Import WebSocketState and WebSocketDisconnect
 from datetime import datetime  # Import datetime
 import anthropic  # Import Anthropic client
+from api.claude_code_controller import ClaudeCodeSession  # Import Claude Code controller
 
 load_dotenv()
 
@@ -44,11 +46,11 @@ app.add_middleware(
 # Mount realtime voice router under /api/realtime
 try:
     # Prefer relative import when running as package (uvicorn backend.main:app)
-    from .realtime_voice import router as realtime_router  # type: ignore
+    from .api.realtime_voice import router as realtime_router  # type: ignore
 except Exception:
     try:
         # Fallback to absolute if executed differently
-        from realtime_voice import router as realtime_router  # type: ignore
+        from api.realtime_voice import router as realtime_router  # type: ignore
     except Exception as e:
         realtime_router = None
         logger.warning(f"Failed to import realtime voice router: {e}")
@@ -316,6 +318,113 @@ async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: d
             logger.error(f"Failed to send event '{event_type}' via WebSocket: {e}")
     else:
         logger.warning(f"Attempted to send event '{event_type}' but WebSocket was not connected.")
+
+@app.websocket("/api/runs/ClaudeCode")
+async def run_claude_code_ws(websocket: WebSocket):
+    """WebSocket endpoint for Claude Code self-editor."""
+    await websocket.accept()
+    logger.info("Claude Code WebSocket connection accepted")
+
+    session: ClaudeCodeSession | None = None
+
+    try:
+        # Initialize Claude Code session
+        working_dir = os.path.abspath(os.path.dirname(__file__) + "/..")  # Project root
+        session = ClaudeCodeSession(
+            working_dir=working_dir,
+            model="claude-sonnet-4-5-20250929",
+            permission_mode="default",
+        )
+        await session.start()
+
+        # Send initial connection event
+        await send_event_to_websocket(websocket, "system", {
+            "message": "Claude Code session initialized",
+            "working_dir": working_dir,
+        })
+
+        # Background task for streaming Claude Code events
+        async def stream_claude_events():
+            try:
+                async for event in session.stream_events():
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        await websocket.send_json(event)
+                    else:
+                        break
+            except Exception as e:
+                logger.error(f"Error streaming Claude Code events: {e}")
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    await send_event_to_websocket(websocket, "error", {
+                        "message": f"Claude Code stream error: {str(e)}"
+                    })
+
+        stream_task = asyncio.create_task(stream_claude_events())
+
+        # Listen for commands from the client
+        while websocket.client_state == WebSocketState.CONNECTED:
+            try:
+                cmd = await websocket.receive_json()
+                cmd_type = (cmd.get("type") or "").lower()
+
+                if cmd_type == "user_message":
+                    message = (cmd.get("data") or "").strip()
+                    if message:
+                        await session.send_message(message)
+                        await send_event_to_websocket(websocket, "system", {
+                            "message": f"Sent message to Claude Code: {message[:100]}..."
+                        })
+                    else:
+                        await send_event_to_websocket(websocket, "system", {
+                            "message": "Ignored empty user_message."
+                        })
+
+                elif cmd_type == "cancel":
+                    await session.cancel()
+                    await send_event_to_websocket(websocket, "system", {
+                        "message": "Cancellation signal sent to Claude Code"
+                    })
+
+                else:
+                    await send_event_to_websocket(websocket, "error", {
+                        "message": f"Unknown command type: {cmd_type}"
+                    })
+
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                logger.error(f"Error processing Claude Code command: {e}")
+                await send_event_to_websocket(websocket, "error", {
+                    "message": f"Error: {str(e)}"
+                })
+
+        # Wait for stream task to complete
+        if not stream_task.done():
+            stream_task.cancel()
+            try:
+                await stream_task
+            except asyncio.CancelledError:
+                pass
+
+    except WebSocketDisconnect:
+        logger.info("Claude Code WebSocket disconnected by client")
+    except Exception as e:
+        logger.exception(f"Error in Claude Code WebSocket handler: {e}")
+        try:
+            if websocket.client_state == WebSocketState.CONNECTED:
+                await send_event_to_websocket(websocket, "error", {
+                    "message": f"Claude Code session error: {str(e)}"
+                })
+        except Exception:
+            pass
+    finally:
+        if session:
+            await session.stop()
+        logger.info("Claude Code WebSocket connection closing")
+        try:
+            if websocket.client_state != WebSocketState.DISCONNECTED:
+                await websocket.close()
+        except Exception as e:
+            logger.warning(f"Error closing Claude Code WebSocket: {e}")
 
 @app.websocket("/api/runs/{agent_name}")
 async def run_ws(websocket: WebSocket, agent_name: str = Path(...)):

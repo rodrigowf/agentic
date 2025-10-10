@@ -1,0 +1,5121 @@
+voice
+10/7/2025, 11:36:36 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKaPRpZEL10O0euFjXk",
+  "previous_item_id": null,
+  "item": {
+    "id": "item_COEKZu5MV3faCKwsdn7iF",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:36:36 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COEKarODoJrJ8AYUTBcqE",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEKaalnrDqWe5acyyjW1",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:36:36 PM · response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_COEKaa6ALobUI8OYaJ1Mx",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "output_index": 0,
+  "item": {
+    "id": "item_COEKaTI1LC7MoBKRemuSL",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:36:36 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKasDtL0tw74Vjxz2l9",
+  "previous_item_id": "item_COEKZu5MV3faCKwsdn7iF",
+  "item": {
+    "id": "item_COEKaTI1LC7MoBKRemuSL",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:36:36 PM · response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_COEKamWDFKsJNJi8fW3VW",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+voice
+10/7/2025, 11:36:36 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKa6LWoGe2RiplsfLH2",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "Hi",
+  "obfuscation": "vrObrQjhrmyqzj"
+}
+voice
+10/7/2025, 11:36:36 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKahhEKSFkp8cwMFmXf",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " there",
+  "obfuscation": "pEXkfHEGQx"
+}
+voice
+10/7/2025, 11:36:36 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKaeZcPjrlIa89LGTLM",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "!",
+  "obfuscation": "hP7SPQLBYhpGYYy"
+}
+voice
+10/7/2025, 11:36:36 PM · output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_c5853cf52d8b4d25",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKaVpyjsaBU0CxpC1Cn",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " What",
+  "obfuscation": "smGr5jsJz3w"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKa924xs9bGon3GoklS",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " can",
+  "obfuscation": "aokbKUYZ4Q3M"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKafpXQSosNaHI5Jt2R",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " I",
+  "obfuscation": "OueTxpZAzoCAlb"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKaZGgUYZby24598AaK",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " do",
+  "obfuscation": "Ep939bSh1B3cQ"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKaj7HM9p2QRwVoV6Al",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " for",
+  "obfuscation": "WhONz21jhr9w"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKbTyPCCTCbacc67A3x",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " you",
+  "obfuscation": "BoX4Go4DUuYH"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKbEATBOUqwstim2oCz",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " today",
+  "obfuscation": "CPscfZNP5L"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKbzo7mgBLudxYfPFHe",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "?",
+  "obfuscation": "yutiMLvobQzv41h"
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_COEKbCgyIHwNT3xDf8cZB",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0
+}
+voice
+10/7/2025, 11:36:37 PM · response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_COEKbSsscmTENB5sPJko4",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "Hi there! What can I do for you today?"
+}
+voice
+10/7/2025, 11:36:37 PM · response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_COEKbeFajYPB3ShzroSYY",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "Hi there! What can I do for you today?"
+  }
+}
+voice
+10/7/2025, 11:36:37 PM · response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_COEKbVdbQ9QYepjnLOLOS",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1",
+  "output_index": 0,
+  "item": {
+    "id": "item_COEKaTI1LC7MoBKRemuSL",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "Hi there! What can I do for you today?"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:36:37 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COEKbpqGoh3sJz3sJhP8C",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEKaalnrDqWe5acyyjW1",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_COEKaTI1LC7MoBKRemuSL",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "Hi there! What can I do for you today?"
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 593,
+      "input_tokens": 517,
+      "output_tokens": 76,
+      "input_token_details": {
+        "text_tokens": 507,
+        "audio_tokens": 10,
+        "image_tokens": 0,
+        "cached_tokens": 0,
+        "cached_tokens_details": {
+          "text_tokens": 0,
+          "audio_tokens": 0,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 21,
+        "audio_tokens": 55
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:36:37 PM · rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_COEKbvLqGLLVKqHr05cjp",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799362,
+      "reset_seconds": 0.047
+    }
+  ]
+}
+voice
+10/7/2025, 11:36:39 PM · output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_147ae3f6d92b4146",
+  "response_id": "resp_COEKaalnrDqWe5acyyjW1"
+}
+voice
+10/7/2025, 11:36:41 PM · input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_COEKeYPfiDivTEK4ZB0r8",
+  "audio_start_ms": 9300,
+  "item_id": "item_COEKeaxINoj8OecOXe4u3"
+}
+voice
+10/7/2025, 11:36:41 PM · input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_COEKf656rcACfNERU1iHQ",
+  "audio_end_ms": 10048,
+  "item_id": "item_COEKeaxINoj8OecOXe4u3"
+}
+voice
+10/7/2025, 11:36:41 PM · input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_COEKfO9SFgvc2NYTHnyL0",
+  "previous_item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "item_id": "item_COEKeaxINoj8OecOXe4u3"
+}
+voice
+10/7/2025, 11:36:41 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKf8roDAHAXnVNl1vkK",
+  "previous_item_id": "item_COEKaTI1LC7MoBKRemuSL",
+  "item": {
+    "id": "item_COEKeaxINoj8OecOXe4u3",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:36:41 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COEKf3LPQqv3hPhLUGmNG",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEKfIU1T8uFkRpWIUq78",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:36:41 PM · input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_COEKfXRiyQeEU5WvCLGhZ",
+  "audio_start_ms": 9972,
+  "item_id": "item_COEKfGNtRvIJfd4AmcAOt"
+}
+voice
+10/7/2025, 11:36:41 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COEKfFizjX2YQ9IP5rAVd",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEKfIU1T8uFkRpWIUq78",
+    "status": "cancelled",
+    "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+    },
+    "output": [],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "input_token_details": {
+        "text_tokens": 0,
+        "audio_tokens": 0,
+        "image_tokens": 0,
+        "cached_tokens": 0,
+        "cached_tokens_details": {
+          "text_tokens": 0,
+          "audio_tokens": 0,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:36:45 PM · input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_COEKjlQ8RrToUiJl9gwF8",
+  "audio_end_ms": 14208,
+  "item_id": "item_COEKfGNtRvIJfd4AmcAOt"
+}
+voice
+10/7/2025, 11:36:45 PM · input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_COEKjDZlLoNZ44H3dkeCe",
+  "previous_item_id": "item_COEKeaxINoj8OecOXe4u3",
+  "item_id": "item_COEKfGNtRvIJfd4AmcAOt"
+}
+voice
+10/7/2025, 11:36:45 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKjeZKzTq4CwdMndUDR",
+  "previous_item_id": "item_COEKeaxINoj8OecOXe4u3",
+  "item": {
+    "id": "item_COEKfGNtRvIJfd4AmcAOt",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:36:45 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COEKjLW0aOb6paN1ZDOBK",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEKjPqzoFFvW5pIcGpTT",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:36:46 PM · response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_COEKjWM3dRIJIWI0wkvKE",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "output_index": 0,
+  "item": {
+    "id": "item_COEKjwA9xmpDcbyHNEtQE",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "in_progress",
+    "name": "send_to_nested",
+    "call_id": "call_N97LaS1ApoPqzuxu",
+    "arguments": ""
+  }
+}
+voice
+10/7/2025, 11:36:46 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKjuxPJSiLSpeZDA1cf",
+  "previous_item_id": "item_COEKfGNtRvIJfd4AmcAOt",
+  "item": {
+    "id": "item_COEKjwA9xmpDcbyHNEtQE",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "in_progress",
+    "name": "send_to_nested",
+    "call_id": "call_N97LaS1ApoPqzuxu",
+    "arguments": ""
+  }
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKjlFKQ9WZIO883z4IH",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": "{",
+  "obfuscation": "UQPWkZMNMqvRenF"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKjhYFh9IXKbdzHbLzw",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": "  \n",
+  "obfuscation": "Mi6xdTXGxFjO8"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKj8OCXD0Mt6vjpSszr",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " \"",
+  "obfuscation": "PSP5ecekHt0H1U"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKjClmQ6J2e6HNLXdjz",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " ",
+  "obfuscation": "wUcMREDyokHZ5kQ"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKjQNpjiKf4qNASICgc",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": "\":",
+  "obfuscation": "9DZVTPBm2Vdm7S"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKjfiIZpcObASTvJ3w0",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": "text",
+  "obfuscation": "gVj4Vln4aUmJ"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKjiiuH046MnYg7nP9H",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " \"",
+  "obfuscation": "SbUtxlj8kgBvhr"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkX1msXwesLvrnm5UW",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": "Check",
+  "obfuscation": "EZo9Gt2kCTV"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkLP34S4rVDdYevgGY",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " the",
+  "obfuscation": "0xzljzK3YCnD"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkTPjYTosNpsd8TR7Y",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " current",
+  "obfuscation": "8MKv8Jtj"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkr3LKmNDFAX791JWR",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " weather",
+  "obfuscation": "06hqOgfL"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkJ1DH4ngwKTjp9VH2",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " in",
+  "obfuscation": "rRFM3Ea5KmNZl"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkNzRhXikijk6v22tj",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " Rio",
+  "obfuscation": "22iEDQUGv9Mw"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkFC39hYhliZ26tTwo",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " de",
+  "obfuscation": "ndujZP6tUhzjn"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKk3akdvdjSVlR4YZMA",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " Janeiro",
+  "obfuscation": "k52DRL3F"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkhqdBDza3FO07V2bg",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " right",
+  "obfuscation": "s06OvhhjZt"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkF09XYbC7sPwPIaDd",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " now",
+  "obfuscation": "6gUFj6e0dMww"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkSSHbrXiacpIh42hi",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": ".\"",
+  "obfuscation": "NtHu2MS6jMtixh"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkCO7WDuG8381IYOvf",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": " \n",
+  "obfuscation": "DFqNS4Mz2YZgtV"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKkwlYCnWxcn8ALz1Wy",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": "}",
+  "obfuscation": "ucqlq1UpVxaW71c"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.delta
+{
+  "type": "response.function_call_arguments.delta",
+  "event_id": "event_COEKk1HTxvqhPoLLxAkmN",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "delta": "  \n",
+  "obfuscation": "9Vlh0Wh4Dd1s3"
+}
+voice
+10/7/2025, 11:36:46 PM · response.function_call_arguments.done
+{
+  "type": "response.function_call_arguments.done",
+  "event_id": "event_COEKkryk0SxpMySZj0LWp",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "output_index": 0,
+  "call_id": "call_N97LaS1ApoPqzuxu",
+  "name": "send_to_nested",
+  "arguments": "{  \n  \"text\": \"Check the current weather in Rio de Janeiro right now.\" \n}  \n"
+}
+controller
+10/7/2025, 11:36:46 PM · tool_exec
+{
+  "tool": "send_to_nested",
+  "args": {
+    "text": "Check the current weather in Rio de Janeiro right now."
+  }
+}
+voice
+10/7/2025, 11:36:46 PM · response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_COEKk4yRPMYBNJpLaBNM7",
+  "response_id": "resp_COEKjPqzoFFvW5pIcGpTT",
+  "output_index": 0,
+  "item": {
+    "id": "item_COEKjwA9xmpDcbyHNEtQE",
+    "object": "realtime.item",
+    "type": "function_call",
+    "status": "completed",
+    "name": "send_to_nested",
+    "call_id": "call_N97LaS1ApoPqzuxu",
+    "arguments": "{  \n  \"text\": \"Check the current weather in Rio de Janeiro right now.\" \n}  \n"
+  }
+}
+voice
+10/7/2025, 11:36:46 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COEKkaWxssRF6HsxKmQWW",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEKjPqzoFFvW5pIcGpTT",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_COEKjwA9xmpDcbyHNEtQE",
+        "object": "realtime.item",
+        "type": "function_call",
+        "status": "completed",
+        "name": "send_to_nested",
+        "call_id": "call_N97LaS1ApoPqzuxu",
+        "arguments": "{  \n  \"text\": \"Check the current weather in Rio de Janeiro right now.\" \n}  \n"
+      }
+    ],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 692,
+      "input_tokens": 660,
+      "output_tokens": 32,
+      "input_token_details": {
+        "text_tokens": 546,
+        "audio_tokens": 114,
+        "image_tokens": 0,
+        "cached_tokens": 576,
+        "cached_tokens_details": {
+          "text_tokens": 512,
+          "audio_tokens": 64,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 32,
+        "audio_tokens": 0
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:36:46 PM · rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_COEKkWzVrkZkRpxwUYVOk",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799406,
+      "reset_seconds": 0.044
+    }
+  ]
+}
+nested
+10/7/2025, 11:36:46 PM · system
+{
+  "type": "system",
+  "data": {
+    "message": "Initiating agent run with task: Check the current weather in Rio de Janeiro right now...."
+  },
+  "timestamp": "2025-10-08T02:36:46.311257+00:00"
+}
+nested
+10/7/2025, 11:36:46 PM · textmessage
+{
+  "type": "textmessage",
+  "data": {
+    "id": "b25219f1-d38c-49e4-8f3a-c56d4b902a7d",
+    "source": "user",
+    "models_usage": null,
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:46.311618+00:00",
+    "content": "Check the current weather in Rio de Janeiro right now.",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-10-08T02:36:46.311700+00:00"
+}
+controller
+10/7/2025, 11:36:46 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM user] Check the current weather in Rio de Janeiro right now.",
+  "metadata": {
+    "source": "user",
+    "kind": "team_text"
+  }
+}
+nested
+10/7/2025, 11:36:46 PM · textmessage
+{
+  "type": "textmessage",
+  "data": {
+    "id": "b25219f1-d38c-49e4-8f3a-c56d4b902a7d",
+    "source": "user",
+    "models_usage": null,
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:46.311618+00:00",
+    "content": "Check the current weather in Rio de Janeiro right now.",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-10-08T02:36:46.560240+00:00"
+}
+controller
+10/7/2025, 11:36:46 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM user] Check the current weather in Rio de Janeiro right now.",
+  "metadata": {
+    "source": "user",
+    "kind": "team_text"
+  }
+}
+voice
+10/7/2025, 11:36:46 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKk6iqaoEG1fcUpdC5K",
+  "previous_item_id": "item_COEKjwA9xmpDcbyHNEtQE",
+  "item": {
+    "id": "item_COEKk4H80RuPGRkIwO8Kp",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM user] Check the current weather in Rio de Janeiro right now."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:36:46 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKkAuc54FjObQKM4ro2",
+  "previous_item_id": "item_COEKk4H80RuPGRkIwO8Kp",
+  "item": {
+    "id": "item_COEKku6XCXZiKXjGgNBiU",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM user] Check the current weather in Rio de Janeiro right now."
+      }
+    ]
+  }
+}
+nested
+10/7/2025, 11:36:47 PM · textmessage
+{
+  "type": "textmessage",
+  "data": {
+    "id": "b7c3fcf1-986d-4b4c-82d7-37f2e0c0ed89",
+    "source": "Manager",
+    "models_usage": {
+      "prompt_tokens": 235,
+      "completion_tokens": 17
+    },
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:47.904104+00:00",
+    "content": "TASK: Find the current weather in Rio de Janeiro.\nNEXT AGENT: Researcher",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-10-08T02:36:47.906598+00:00"
+}
+controller
+10/7/2025, 11:36:47 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM Manager] TASK: Find the current weather in Rio de Janeiro.\nNEXT AGENT: Researcher",
+  "metadata": {
+    "source": "Manager",
+    "kind": "team_text"
+  }
+}
+voice
+10/7/2025, 11:36:48 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKl8qkvDItgOruHjcyw",
+  "previous_item_id": "item_COEKku6XCXZiKXjGgNBiU",
+  "item": {
+    "id": "item_COEKlmRj1buRchQbN9e2h",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Manager] TASK: Find the current weather in Rio de Janeiro.\nNEXT AGENT: Researcher"
+      }
+    ]
+  }
+}
+nested
+10/7/2025, 11:36:49 PM · toolcallrequestevent
+{
+  "type": "toolcallrequestevent",
+  "data": {
+    "id": "f5e692da-142a-4b59-9aa6-eaf3efa63e0d",
+    "source": "Researcher",
+    "models_usage": {
+      "prompt_tokens": 673,
+      "completion_tokens": 18
+    },
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:49.867352+00:00",
+    "content": [
+      {
+        "id": "call_FFIBJ9U2ld9iW8MmYv33n54F",
+        "arguments": "{\"query\":\"current weather Rio de Janeiro\"}",
+        "name": "web_search"
+      }
+    ],
+    "type": "ToolCallRequestEvent"
+  },
+  "timestamp": "2025-10-08T02:36:49.872696+00:00"
+}
+controller
+10/7/2025, 11:36:49 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM Researcher] Using tool: unknown_tool",
+  "metadata": {
+    "source": "Researcher",
+    "kind": "team_tool_start"
+  }
+}
+voice
+10/7/2025, 11:36:50 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKnZpmsHgyBfOr4XmJr",
+  "previous_item_id": "item_COEKlmRj1buRchQbN9e2h",
+  "item": {
+    "id": "item_COEKnXAXEYS5dhhMIuFlj",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] Using tool: unknown_tool"
+      }
+    ]
+  }
+}
+nested
+10/7/2025, 11:36:50 PM · toolcallexecutionevent
+{
+  "type": "toolcallexecutionevent",
+  "data": {
+    "id": "7786ee35-cba5-4f95-bc44-15e06dacb9e6",
+    "source": "Researcher",
+    "models_usage": null,
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:50.688192+00:00",
+    "content": [
+      {
+        "content": "Web Search Results (Google CSE) for 'current weather Rio de Janeiro' (Found 5):\n---\n1. Title: Rio de Janeiro, Rio De Janeiro, Brazil Weather Forecast ...\n   Snippet: Rio de Janeiro, Rio De Janeiro, Brazil Weather Forecast, with current conditions, wind, air quality, and what to expect for the next 3 days.\n   URL: https://www.accuweather.com/en/br/rio-de-janeiro/45449/weather-forecast/45449\n---\n2. Title: 10-Day Weather Forecast for Jacarepaguá, Rio de Janeiro, Rio de ...\n   Snippet: Be prepared with the most accurate 10-day forecast for Jacarepaguá, Rio de Janeiro, Rio de Janeiro, Brazil with highs, lows, chance of precipitation from ...\n   URL: https://weather.com/weather/tenday/l/Jacarepagu%C3%A1+Rio+de+Janeiro+Rio+de+Janeiro+Brazil?canonicalCityId=9788cc753c1835e0863fbe5fa03c3db3\n---\n3. Title: Weather - Rio de Janeiro\n   Snippet: Current weather in Rio de Janeiro and forecast for today, tomorrow, and next 14 days.\n   URL: https://www.timeanddate.com/weather/brazil/rio-de-janeiro\n---\n4. Title: Hourly Weather Forecast for Rio de Janeiro, Rio de Janeiro, Brazil\n   Snippet: Rio de Janeiro, Rio de Janeiro, Brazil Weather · Hourly Weather-Rio de Janeiro, Rio de Janeiro, Brazil. As of 11:35 pm GMT- ...\n   URL: https://weather.com/weather/hourbyhour/l/632c8273f5780465f4ef76feedd03a86dd5019a79a49165387428e1b8083caae\n---\n5. Title: Rio de Janeiro 14 Day Extended Forecast - Weather\n   Snippet: Night Sky · TodayHourly14 DaysPastClimate. Currently: 81 °F. Sunny. (Weather station: Rio De Janeiro Airport, Brazil). See more current weather. ×. Advertising ...\n   URL: https://www.timeanddate.com/weather/brazil/rio-de-janeiro/ext",
+        "name": "web_search",
+        "call_id": "call_FFIBJ9U2ld9iW8MmYv33n54F",
+        "is_error": false
+      }
+    ],
+    "type": "ToolCallExecutionEvent"
+  },
+  "timestamp": "2025-10-08T02:36:50.697090+00:00"
+}
+controller
+10/7/2025, 11:36:50 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM Researcher] Tool completed: completed",
+  "metadata": {
+    "source": "Researcher",
+    "kind": "team_tool_done"
+  }
+}
+voice
+10/7/2025, 11:36:50 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKooeoawyfSqb31DYVh",
+  "previous_item_id": "item_COEKnXAXEYS5dhhMIuFlj",
+  "item": {
+    "id": "item_COEKorf4tC4tTN7V1iqxu",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] Tool completed: completed"
+      }
+    ]
+  }
+}
+nested
+10/7/2025, 11:36:51 PM · textmessage
+{
+  "type": "textmessage",
+  "data": {
+    "id": "d85c1ad8-15eb-400b-96b7-2cca3b00bc98",
+    "source": "Researcher",
+    "models_usage": {
+      "prompt_tokens": 777,
+      "completion_tokens": 9
+    },
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:51.683116+00:00",
+    "content": "Checking the current weather in Rio de Janeiro.",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-10-08T02:36:51.687584+00:00"
+}
+controller
+10/7/2025, 11:36:51 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM Researcher] Checking the current weather in Rio de Janeiro.",
+  "metadata": {
+    "source": "Researcher",
+    "kind": "team_text"
+  }
+}
+voice
+10/7/2025, 11:36:51 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKprjo2GShRwB1saczU",
+  "previous_item_id": "item_COEKorf4tC4tTN7V1iqxu",
+  "item": {
+    "id": "item_COEKpYhcbIw9cyw8aJ6SN",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] Checking the current weather in Rio de Janeiro."
+      }
+    ]
+  }
+}
+nested
+10/7/2025, 11:36:56 PM · toolcallrequestevent
+{
+  "type": "toolcallrequestevent",
+  "data": {
+    "id": "5e516144-f8ea-481b-9e9b-5357e3b8fb1d",
+    "source": "Researcher",
+    "models_usage": {
+      "prompt_tokens": 1185,
+      "completion_tokens": 39
+    },
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:56.032374+00:00",
+    "content": [
+      {
+        "id": "call_W1o1gcsm5irlbIWN24j5PiAS",
+        "arguments": "{\"url\":\"https://www.accuweather.com/en/br/rio-de-janeiro/45449/weather-forecast/45449\"}",
+        "name": "fetch_web_content"
+      }
+    ],
+    "type": "ToolCallRequestEvent"
+  },
+  "timestamp": "2025-10-08T02:36:56.036110+00:00"
+}
+controller
+10/7/2025, 11:36:56 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM Researcher] Using tool: unknown_tool",
+  "metadata": {
+    "source": "Researcher",
+    "kind": "team_tool_start"
+  }
+}
+voice
+10/7/2025, 11:36:56 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKu7oC5jxryZLfxmjYU",
+  "previous_item_id": "item_COEKpYhcbIw9cyw8aJ6SN",
+  "item": {
+    "id": "item_COEKuG7lq3UDXJAqIUsfd",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] Using tool: unknown_tool"
+      }
+    ]
+  }
+}
+nested
+10/7/2025, 11:36:56 PM · toolcallexecutionevent
+{
+  "type": "toolcallexecutionevent",
+  "data": {
+    "id": "f9718a29-54cd-4b6e-b9be-6dedec68a04d",
+    "source": "Researcher",
+    "models_usage": null,
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:56.604298+00:00",
+    "content": [
+      {
+        "content": "Rio de Janeiro, Rio De Janeiro, Brazil Weather Forecast | AccuWeather Go Back For Business | Warnings Data Suite Forensics Advertising Superior Accuracy™ Rio de Janeiro, Rio De Janeiro 21° C Location Chevron down Location News Videos Use Current Location Recent Rio de Janeiro Rio De Janeiro 21° No results found. Try searching for a city, zip code or point of interest. settings Rio de Janeiro, Rio De Janeiro Weather Today WinterCast Local {stormName} Tracker Hourly Daily Radar MinuteCast® Monthly Air Quality Health & Activities Around the Globe Radar & Maps News News & Features Astronomy Business Climate Health Recreation Sports Travel For Business Warnings Data Suite Forensics Advertising Superior Accuracy™ Video Severe Weather Hurricane Tracker Today Hourly Daily Radar MinuteCast® Monthly Air Quality Health & Activities Tonight's Weather Tue, Oct 7 Overcast; a little rain this evening followed by a brief shower or two late Lo: 20° Tomorrow: Not as warm with rain and drizzle Hi: 22° Current Weather 11:36 PM 21° C RealFeel®\n\t\t\t\t\t\t20° Cloudy More Details Wind SW 13 km/h Wind Gusts 25 km/h Air Quality Fair Looking Ahead Expect rainy weather late tonight through Friday morning Rio de Janeiro Weather Radar Static Radar Temporarily Unavailable Thank you for your patience as we work to get everything up and running again. Refresh Page Clouds Temperature Hourly Weather 12 AM 21° 42% 1 AM 21° 51% 2 AM 21° 47% 3 AM 21° 47% 4 AM 20° 51% 5 AM 21° 47% 6 AM 21° 47% 7 AM 21° 68% 8 AM 21° 68% 9 AM 22° 49% 10 AM 22° 75% 11 AM 22° 75% 10-Day Weather Forecast Tonight 10/7 20° Lo A little evening rain 80% Wed 10/8 22° 18° Rain and drizzle; not as warm Night: Overcast with showers 91% Thu 10/9 21° 19° On-and-off rain and drizzle Cloudy with a few showers 84% Fri 10/10 24° 20° Some rain and a thunderstorm Cloudy with a shower or two 75% Sat 10/11 26° 21° Some brightening Increasing amounts of clouds 25% Sun 10/12 30° 23° Partly sunny Increasing cloudiness 3% Mon 10/13 33° 22° Partly sunny and hot Humid; a t-storm or two early 2% Tue 10/14 26° 21° A p.m. t-storm in spots A thunderstorm around early 40% Wed 10/15 24° 21° Cloudy Mainly clear 6% Thu 10/16 27° 22° Humid with partial sunshine Humid with increasing clouds 25% Sun & Moon 12 hrs 26 mins Rise 5:28 AM Set 5:54 PM Full Moon Rise 6:37 PM Set 6:12 AM Air Quality See More Air Quality Fair The air quality is generally acceptable for most individuals. However, sensitive groups may experience minor to moderate symptoms from long-term exposure. Allergy Outlook See All Dust & Dander High Data is not supported in this location Top Stories Hurricane Tropical wind and rainstorm to threaten East Coast with flooding rain 7 hours ago Severe Weather The First EF5 tornado since 2013 has been confirmed in North Dakota 13 hours ago Weather Forecasts Temperature swings and some much-needed rain on the way for the East 12 hours ago Hurricane Tropical Storm Jerry to take a swipe at the northern Caribbean 5 hours ago Hurricane Priscilla's moisture to raise flash flood risk in southwestern US 8 hours ago More Stories Featured Stories Weather News Northeast drought leaves empty pumpkin patches, fading Christmas trees 8 hours ago Travel Blizzard strands hundreds on Mount Everest 1 day ago Weather News Moose stranded in Colorado canal hoisted to safety 14 hours ago Recreation Tandem skydivers become separated, with one falling to his death 1 day ago Astronomy Draconid meteor shower: How to see shooting stars Wednensday night 7 hours ago World South America Brazil Rio De Janeiro Rio de Janeiro Weather Near Rio de Janeiro: Jardim Carioca , Rio De Janeiro Jardim Guanabara , Rio De Janeiro Portuguesa , Rio De Janeiro Company Proven Superior Accuracy™ About AccuWeather Digital Advertising Careers Press Contact Us Products & Services For Business For Partners For Advertising AccuWeather APIs AccuWeather Connect RealFeel® and RealFeel Shade™ Personal Weather Stations Apps & Downloads iPhone App Android App See all Apps & Downloads Subscription Services AccuWeather Premium AccuWeather Professional More AccuWeather Ready Business Health Hurricane Leisure and Recreation Severe Weather Space and Astronomy Sports Travel Weather News Company Proven Superior Accuracy™ About AccuWeather Digital Advertising Careers Press Contact Us Products & Services For Business For Partners For Advertising AccuWeather APIs AccuWeather Connect RealFeel® and RealFeel Shade™ Personal Weather Stations Apps & Downloads iPhone App Android App See all Apps & Downloads Subscription Services AccuWeather Premium AccuWeather Professional More AccuWeather Ready Business Health Hurricane Leisure and Recreation Severe Weather Space and Astronomy Sports Travel Weather News © 2025 AccuWeather, Inc. \"AccuWeather\" and sun design are registered trademarks of AccuWeather, Inc. All Rights Reserved. Terms of Use | Privacy Policy | Cookie Policy | Data Sources",
+        "name": "fetch_web_content",
+        "call_id": "call_W1o1gcsm5irlbIWN24j5PiAS",
+        "is_error": false
+      }
+    ],
+    "type": "ToolCallExecutionEvent"
+  },
+  "timestamp": "2025-10-08T02:36:56.607458+00:00"
+}
+controller
+10/7/2025, 11:36:56 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM Researcher] Tool completed: completed",
+  "metadata": {
+    "source": "Researcher",
+    "kind": "team_tool_done"
+  }
+}
+voice
+10/7/2025, 11:36:56 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKu1VFIcPUUVeg1tg3k",
+  "previous_item_id": "item_COEKuG7lq3UDXJAqIUsfd",
+  "item": {
+    "id": "item_COEKu55kBxYCFg9aATGDD",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] Tool completed: completed"
+      }
+    ]
+  }
+}
+nested
+10/7/2025, 11:36:58 PM · textmessage
+{
+  "type": "textmessage",
+  "data": {
+    "id": "cd1def15-a117-4ce1-8b09-2eecd04602c0",
+    "source": "Researcher",
+    "models_usage": {
+      "prompt_tokens": 2005,
+      "completion_tokens": 85
+    },
+    "metadata": {},
+    "created_at": "2025-10-08T02:36:58.926175+00:00",
+    "content": "The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is coming from the southwest at 13 km/h, with gusts up to 25 km/h. There is an expectation of rainy weather starting late tonight through Friday morning. Tonight, it's forecasted to have a little rain with a low temperature of 20°C. \n\nTERMINATE",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-10-08T02:36:58.933275+00:00"
+}
+controller
+10/7/2025, 11:36:58 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM Researcher] The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is coming from the southwest at 13 km/h, with gusts up to 25 km/h. There is an expectation of rainy weather starting late tonight through Friday morning. Tonight, it's forecasted to have a little rain with a low temperature of 20°C. \n\nTERMINATE",
+  "metadata": {
+    "source": "Researcher",
+    "kind": "team_text"
+  }
+}
+controller
+10/7/2025, 11:36:58 PM · voice_forward
+{
+  "role": "system",
+  "text": "[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.",
+  "metadata": {
+    "trigger": "team_terminate"
+  }
+}
+voice
+10/7/2025, 11:36:59 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKwWj5gBlIC2tRvpa6I",
+  "previous_item_id": "item_COEKu55kBxYCFg9aATGDD",
+  "item": {
+    "id": "item_COEKwi0FLVH4bBgjtp3sn",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is coming from the southwest at 13 km/h, with gusts up to 25 km/h. There is an expectation of rainy weather starting late tonight through Friday morning. Tonight, it's forecasted to have a little rain with a low temperature of 20°C. \n\nTERMINATE"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:36:59 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKwO4Ql6SGP2voVMO80",
+  "previous_item_id": "item_COEKwi0FLVH4bBgjtp3sn",
+  "item": {
+    "id": "item_COEKw2eXuzPU5Ixb2t1Mz",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[RUN_FINISHED] Team signaled termination. Please provide a concise final summary."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:36:59 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COEKxvNdWMYDFkX0NFOQk",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEKwaEmndRJTTDwssqxt",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:36:59 PM · response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_COEKxYtvIoUBTP2j3yKWU",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "output_index": 0,
+  "item": {
+    "id": "item_COEKwAy51AVR9ir3mWx2D",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:36:59 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKxi0M3SvAcpmOJkPEu",
+  "previous_item_id": "item_COEKw2eXuzPU5Ixb2t1Mz",
+  "item": {
+    "id": "item_COEKwAy51AVR9ir3mWx2D",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:36:59 PM · response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_COEKx1cPAyFqELsG1mPBF",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxNkHPwwV95AQ0f0Tg",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "At",
+  "obfuscation": "EgGxjG8aLmLt9D"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxyQ9OsIrHZQhOqEmE",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " the",
+  "obfuscation": "SxIfLCpOkRzO"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxybEKwrvhSuWQUtRK",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " moment",
+  "obfuscation": "1Ua1mjLuc"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxBiAoxaJ3PA6HpKL9",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ",",
+  "obfuscation": "VhWFdUBJWfJfwFm"
+}
+voice
+10/7/2025, 11:36:59 PM · output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_eabcd3e220924a4d",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxmGPWoM2nAiNn8OIj",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " the",
+  "obfuscation": "3oidd1R1w2IN"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxho7TyLCqRcLtgQxh",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " weather",
+  "obfuscation": "byvNbalY"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxF51v57yKHjxBSMQf",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " in",
+  "obfuscation": "WCJIZoMcCzPye"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxPrE1G8gjVyUcG72P",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Rio",
+  "obfuscation": "GJiZj1d1thMO"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxeAnAWwXqM50XRdYo",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " de",
+  "obfuscation": "Mm0xpNbnOn1nu"
+}
+voice
+10/7/2025, 11:36:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxhAOfrd3pyM0zoItl",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Janeiro",
+  "obfuscation": "dZz9FEeP"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxPP15IO5rBF3k1n9M",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " is",
+  "obfuscation": "tQic19W8bNUdM"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxnbmTm9sbBj7oLnIK",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " cloudy",
+  "obfuscation": "hQOpB7XRy"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxILDd9mhb1BbWhnCU",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ",",
+  "obfuscation": "7rE9W7clgBSQEC0"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxcUrBA41CrWMfaYVZ",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " about",
+  "obfuscation": "pMcUWUfBhx"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxDPG64VBQa36mtLRb",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " ",
+  "obfuscation": "ZiL5WXTB8ZiZXtw"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKxgGJWIbScnqJ91LVM",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "21",
+  "obfuscation": "rQPc9RBVMLwcGR"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyWvjJ5IGfmuIg35fH",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "°C",
+  "obfuscation": "75fr2GdSHrbPXv"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyF4DyYhrCs7doCDgW",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ",",
+  "obfuscation": "ZlJeNpriItzWUIa"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyMgo5mhKUkJZrIm1E",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " with",
+  "obfuscation": "88DEQWeTpT9"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKykzRrSLexjz39pG4c",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " a",
+  "obfuscation": "0GBCJJPggCHqLV"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyc5i6u2uGmOBPG8T4",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " southwest",
+  "obfuscation": "odi5bm"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyxTFeMpKwmX4sYZWC",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " wind",
+  "obfuscation": "zXRSGVzBxNP"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyttiqCjgioXvogRHi",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " and",
+  "obfuscation": "e3xU4UA63n5o"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyXkIp7MKjqGDc7Bc2",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " some",
+  "obfuscation": "ce1dZiGdB33"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyqi5FP6onDDvSGohS",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " rain",
+  "obfuscation": "oOLnvfrHOsx"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyEqNOpsQU4rFfmLxG",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " expected",
+  "obfuscation": "oUevIMt"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyK2etse9am0SfOkbj",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " later",
+  "obfuscation": "6v6EuYyb5d"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKyCZexPlAoB0bR8KZt",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " tonight",
+  "obfuscation": "3DxOFUaG"
+}
+voice
+10/7/2025, 11:37:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEKydYg2y4pIGwX1ERsF",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "bwsW0Xpdjd1Jz7h"
+}
+nested
+10/7/2025, 11:37:01 PM · textmessage
+{
+  "type": "textmessage",
+  "data": {
+    "id": "68ecc3a3-6c90-4e60-8bf2-d6b80b09dab3",
+    "source": "Manager",
+    "models_usage": {
+      "prompt_tokens": 364,
+      "completion_tokens": 72
+    },
+    "metadata": {},
+    "created_at": "2025-10-08T02:37:01.493372+00:00",
+    "content": "The current weather in Rio de Janeiro is 21°C and cloudy, with a RealFeel® of 20°C. Winds are southwest at 13 km/h, gusting to 25 km/h. There's a forecast of rain starting late tonight and continuing into Friday morning. Expect a little rain tonight with a low of 20°C.\n\nTERMINATE",
+    "type": "TextMessage"
+  },
+  "timestamp": "2025-10-08T02:37:01.496478+00:00"
+}
+controller
+10/7/2025, 11:37:01 PM · voice_forward
+{
+  "role": "system",
+  "text": "[TEAM Manager] The current weather in Rio de Janeiro is 21°C and cloudy, with a RealFeel® of 20°C. Winds are southwest at 13 km/h, gusting to 25 km/h. There's a forecast of rain starting late tonight and continuing into Friday morning. Expect a little rain tonight with a low of 20°C.\n\nTERMINATE",
+  "metadata": {
+    "source": "Manager",
+    "kind": "team_text"
+  }
+}
+nested
+10/7/2025, 11:37:01 PM · taskresult
+{
+  "type": "taskresult",
+  "data": {
+    "messages": [
+      {
+        "id": "b25219f1-d38c-49e4-8f3a-c56d4b902a7d",
+        "source": "user",
+        "models_usage": null,
+        "metadata": {},
+        "created_at": "2025-10-08T02:36:46.311618+00:00",
+        "content": "Check the current weather in Rio de Janeiro right now.",
+        "type": "TextMessage"
+      },
+      {
+        "id": "b7c3fcf1-986d-4b4c-82d7-37f2e0c0ed89",
+        "source": "Manager",
+        "models_usage": {
+          "prompt_tokens": 235,
+          "completion_tokens": 17
+        },
+        "metadata": {},
+        "created_at": "2025-10-08T02:36:47.904104+00:00",
+        "content": "TASK: Find the current weather in Rio de Janeiro.\nNEXT AGENT: Researcher",
+        "type": "TextMessage"
+      },
+      {
+        "id": "f5e692da-142a-4b59-9aa6-eaf3efa63e0d",
+        "source": "Researcher",
+        "models_usage": {
+          "prompt_tokens": 673,
+          "completion_tokens": 18
+        },
+        "metadata": {},
+        "created_at": "2025-10-08T02:36:49.867352+00:00",
+        "content": [
+          {
+            "id": "call_FFIBJ9U2ld9iW8MmYv33n54F",
+            "arguments": "{\"query\":\"current weather Rio de Janeiro\"}",
+            "name": "web_search"
+          }
+        ],
+        "type": "ToolCallRequestEvent"
+      },
+      {
+        "id": "7786ee35-cba5-4f95-bc44-15e06dacb9e6",
+        "source": "Researcher",
+        "models_usage": null,
+        "metadata": {},
+        "created_at": "2025-10-08T02:36:50.688192+00:00",
+        "content": [
+          {
+            "content": "Web Search Results (Google CSE) for 'current weather Rio de Janeiro' (Found 5):\n---\n1. Title: Rio de Janeiro, Rio De Janeiro, Brazil Weather Forecast ...\n   Snippet: Rio de Janeiro, Rio De Janeiro, Brazil Weather Forecast, with current conditions, wind, air quality, and what to expect for the next 3 days.\n   URL: https://www.accuweather.com/en/br/rio-de-janeiro/45449/weather-forecast/45449\n---\n2. Title: 10-Day Weather Forecast for Jacarepaguá, Rio de Janeiro, Rio de ...\n   Snippet: Be prepared with the most accurate 10-day forecast for Jacarepaguá, Rio de Janeiro, Rio de Janeiro, Brazil with highs, lows, chance of precipitation from ...\n   URL: https://weather.com/weather/tenday/l/Jacarepagu%C3%A1+Rio+de+Janeiro+Rio+de+Janeiro+Brazil?canonicalCityId=9788cc753c1835e0863fbe5fa03c3db3\n---\n3. Title: Weather - Rio de Janeiro\n   Snippet: Current weather in Rio de Janeiro and forecast for today, tomorrow, and next 14 days.\n   URL: https://www.timeanddate.com/weather/brazil/rio-de-janeiro\n---\n4. Title: Hourly Weather Forecast for Rio de Janeiro, Rio de Janeiro, Brazil\n   Snippet: Rio de Janeiro, Rio de Janeiro, Brazil Weather · Hourly Weather-Rio de Janeiro, Rio de Janeiro, Brazil. As of 11:35 pm GMT- ...\n   URL: https://weather.com/weather/hourbyhour/l/632c8273f5780465f4ef76feedd03a86dd5019a79a49165387428e1b8083caae\n---\n5. Title: Rio de Janeiro 14 Day Extended Forecast - Weather\n   Snippet: Night Sky · TodayHourly14 DaysPastClimate. Currently: 81 °F. Sunny. (Weather station: Rio De Janeiro Airport, Brazil). See more current weather. ×. Advertising ...\n   URL: https://www.timeanddate.com/weather/brazil/rio-de-janeiro/ext",
+            "name": "web_search",
+            "call_id": "call_FFIBJ9U2ld9iW8MmYv33n54F",
+            "is_error": false
+          }
+        ],
+        "type": "ToolCallExecutionEvent"
+      },
+      {
+        "id": "d85c1ad8-15eb-400b-96b7-2cca3b00bc98",
+        "source": "Researcher",
+        "models_usage": {
+          "prompt_tokens": 777,
+          "completion_tokens": 9
+        },
+        "metadata": {},
+        "created_at": "2025-10-08T02:36:51.683116+00:00",
+        "content": "Checking the current weather in Rio de Janeiro.",
+        "type": "TextMessage"
+      },
+      {
+        "id": "5e516144-f8ea-481b-9e9b-5357e3b8fb1d",
+        "source": "Researcher",
+        "models_usage": {
+          "prompt_tokens": 1185,
+          "completion_tokens": 39
+        },
+        "metadata": {},
+        "created_at": "2025-10-08T02:36:56.032374+00:00",
+        "content": [
+          {
+            "id": "call_W1o1gcsm5irlbIWN24j5PiAS",
+            "arguments": "{\"url\":\"https://www.accuweather.com/en/br/rio-de-janeiro/45449/weather-forecast/45449\"}",
+            "name": "fetch_web_content"
+          }
+        ],
+        "type": "ToolCallRequestEvent"
+      },
+      {
+        "id": "f9718a29-54cd-4b6e-b9be-6dedec68a04d",
+        "source": "Researcher",
+        "models_usage": null,
+        "metadata": {},
+        "created_at": "2025-10-08T02:36:56.604298+00:00",
+        "content": [
+          {
+            "content": "Rio de Janeiro, Rio De Janeiro, Brazil Weather Forecast | AccuWeather Go Back For Business | Warnings Data Suite Forensics Advertising Superior Accuracy™ Rio de Janeiro, Rio De Janeiro 21° C Location Chevron down Location News Videos Use Current Location Recent Rio de Janeiro Rio De Janeiro 21° No results found. Try searching for a city, zip code or point of interest. settings Rio de Janeiro, Rio De Janeiro Weather Today WinterCast Local {stormName} Tracker Hourly Daily Radar MinuteCast® Monthly Air Quality Health & Activities Around the Globe Radar & Maps News News & Features Astronomy Business Climate Health Recreation Sports Travel For Business Warnings Data Suite Forensics Advertising Superior Accuracy™ Video Severe Weather Hurricane Tracker Today Hourly Daily Radar MinuteCast® Monthly Air Quality Health & Activities Tonight's Weather Tue, Oct 7 Overcast; a little rain this evening followed by a brief shower or two late Lo: 20° Tomorrow: Not as warm with rain and drizzle Hi: 22° Current Weather 11:36 PM 21° C RealFeel®\n\t\t\t\t\t\t20° Cloudy More Details Wind SW 13 km/h Wind Gusts 25 km/h Air Quality Fair Looking Ahead Expect rainy weather late tonight through Friday morning Rio de Janeiro Weather Radar Static Radar Temporarily Unavailable Thank you for your patience as we work to get everything up and running again. Refresh Page Clouds Temperature Hourly Weather 12 AM 21° 42% 1 AM 21° 51% 2 AM 21° 47% 3 AM 21° 47% 4 AM 20° 51% 5 AM 21° 47% 6 AM 21° 47% 7 AM 21° 68% 8 AM 21° 68% 9 AM 22° 49% 10 AM 22° 75% 11 AM 22° 75% 10-Day Weather Forecast Tonight 10/7 20° Lo A little evening rain 80% Wed 10/8 22° 18° Rain and drizzle; not as warm Night: Overcast with showers 91% Thu 10/9 21° 19° On-and-off rain and drizzle Cloudy with a few showers 84% Fri 10/10 24° 20° Some rain and a thunderstorm Cloudy with a shower or two 75% Sat 10/11 26° 21° Some brightening Increasing amounts of clouds 25% Sun 10/12 30° 23° Partly sunny Increasing cloudiness 3% Mon 10/13 33° 22° Partly sunny and hot Humid; a t-storm or two early 2% Tue 10/14 26° 21° A p.m. t-storm in spots A thunderstorm around early 40% Wed 10/15 24° 21° Cloudy Mainly clear 6% Thu 10/16 27° 22° Humid with partial sunshine Humid with increasing clouds 25% Sun & Moon 12 hrs 26 mins Rise 5:28 AM Set 5:54 PM Full Moon Rise 6:37 PM Set 6:12 AM Air Quality See More Air Quality Fair The air quality is generally acceptable for most individuals. However, sensitive groups may experience minor to moderate symptoms from long-term exposure. Allergy Outlook See All Dust & Dander High Data is not supported in this location Top Stories Hurricane Tropical wind and rainstorm to threaten East Coast with flooding rain 7 hours ago Severe Weather The First EF5 tornado since 2013 has been confirmed in North Dakota 13 hours ago Weather Forecasts Temperature swings and some much-needed rain on the way for the East 12 hours ago Hurricane Tropical Storm Jerry to take a swipe at the northern Caribbean 5 hours ago Hurricane Priscilla's moisture to raise flash flood risk in southwestern US 8 hours ago More Stories Featured Stories Weather News Northeast drought leaves empty pumpkin patches, fading Christmas trees 8 hours ago Travel Blizzard strands hundreds on Mount Everest 1 day ago Weather News Moose stranded in Colorado canal hoisted to safety 14 hours ago Recreation Tandem skydivers become separated, with one falling to his death 1 day ago Astronomy Draconid meteor shower: How to see shooting stars Wednensday night 7 hours ago World South America Brazil Rio De Janeiro Rio de Janeiro Weather Near Rio de Janeiro: Jardim Carioca , Rio De Janeiro Jardim Guanabara , Rio De Janeiro Portuguesa , Rio De Janeiro Company Proven Superior Accuracy™ About AccuWeather Digital Advertising Careers Press Contact Us Products & Services For Business For Partners For Advertising AccuWeather APIs AccuWeather Connect RealFeel® and RealFeel Shade™ Personal Weather Stations Apps & Downloads iPhone App Android App See all Apps & Downloads Subscription Services AccuWeather Premium AccuWeather Professional More AccuWeather Ready Business Health Hurricane Leisure and Recreation Severe Weather Space and Astronomy Sports Travel Weather News Company Proven Superior Accuracy™ About AccuWeather Digital Advertising Careers Press Contact Us Products & Services For Business For Partners For Advertising AccuWeather APIs AccuWeather Connect RealFeel® and RealFeel Shade™ Personal Weather Stations Apps & Downloads iPhone App Android App See all Apps & Downloads Subscription Services AccuWeather Premium AccuWeather Professional More AccuWeather Ready Business Health Hurricane Leisure and Recreation Severe Weather Space and Astronomy Sports Travel Weather News © 2025 AccuWeather, Inc. \"AccuWeather\" and sun design are registered trademarks of AccuWeather, Inc. All Rights Reserved. Terms of Use | Privacy Policy | Cookie Policy | Data Sources",
+            "name": "fetch_web_content",
+            "call_id": "call_W1o1gcsm5irlbIWN24j5PiAS",
+            "is_error": false
+          }
+        ],
+        "type": "ToolCallExecutionEvent"
+      },
+      {
+        "id": "cd1def15-a117-4ce1-8b09-2eecd04602c0",
+        "source": "Researcher",
+        "models_usage": {
+          "prompt_tokens": 2005,
+          "completion_tokens": 85
+        },
+        "metadata": {},
+        "created_at": "2025-10-08T02:36:58.926175+00:00",
+        "content": "The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is coming from the southwest at 13 km/h, with gusts up to 25 km/h. There is an expectation of rainy weather starting late tonight through Friday morning. Tonight, it's forecasted to have a little rain with a low temperature of 20°C. \n\nTERMINATE",
+        "type": "TextMessage"
+      },
+      {
+        "id": "68ecc3a3-6c90-4e60-8bf2-d6b80b09dab3",
+        "source": "Manager",
+        "models_usage": {
+          "prompt_tokens": 364,
+          "completion_tokens": 72
+        },
+        "metadata": {},
+        "created_at": "2025-10-08T02:37:01.493372+00:00",
+        "content": "The current weather in Rio de Janeiro is 21°C and cloudy, with a RealFeel® of 20°C. Winds are southwest at 13 km/h, gusting to 25 km/h. There's a forecast of rain starting late tonight and continuing into Friday morning. Expect a little rain tonight with a low of 20°C.\n\nTERMINATE",
+        "type": "TextMessage"
+      }
+    ],
+    "stop_reason": "Functional termination condition met"
+  },
+  "timestamp": "2025-10-08T02:37:01.497309+00:00"
+}
+nested
+10/7/2025, 11:37:01 PM · system
+{
+  "type": "system",
+  "data": {
+    "message": "Agent run finished."
+  },
+  "timestamp": "2025-10-08T02:37:01.498243+00:00"
+}
+voice
+10/7/2025, 11:37:01 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEKzeVBu3sISTpXrxufX",
+  "previous_item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "item": {
+    "id": "item_COEKzYzrDfxwE59SFEUNC",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Manager] The current weather in Rio de Janeiro is 21°C and cloudy, with a RealFeel® of 20°C. Winds are southwest at 13 km/h, gusting to 25 km/h. There's a forecast of rain starting late tonight and continuing into Friday morning. Expect a little rain tonight with a low of 20°C.\n\nTERMINATE"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:01 PM · response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_COEKzmLcW7oeCYon1i8je",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0
+}
+voice
+10/7/2025, 11:37:01 PM · response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_COEKzQxbC6waYcV3scuvd",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "At the moment, the weather in Rio de Janeiro is cloudy, about 21°C, with a southwest wind and some rain expected later tonight."
+}
+voice
+10/7/2025, 11:37:01 PM · response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_COEKzzfCyfXgY1A7m33eK",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "item_id": "item_COEKwAy51AVR9ir3mWx2D",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "At the moment, the weather in Rio de Janeiro is cloudy, about 21°C, with a southwest wind and some rain expected later tonight."
+  }
+}
+voice
+10/7/2025, 11:37:01 PM · rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_COEKzD2xvL4g9VN2u3Eo5",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799191,
+      "reset_seconds": 0.06
+    }
+  ]
+}
+voice
+10/7/2025, 11:37:01 PM · response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_COEKzJFOpHvAux6yGtUGf",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt",
+  "output_index": 0,
+  "item": {
+    "id": "item_COEKwAy51AVR9ir3mWx2D",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "At the moment, the weather in Rio de Janeiro is cloudy, about 21°C, with a southwest wind and some rain expected later tonight."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:01 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COEKzxC5b17pPqEXy8VGr",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEKwaEmndRJTTDwssqxt",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_COEKwAy51AVR9ir3mWx2D",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "At the moment, the weather in Rio de Janeiro is cloudy, about 21°C, with a southwest wind and some rain expected later tonight."
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 1201,
+      "input_tokens": 954,
+      "output_tokens": 247,
+      "input_token_details": {
+        "text_tokens": 840,
+        "audio_tokens": 114,
+        "image_tokens": 0,
+        "cached_tokens": 640,
+        "cached_tokens_details": {
+          "text_tokens": 576,
+          "audio_tokens": 64,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 45,
+        "audio_tokens": 202
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:37:09 PM · output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_3a80724dd4e643c6",
+  "response_id": "resp_COEKwaEmndRJTTDwssqxt"
+}
+voice
+10/7/2025, 11:37:14 PM · input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_COELCLw5aynXFN4pvIdYJ",
+  "audio_start_ms": 43028,
+  "item_id": "item_COELC9uCIQQRL3zcZRarD"
+}
+voice
+10/7/2025, 11:37:15 PM · input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_COELDWiwFzd9Hs4LZvaKm",
+  "audio_end_ms": 44384,
+  "item_id": "item_COELC9uCIQQRL3zcZRarD"
+}
+voice
+10/7/2025, 11:37:15 PM · input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_COELDnsFoBYqIS5rrNqkY",
+  "previous_item_id": "item_COEKzYzrDfxwE59SFEUNC",
+  "item_id": "item_COELC9uCIQQRL3zcZRarD"
+}
+voice
+10/7/2025, 11:37:15 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELDqf1V3GIu3OCIPAiS",
+  "previous_item_id": "item_COEKzYzrDfxwE59SFEUNC",
+  "item": {
+    "id": "item_COELC9uCIQQRL3zcZRarD",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:15 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COELDjpKzqVbRmJK8fNMc",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COELDAE3qDCRD46N5XzYk",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:37:16 PM · response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_COELEb7y1naBoop6DDTU4",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "output_index": 0,
+  "item": {
+    "id": "item_COELDGDeD0VTABdfufeNt",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:37:16 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELEdTW44mFXwFIXLXNs",
+  "previous_item_id": "item_COELC9uCIQQRL3zcZRarD",
+  "item": {
+    "id": "item_COELDGDeD0VTABdfufeNt",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:37:16 PM · response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_COELEh2nS3YJCpXqlNDe9",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEo6X8rnXQBL2WbOrf",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "You're",
+  "obfuscation": "fnrm0jZOeV"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEoojPIFQq7CTPzhFy",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " welcome",
+  "obfuscation": "1ijFrbUO"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEuFYOgfnrvzddVRzI",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "!",
+  "obfuscation": "vYm0Wf3GFn4ghhd"
+}
+voice
+10/7/2025, 11:37:16 PM · output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_b07441bbfeb34ccb",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEq3qOturNzbyT9CdT",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Let",
+  "obfuscation": "ZAEULYL26py4"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEdvQFiMlkYuyaFOvw",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " me",
+  "obfuscation": "ndvWFv7h9jwMb"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEU7NPB4synEmKBaQH",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " know",
+  "obfuscation": "Q7stKOqAUt5"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEcOxfS4vqDe7NWzHa",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " if",
+  "obfuscation": "w5Z0zGLxiDFO7"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELESdTxXhhORUZO3vY9",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " you",
+  "obfuscation": "w2lC5K2muLVK"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEfxsGumA0eN6UfnFS",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " need",
+  "obfuscation": "ubtinFNoV3m"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEIaEMk35ujzSMn7t5",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " anything",
+  "obfuscation": "NQlH1mL"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELEySbwVbXebBBRs9t9",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " else",
+  "obfuscation": "c2Dgz1tJiD7"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELExeVfAllWosf6iUPw",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "SgKVrwKj3NILcBI"
+}
+voice
+10/7/2025, 11:37:16 PM · response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_COELExY9r1Su14dWjxBSf",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0
+}
+voice
+10/7/2025, 11:37:17 PM · response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_COELEBxHPUKGn9yNPSpBg",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "You're welcome! Let me know if you need anything else."
+}
+voice
+10/7/2025, 11:37:17 PM · response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_COELEejWKO1WL5je4bvvB",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "item_id": "item_COELDGDeD0VTABdfufeNt",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "You're welcome! Let me know if you need anything else."
+  }
+}
+voice
+10/7/2025, 11:37:17 PM · response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_COELEs1j2UG117sSrGiCQ",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk",
+  "output_index": 0,
+  "item": {
+    "id": "item_COELDGDeD0VTABdfufeNt",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "You're welcome! Let me know if you need anything else."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:17 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COELEQRLHYRsHKSVmHsVr",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COELDAE3qDCRD46N5XzYk",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_COELDGDeD0VTABdfufeNt",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "You're welcome! Let me know if you need anything else."
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_COEKUHc9NKqittiFi8uBf",
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 1385,
+      "input_tokens": 1303,
+      "output_tokens": 82,
+      "input_token_details": {
+        "text_tokens": 974,
+        "audio_tokens": 329,
+        "image_tokens": 0,
+        "cached_tokens": 1216,
+        "cached_tokens_details": {
+          "text_tokens": 896,
+          "audio_tokens": 320,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 22,
+        "audio_tokens": 60
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:37:17 PM · rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_COELEaaFpEMXlxt8F2DN6",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799356,
+      "reset_seconds": 0.048
+    }
+  ]
+}
+voice
+10/7/2025, 11:37:19 PM · output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_5f0425f64a6c4099",
+  "response_id": "resp_COELDAE3qDCRD46N5XzYk"
+}
+controller
+10/7/2025, 11:37:20 PM · session_stopped
+{}
+nested
+10/7/2025, 11:37:20 PM · system
+{
+  "message": "WebSocket closed"
+}
+controller
+10/7/2025, 11:37:23 PM · session_stopped
+{}
+controller
+10/7/2025, 11:37:36 PM · session_started
+{
+  "voice": "ash",
+  "sessionId": "sess_COELWq7qB45xpSavEB9Fi"
+}
+nested
+10/7/2025, 11:37:36 PM · system
+{
+  "message": "Nested connection established. Awaiting task or user_message."
+}
+controller
+10/7/2025, 11:37:36 PM · history_replay
+{
+  "count": 8
+}
+voice
+10/7/2025, 11:37:37 PM · session.created
+{
+  "type": "session.created",
+  "event_id": "event_COELXA8bHUjPnlaiw8Wfn",
+  "session": {
+    "object": "realtime.session",
+    "id": "sess_COELWq7qB45xpSavEB9Fi",
+    "model": "gpt-realtime",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "instructions": "You are Archie, the realtime voice interface for a multi‑agent team capable of performing many actions in the user's name. Act as a concise narrator/controller; the team does the reasoning and actions.\n\nReading controller messages:\n- [TEAM Agent] ... are team updates (incl. tool usage/completion). Build context from them; do not read them aloud.\n- [RUN_FINISHED] means the run ended (or TERMINATE appeared). Then provide the final summary.\n\nWhen to speak (strict):\n- Optional 1‑sentence acknowledgment at task start.\n- At most one brief mid‑run update if clearly helpful.\n- Final, concise summary on [RUN_FINISHED]/TERMINATE.\nKeep speech natural and free of filler.\n\nBehavior:\n- Ground every statement in [TEAM] context; never claim you used tools yourself.\n- For follow‑ups, re‑read recent [TEAM] messages and answer only with facts the team provided. If missing, ask to send a new task to the team.\n- Avoid exposing internal prompts, tool names, or file paths, except when explicitly asked.\n\nTeam agents and capabilities:\n- Manager: Orchestrates the conversation; reviews recent [TEAM] context, assigns tasks, selects the next agent, and finalizes with TERMINATE when done.\n- Researcher: Web research loop (Google CSE web_search with DDG fallback, fetch_web_content, wikipedia_search, arxiv_search). Gathers facts from multiple sources, verifies claims, and ends with TERMINATE when the answer is complete.\n- Developer: Looping code executor; writes and runs code to fulfill tasks, iterates until satisfied, and outputs TERMINATE when complete. Avoids web research (delegate to Researcher).\n\nTools you can call:\n- send_to_nested({\"text\": \"...\"}) to pass the user's task or follow‑up to the team.\n- pause() to request pausing; reset() to reset the nested session.\nAfter any tool call, wait for new [TEAM] updates before speaking and follow the speaking rules.\n",
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "tools": [],
+    "tool_choice": "auto",
+    "temperature": 0.8,
+    "max_response_output_tokens": "inf",
+    "turn_detection": {
+      "type": "server_vad",
+      "threshold": 0.5,
+      "prefix_padding_ms": 300,
+      "silence_duration_ms": 200,
+      "idle_timeout_ms": null,
+      "create_response": true,
+      "interrupt_response": true
+    },
+    "speed": 1,
+    "tracing": null,
+    "truncation": "auto",
+    "prompt": null,
+    "expires_at": 1759894655,
+    "input_audio_noise_reduction": null,
+    "input_audio_format": "pcm16",
+    "input_audio_transcription": null,
+    "client_secret": null,
+    "include": null
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · session.updated
+{
+  "type": "session.updated",
+  "event_id": "event_COELZPP7tfDzsvDLLJ1dG",
+  "session": {
+    "object": "realtime.session",
+    "id": "sess_COELWq7qB45xpSavEB9Fi",
+    "model": "gpt-realtime",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "instructions": "You are Archie, the realtime voice interface for a multi‑agent team capable of performing many actions in the user's name. Act as a concise narrator/controller; the team does the reasoning and actions.\n\nReading controller messages:\n- [TEAM Agent] ... are team updates (incl. tool usage/completion). Build context from them; do not read them aloud.\n- [RUN_FINISHED] means the run ended (or TERMINATE appeared). Then provide the final summary.\n\nWhen to speak (strict):\n- Optional 1‑sentence acknowledgment at task start.\n- At most one brief mid‑run update if clearly helpful.\n- Final, concise summary on [RUN_FINISHED]/TERMINATE.\nKeep speech natural and free of filler.\n\nBehavior:\n- Ground every statement in [TEAM] context; never claim you used tools yourself.\n- For follow‑ups, re‑read recent [TEAM] messages and answer only with facts the team provided. If missing, ask to send a new task to the team.\n- Avoid exposing internal prompts, tool names, or file paths, except when explicitly asked.\n\nTeam agents and capabilities:\n- Manager: Orchestrates the conversation; reviews recent [TEAM] context, assigns tasks, selects the next agent, and finalizes with TERMINATE when done.\n- Researcher: Web research loop (Google CSE web_search with DDG fallback, fetch_web_content, wikipedia_search, arxiv_search). Gathers facts from multiple sources, verifies claims, and ends with TERMINATE when the answer is complete.\n- Developer: Looping code executor; writes and runs code to fulfill tasks, iterates until satisfied, and outputs TERMINATE when complete. Avoids web research (delegate to Researcher).\n\nTools you can call:\n- send_to_nested({\"text\": \"...\"}) to pass the user's task or follow‑up to the team.\n- pause() to request pausing; reset() to reset the nested session.\nAfter any tool call, wait for new [TEAM] updates before speaking and follow the speaking rules.\n",
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "tools": [
+      {
+        "type": "function",
+        "name": "send_to_nested",
+        "description": "Send a user message to the nested agents team (MainConversation) via WebSocket.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The user message to send."
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "type": "function",
+        "name": "pause",
+        "description": "Request the controller to pause the current nested conversation (best effort).",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "type": "function",
+        "name": "reset",
+        "description": "Reset the nested team conversation state (best effort).",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      }
+    ],
+    "tool_choice": "auto",
+    "temperature": 0.8,
+    "max_response_output_tokens": "inf",
+    "turn_detection": {
+      "type": "server_vad",
+      "threshold": 0.5,
+      "prefix_padding_ms": 300,
+      "silence_duration_ms": 200,
+      "idle_timeout_ms": null,
+      "create_response": true,
+      "interrupt_response": true
+    },
+    "speed": 1,
+    "tracing": null,
+    "truncation": "auto",
+    "prompt": null,
+    "expires_at": 1759894655,
+    "input_audio_noise_reduction": null,
+    "input_audio_format": "pcm16",
+    "input_audio_transcription": null,
+    "client_secret": null,
+    "include": null
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELZldnmc9L4wbOLi0KJ",
+  "previous_item_id": null,
+  "item": {
+    "id": "item_COELZaGGi7kZl53lKxtV6",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM user] Check the current weather in Rio de Janeiro right now."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELZWBdIpIZxc8EUCwQb",
+  "previous_item_id": "item_COELZkcvtC7LC1BXcRLiB",
+  "item": {
+    "id": "item_COELZOoMWl7nPIFlvvmHT",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is coming from the southwest at 13 km/h, with gusts up to 25 km/h. There is an expectation of rainy weather starting late tonight through Friday morning. Tonight, it's forecasted to have a little rain with a low temperature of 20°C. \n\nTERMINATE"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELZitjQLlj3beKwvtCd",
+  "previous_item_id": "item_COELZaGGi7kZl53lKxtV6",
+  "item": {
+    "id": "item_COELZdEytoGrZDyyhMcuS",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Manager] TASK: Find the current weather in Rio de Janeiro.\nNEXT AGENT: Researcher"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELZGyzmdTK6fHyFE0ab",
+  "previous_item_id": "item_COELZOoMWl7nPIFlvvmHT",
+  "item": {
+    "id": "item_COELZGlt2njJY6pXtHYDL",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[RUN_FINISHED] Team signaled termination. Please provide a concise final summary."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELZNVw9oEu1kF3KJHlB",
+  "previous_item_id": "item_COELZdEytoGrZDyyhMcuS",
+  "item": {
+    "id": "item_COELZI0tAJDCQlBTUnjtr",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] Using tool: unknown_tool"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELZ5OsfiHOu9pAJrIbC",
+  "previous_item_id": "item_COELZGlt2njJY6pXtHYDL",
+  "item": {
+    "id": "item_COELZTMFJ0jU10rt7nsSx",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Manager] The current weather in Rio de Janeiro is 21°C and cloudy, with a RealFeel® of 20°C. Winds are southwest at 13 km/h, gusting to 25 km/h. There's a forecast of rain starting late tonight and continuing into Friday morning. Expect a little rain tonight with a low of 20°C.\n\nTERMINATE"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELZW6t6qF2sfGPoiB2I",
+  "previous_item_id": "item_COELZI0tAJDCQlBTUnjtr",
+  "item": {
+    "id": "item_COELZtjBXs4LOamqZSB0h",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] Tool completed: completed"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:37 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELZet763NEhfVyql6wI",
+  "previous_item_id": "item_COELZtjBXs4LOamqZSB0h",
+  "item": {
+    "id": "item_COELZkcvtC7LC1BXcRLiB",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "system",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "[TEAM Researcher] Checking the current weather in Rio de Janeiro."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:42 PM · input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_COELerjrnffQobAWF9taE",
+  "audio_start_ms": 5780,
+  "item_id": "item_COELe7HHTCsBlGnne0U9W"
+}
+voice
+10/7/2025, 11:37:46 PM · input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_COELimBxUZ7lzCnkUV6Ts",
+  "audio_end_ms": 9248,
+  "item_id": "item_COELe7HHTCsBlGnne0U9W"
+}
+voice
+10/7/2025, 11:37:46 PM · input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_COELigENcvVOGOUgy1X9q",
+  "previous_item_id": "item_COELZTMFJ0jU10rt7nsSx",
+  "item_id": "item_COELe7HHTCsBlGnne0U9W"
+}
+voice
+10/7/2025, 11:37:46 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELizj1ERseWXFwMtWys",
+  "previous_item_id": "item_COELZTMFJ0jU10rt7nsSx",
+  "item": {
+    "id": "item_COELe7HHTCsBlGnne0U9W",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:46 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COELijvWCjfOW3QVnXVCm",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COELiTm1RA7xYj8R6H6NC",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COELXYrUsTXEBXvsjSGVz",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:37:46 PM · response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_COELi4K1t1pXcQu0qhoyR",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "output_index": 0,
+  "item": {
+    "id": "item_COELivINgBQ475d3KWp33",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:37:46 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELieMqVEJtaNVA4DtLT",
+  "previous_item_id": "item_COELe7HHTCsBlGnne0U9W",
+  "item": {
+    "id": "item_COELivINgBQ475d3KWp33",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:37:46 PM · response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_COELiYWsQySkfXRZeVJv6",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+voice
+10/7/2025, 11:37:46 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELiqREjKkXkuG6TKkiX",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "You",
+  "obfuscation": "lhzgwagwwsmIw"
+}
+voice
+10/7/2025, 11:37:46 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELiACZ0nBhwgXZqKfB3",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " asked",
+  "obfuscation": "wXD3unG4Ll"
+}
+voice
+10/7/2025, 11:37:46 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELicqGBdcIKwSAaujZL",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " about",
+  "obfuscation": "16FT7D0t1k"
+}
+voice
+10/7/2025, 11:37:46 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELilgu7uPu0WMUVnQTr",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " the",
+  "obfuscation": "zV7DWg2O4bJP"
+}
+voice
+10/7/2025, 11:37:46 PM · output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_98fc31df644b4348",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC"
+}
+voice
+10/7/2025, 11:37:46 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELiJfqMhMZC7KFvWlcu",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " current",
+  "obfuscation": "beGDzNKq"
+}
+voice
+10/7/2025, 11:37:46 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELiTvGEi7uvMcVqLG5E",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " weather",
+  "obfuscation": "oWraPVF6"
+}
+voice
+10/7/2025, 11:37:46 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELilYcrKYsOrYrH0qXJ",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " in",
+  "obfuscation": "PSatfrZw0uKzR"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELiZlFlRGxJ0bV128B3",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Rio",
+  "obfuscation": "arWYoPYA3Mmf"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELiT3RJedM5ll2VgPrN",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " de",
+  "obfuscation": "EkiKpaoUvGTkV"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELiI5zALgoKl34sGoH9",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Janeiro",
+  "obfuscation": "oLRRxcGy"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELiOUSKiZam26PDql4X",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "TgsrM8FyxbqTbtX"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELjFIxj1H8A6jhJRq48",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " I",
+  "obfuscation": "gzDGLFomr6NCQs"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELjPYKpATnYQ4iT4R8z",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "’ve",
+  "obfuscation": "DmWgIK23ufD64"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELjm9ZKL6eo5Ug14Ues",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " just",
+  "obfuscation": "UQ86S4pe7vo"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELjRzmHWSpvGrmbdBQO",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " shared",
+  "obfuscation": "WVdPLb5qm"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELjtJ8fYAHFZlkiKeqE",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " the",
+  "obfuscation": "mAIPCmNnyTCj"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELj4Vl8Qd7EGlfakbZA",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " details",
+  "obfuscation": "NWLElGzn"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELjE9D3TMQJbQ0xHbPF",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " with",
+  "obfuscation": "RMgq6shw67G"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELjmSzYDdQVymdbXQqQ",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " you",
+  "obfuscation": "CydTYRmpDCbC"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELjBDQtiRlx9JLe7sWe",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "mVlzfLoio5kxoLL"
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_COELjZp5549IdVYOhiIcR",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0
+}
+voice
+10/7/2025, 11:37:47 PM · response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_COELjskXIqcmXeWfbbB3i",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "You asked about the current weather in Rio de Janeiro. I’ve just shared the details with you."
+}
+voice
+10/7/2025, 11:37:47 PM · response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_COELjPJYV40yCakZZMpMZ",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "item_id": "item_COELivINgBQ475d3KWp33",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "You asked about the current weather in Rio de Janeiro. I’ve just shared the details with you."
+  }
+}
+voice
+10/7/2025, 11:37:47 PM · response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_COELjBMUrqqx9GRpjyPvb",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC",
+  "output_index": 0,
+  "item": {
+    "id": "item_COELivINgBQ475d3KWp33",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "You asked about the current weather in Rio de Janeiro. I’ve just shared the details with you."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:47 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COELj4QcDhETSj1jOajI1",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COELiTm1RA7xYj8R6H6NC",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_COELivINgBQ475d3KWp33",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "You asked about the current weather in Rio de Janeiro. I’ve just shared the details with you."
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_COELXYrUsTXEBXvsjSGVz",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 963,
+      "input_tokens": 823,
+      "output_tokens": 140,
+      "input_token_details": {
+        "text_tokens": 789,
+        "audio_tokens": 34,
+        "image_tokens": 0,
+        "cached_tokens": 0,
+        "cached_tokens_details": {
+          "text_tokens": 0,
+          "audio_tokens": 0,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 34,
+        "audio_tokens": 106
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:37:47 PM · rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_COELjfcKbMpMvqcpz5Ton",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799298,
+      "reset_seconds": 0.052
+    }
+  ]
+}
+voice
+10/7/2025, 11:37:52 PM · output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_36476dfdbade4312",
+  "response_id": "resp_COELiTm1RA7xYj8R6H6NC"
+}
+voice
+10/7/2025, 11:37:55 PM · input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_COELrnfnuPVWCii9Lu02L",
+  "audio_start_ms": 18164,
+  "item_id": "item_COELrXamYuS8ckyXcsvA7"
+}
+voice
+10/7/2025, 11:37:55 PM · input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_COELreKyzUk5MiZFKDOjc",
+  "audio_end_ms": 18816,
+  "item_id": "item_COELrXamYuS8ckyXcsvA7"
+}
+voice
+10/7/2025, 11:37:55 PM · input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_COELrgLSKiu52TRiIXzSe",
+  "previous_item_id": "item_COELivINgBQ475d3KWp33",
+  "item_id": "item_COELrXamYuS8ckyXcsvA7"
+}
+voice
+10/7/2025, 11:37:55 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELr1XHryYaA1qmharYq",
+  "previous_item_id": "item_COELivINgBQ475d3KWp33",
+  "item": {
+    "id": "item_COELrXamYuS8ckyXcsvA7",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:56 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COELrCURIxAgXEDQXC4YS",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COELr0YHTAthR0IKRAYHS",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COELXYrUsTXEBXvsjSGVz",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:37:56 PM · response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_COELsyCKUcTCAKgOFEn46",
+  "response_id": "resp_COELr0YHTAthR0IKRAYHS",
+  "output_index": 0,
+  "item": {
+    "id": "item_COELrUZ9PSPup2rydBIqx",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:37:56 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELsyMqT4GB3mgawN6Zx",
+  "previous_item_id": "item_COELrXamYuS8ckyXcsvA7",
+  "item": {
+    "id": "item_COELrUZ9PSPup2rydBIqx",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:37:56 PM · response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_COELsi0672y0bdEgOB70F",
+  "response_id": "resp_COELr0YHTAthR0IKRAYHS",
+  "item_id": "item_COELrUZ9PSPup2rydBIqx",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+voice
+10/7/2025, 11:37:56 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELsb8ZILvYFibo0KOz5",
+  "response_id": "resp_COELr0YHTAthR0IKRAYHS",
+  "item_id": "item_COELrUZ9PSPup2rydBIqx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "Everything",
+  "obfuscation": "4dOoKN"
+}
+voice
+10/7/2025, 11:37:56 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELsu91BNLgMHbff0s38",
+  "response_id": "resp_COELr0YHTAthR0IKRAYHS",
+  "item_id": "item_COELrUZ9PSPup2rydBIqx",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " is",
+  "obfuscation": "p95PTfGfOm7V3"
+}
+voice
+10/7/2025, 11:37:56 PM · input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_COELsWkfqsjBZFTIfg1VC",
+  "audio_start_ms": 18932,
+  "item_id": "item_COELsUUJIXmHz00wlALdh"
+}
+voice
+10/7/2025, 11:37:56 PM · response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_COELs0tjNxazSfCAQt92t",
+  "response_id": "resp_COELr0YHTAthR0IKRAYHS",
+  "item_id": "item_COELrUZ9PSPup2rydBIqx",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "Everything is"
+  }
+}
+voice
+10/7/2025, 11:37:56 PM · response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_COELsbszIwmfZelFihAIN",
+  "response_id": "resp_COELr0YHTAthR0IKRAYHS",
+  "item_id": "item_COELrUZ9PSPup2rydBIqx",
+  "output_index": 0,
+  "content_index": 0
+}
+voice
+10/7/2025, 11:37:56 PM · response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_COELsDTuf15jGuzYSiCRO",
+  "response_id": "resp_COELr0YHTAthR0IKRAYHS",
+  "output_index": 0,
+  "item": {
+    "id": "item_COELrUZ9PSPup2rydBIqx",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "incomplete",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "Everything is"
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:56 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COELsDhZLEF4miCdAKt4b",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COELr0YHTAthR0IKRAYHS",
+    "status": "cancelled",
+    "status_details": {
+      "type": "cancelled",
+      "reason": "turn_detected"
+    },
+    "output": [
+      {
+        "id": "item_COELrUZ9PSPup2rydBIqx",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "incomplete",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "Everything is"
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_COELXYrUsTXEBXvsjSGVz",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 987,
+      "input_tokens": 979,
+      "output_tokens": 8,
+      "input_token_details": {
+        "text_tokens": 833,
+        "audio_tokens": 146,
+        "image_tokens": 0,
+        "cached_tokens": 0,
+        "cached_tokens_details": {
+          "text_tokens": 0,
+          "audio_tokens": 0,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 6,
+        "audio_tokens": 2
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:37:56 PM · response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_COELssHRG2cOUdvITzqNo",
+  "response_id": "resp_COELr0YHTAthR0IKRAYHS",
+  "item_id": "item_COELrUZ9PSPup2rydBIqx",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "Everything is"
+}
+voice
+10/7/2025, 11:37:58 PM · input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_COELuCJC1xgi0zR42mYzd",
+  "audio_end_ms": 21984,
+  "item_id": "item_COELsUUJIXmHz00wlALdh"
+}
+voice
+10/7/2025, 11:37:58 PM · input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_COELuiOR3ViKgO4NhoDui",
+  "previous_item_id": "item_COELrUZ9PSPup2rydBIqx",
+  "item_id": "item_COELsUUJIXmHz00wlALdh"
+}
+voice
+10/7/2025, 11:37:58 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELuP4ph5RPfMXezolPu",
+  "previous_item_id": "item_COELrUZ9PSPup2rydBIqx",
+  "item": {
+    "id": "item_COELsUUJIXmHz00wlALdh",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:37:58 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COELuW7dcl4ORLr9mgwJ1",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COELuaVVCMlUG5HJjWdRd",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COELXYrUsTXEBXvsjSGVz",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:37:59 PM · response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_COELvdvx2vvpgZs3GGSRU",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "output_index": 0,
+  "item": {
+    "id": "item_COELu7qGBkiGhUrDy4XWK",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:37:59 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COELv1tDq1hdEI2Wxb0PP",
+  "previous_item_id": "item_COELsUUJIXmHz00wlALdh",
+  "item": {
+    "id": "item_COELu7qGBkiGhUrDy4XWK",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:37:59 PM · response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_COELvo2Hy1WgmuHnbRpmb",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvPJgkR3sDRc2jLFPa",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "Sure",
+  "obfuscation": "zRTbAFX80X5v"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvlxphEzRSpuTvydS4",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "i5aNxilWtOvpWui"
+}
+voice
+10/7/2025, 11:37:59 PM · output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_c75e47d4a0774d71",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELv5fJh3rZTna2Fx0hG",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " The",
+  "obfuscation": "dVxQ6xcWn0on"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELv2pRmmYO5Cl78ATqW",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " current",
+  "obfuscation": "FE5rePAJ"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvoXTONurdzhE3ByaX",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " weather",
+  "obfuscation": "ReA0ce4A"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvy4Jkpg2AbR8KvqR3",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " in",
+  "obfuscation": "dP4DC8L7beYWw"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvOr2qpZlRsP2mDhC7",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Rio",
+  "obfuscation": "BgRw9erpoyhm"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvvDj501cgsj3u28yP",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " de",
+  "obfuscation": "QkfoLmF6QyG51"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvAMKmtoBRyeiq3YI5",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Janeiro",
+  "obfuscation": "s4Nr0Zis"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvGYQTQLhPbbAnLCBh",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " is",
+  "obfuscation": "V2IN3EjtVohQB"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvQav6hCF5vc6NnWKB",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " ",
+  "obfuscation": "5iOuFDXT104KImD"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvpMQxscOQAL47XZhy",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "21",
+  "obfuscation": "rWeVpsMpWN8jDs"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvZ8W5goD9u2pkrgGs",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "°C",
+  "obfuscation": "mnhEcfLjftw5uQ"
+}
+voice
+10/7/2025, 11:37:59 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELvds1wRTl6I49Ot8m6",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ",",
+  "obfuscation": "nSxqUOcecrz6ED2"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwS1hIJGwLiFYCfalj",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " cloudy",
+  "obfuscation": "fChiVNkTX"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwjTtw1tqTZwHcKtdu",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ",",
+  "obfuscation": "2CkKOwKnPrMbXzG"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELw68cqr3JxRhCYyYtj",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " with",
+  "obfuscation": "CsQspOEjjix"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwQNQYwsdWgLK0anKR",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " a",
+  "obfuscation": "V2evBUqRetjVRw"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwpCWsAYXy6OxtAxuC",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Real",
+  "obfuscation": "lkPMO3RdzXX"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwGWA0dsukfCvloa6x",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "Feel",
+  "obfuscation": "hYJNR9mn3G4V"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwKkGeqBfv8RqOT6V9",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "®",
+  "obfuscation": "Kry0upgnSr8nK0D"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwL3Z8NY1ESdGClaYe",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " of",
+  "obfuscation": "ZTFYeSYfE8lPK"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwtujXXoh3xq9uRHbe",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " ",
+  "obfuscation": "kpnw4LQ6eTz8BBz"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwOAEowYPvonnodrta",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "20",
+  "obfuscation": "p5tOOR0IKcPCXV"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwbl057iBl0LFUu3OK",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "°C",
+  "obfuscation": "m0AxDBSjo43WH7"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwg63QKFFAtorHrLmI",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "r09VnEvmUK5nw21"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwP2ZFKNAooWZ7JvOH",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " The",
+  "obfuscation": "zGUd0PsC2Dge"
+}
+voice
+10/7/2025, 11:38:00 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwZsoqZGyW5x6pE73i",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " wind",
+  "obfuscation": "EDURpZElcPp"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwMEVJ5o44nze122VU",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " is",
+  "obfuscation": "KofO9Lg8OXzGb"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwx6DD2k6gEOF03KR8",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " from",
+  "obfuscation": "6OpPczc9W7M"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELw9xSpTHte75ZPdZbI",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " the",
+  "obfuscation": "EFVtVRemCYJq"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELw37QA8NQNFAfHomiT",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " southwest",
+  "obfuscation": "oIrypC"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwOBDrNfnFNHtjCBoR",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " at",
+  "obfuscation": "MR9TfLeML2TTO"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwDW0A2V6Ya4ajhhJZ",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " ",
+  "obfuscation": "njuUfiriz2p37ol"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwS0pjYGZAO7k2d8O2",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "13",
+  "obfuscation": "tLn3ORQpUjKAgw"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELwmoXtomJb55CzwZtI",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " km",
+  "obfuscation": "Pjz3TGViESNGF"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxPgka2Zmnc3R3Dybu",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "/h",
+  "obfuscation": "ynNG7PtLfmx6A8"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxHVdiqXOwfSB5200M",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ",",
+  "obfuscation": "ZcDAdsL9jFNPK30"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxtFXi8BYKLzvMA1pA",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " gust",
+  "obfuscation": "UE70ndTnEDW"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxNSC4rj4xzWYNVHMi",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "ing",
+  "obfuscation": "yvrmxmExFbYTe"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxVeKJCFYNKfE9c7Uk",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " up",
+  "obfuscation": "rauC5XYuS5x2G"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELx23VlGvsAfEz0wrKo",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " to",
+  "obfuscation": "VjDS6qtgZPOqo"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELx0TyuLKm11lR1qqxM",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " ",
+  "obfuscation": "pZ33jJ11qMQm2eb"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxD1JaSax18OdkuBiZ",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "25",
+  "obfuscation": "DEh6JAS6rds1oI"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELx831BzsE21Tb8zGFm",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " km",
+  "obfuscation": "a8seBZhj75R5w"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxIxXY87JULOmuXLer",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "/h",
+  "obfuscation": "1ViSznvvTdu7wG"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxQpq7ZL7Cvw4UuiwF",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "rV7C3bswnZtNPWl"
+}
+voice
+10/7/2025, 11:38:01 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxcrrrq7HtDbr1s27D",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Rain",
+  "obfuscation": "2PGS3A6mLdQ"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELx0E4nXWvzIKIhokcm",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " is",
+  "obfuscation": "k66IarUyh8ijL"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELxPUPCQf5DIbs7K3GD",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " expected",
+  "obfuscation": "zb90byw"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyBXPM8jCuPKvf6q2u",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " to",
+  "obfuscation": "X4P6QG5wQNSA1"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELy2S3UXtIGwXKmqkY4",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " start",
+  "obfuscation": "vSUg9glwQS"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyvvLyTLhlPydNPrkN",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " late",
+  "obfuscation": "ZH0aobImLed"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyXgdj2n8M4Sp9y5me",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " tonight",
+  "obfuscation": "rs25vcRa"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyfHVKkp8lLabzzQVV",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " and",
+  "obfuscation": "D7CtvEnxAu6s"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyee54Ix8lI5eOqzfK",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " continue",
+  "obfuscation": "Fm8lsrq"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyCdFFpYiJ7fboiO8R",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " into",
+  "obfuscation": "t0pKTzQF50J"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyNktBhmi6hcPh4P00",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Friday",
+  "obfuscation": "Kqy2A9xjz"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyKu1KG2EgOmmpuy9g",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " morning",
+  "obfuscation": "3ZaRTfJa"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELy3ZdSwJIRxDyLtxRq",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ",",
+  "obfuscation": "bUuBtTjod8vFtZr"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELydOuBXXOFOvv5ph6W",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " with",
+  "obfuscation": "gHFyZU2xDVb"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyWwddIvM9y8jvmL2Y",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " a",
+  "obfuscation": "ScwDJzjgSHAmVE"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELy5esJkiX2pgyikQGU",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " low",
+  "obfuscation": "G0pHX3EWOnzg"
+}
+voice
+10/7/2025, 11:38:02 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELyG10GXYyspyu2LpB7",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " of",
+  "obfuscation": "4sZLnMCI6DFpZ"
+}
+voice
+10/7/2025, 11:38:03 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELzy3cVSFSQQgo7XbM7",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " about",
+  "obfuscation": "CrluUYXUeD"
+}
+voice
+10/7/2025, 11:38:03 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELzfGbksgkyQFeiwKVH",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " ",
+  "obfuscation": "v16duUpnr0WNDf8"
+}
+voice
+10/7/2025, 11:38:03 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELzLhbQ0aqTfxwi5I51",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "20",
+  "obfuscation": "MknYn6TIDlkgM2"
+}
+voice
+10/7/2025, 11:38:03 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELzW0UAG8Ef8K8v5ivC",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "°C",
+  "obfuscation": "2j8IZGf7p7MFJt"
+}
+voice
+10/7/2025, 11:38:03 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELzour6UAOjcAfIZPeC",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " tonight",
+  "obfuscation": "bXtzHLoK"
+}
+voice
+10/7/2025, 11:38:03 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COELz4aRKL57HZrl0SKC3",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "5qmsTiGlLUou7br"
+}
+voice
+10/7/2025, 11:38:03 PM · response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_COELzKXRvy6MNs9iAfxuR",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0
+}
+voice
+10/7/2025, 11:38:03 PM · response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_COELzBjYHPWt1eV2vHr4H",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "Sure. The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is from the southwest at 13 km/h, gusting up to 25 km/h. Rain is expected to start late tonight and continue into Friday morning, with a low of about 20°C tonight."
+}
+voice
+10/7/2025, 11:38:03 PM · response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_COELzLzzkTV11DDoMy4qu",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "Sure. The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is from the southwest at 13 km/h, gusting up to 25 km/h. Rain is expected to start late tonight and continue into Friday morning, with a low of about 20°C tonight."
+  }
+}
+voice
+10/7/2025, 11:38:03 PM · response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_COELzluApoy7KETzfXfsu",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd",
+  "output_index": 0,
+  "item": {
+    "id": "item_COELu7qGBkiGhUrDy4XWK",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "Sure. The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is from the southwest at 13 km/h, gusting up to 25 km/h. Rain is expected to start late tonight and continue into Friday morning, with a low of about 20°C tonight."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:38:03 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COELz6qgIJPw4DAUlcCYy",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COELuaVVCMlUG5HJjWdRd",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_COELu7qGBkiGhUrDy4XWK",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "Sure. The current weather in Rio de Janeiro is 21°C, cloudy, with a RealFeel® of 20°C. The wind is from the southwest at 13 km/h, gusting up to 25 km/h. Rain is expected to start late tonight and continue into Friday morning, with a low of about 20°C tonight."
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_COELXYrUsTXEBXvsjSGVz",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 1569,
+      "input_tokens": 1029,
+      "output_tokens": 540,
+      "input_token_details": {
+        "text_tokens": 851,
+        "audio_tokens": 178,
+        "image_tokens": 0,
+        "cached_tokens": 960,
+        "cached_tokens_details": {
+          "text_tokens": 832,
+          "audio_tokens": 128,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 98,
+        "audio_tokens": 442
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:38:03 PM · rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_COELz5fJIrYNHjb6wW7mc",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 798897,
+      "reset_seconds": 0.082
+    }
+  ]
+}
+voice
+10/7/2025, 11:38:21 PM · output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_5d310c2efb20428f",
+  "response_id": "resp_COELuaVVCMlUG5HJjWdRd"
+}
+voice
+10/7/2025, 11:38:24 PM · input_audio_buffer.speech_started
+{
+  "type": "input_audio_buffer.speech_started",
+  "event_id": "event_COEMKzcd7fqzths0iZSQ2",
+  "audio_start_ms": 47188,
+  "item_id": "item_COEMKWOgPJPZ0QDvl681N"
+}
+voice
+10/7/2025, 11:38:25 PM · input_audio_buffer.speech_stopped
+{
+  "type": "input_audio_buffer.speech_stopped",
+  "event_id": "event_COEMLGEMEyXKgxHBm2fcc",
+  "audio_end_ms": 48640,
+  "item_id": "item_COEMKWOgPJPZ0QDvl681N"
+}
+voice
+10/7/2025, 11:38:25 PM · input_audio_buffer.committed
+{
+  "type": "input_audio_buffer.committed",
+  "event_id": "event_COEML8JNBqHaCOaQLUuME",
+  "previous_item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "item_id": "item_COEMKWOgPJPZ0QDvl681N"
+}
+voice
+10/7/2025, 11:38:25 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEMLugWmT2qRmoDX09RJ",
+  "previous_item_id": "item_COELu7qGBkiGhUrDy4XWK",
+  "item": {
+    "id": "item_COEMKWOgPJPZ0QDvl681N",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_audio",
+        "transcript": null
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:38:25 PM · response.created
+{
+  "type": "response.created",
+  "event_id": "event_COEML5ezl5cp175UNhAHR",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEMLLLcypCY1EZvxI3JV",
+    "status": "in_progress",
+    "status_details": null,
+    "output": [],
+    "conversation_id": "conv_COELXYrUsTXEBXvsjSGVz",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": null,
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:38:25 PM · response.output_item.added
+{
+  "type": "response.output_item.added",
+  "event_id": "event_COEMLZvCovRplMTT9z9zR",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "output_index": 0,
+  "item": {
+    "id": "item_COEMLmv9LkppPii1yBSgb",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:38:25 PM · conversation.item.created
+{
+  "type": "conversation.item.created",
+  "event_id": "event_COEMLUGjN7yCp1d0sQVeZ",
+  "previous_item_id": "item_COEMKWOgPJPZ0QDvl681N",
+  "item": {
+    "id": "item_COEMLmv9LkppPii1yBSgb",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "in_progress",
+    "role": "assistant",
+    "content": []
+  }
+}
+voice
+10/7/2025, 11:38:25 PM · response.content_part.added
+{
+  "type": "response.content_part.added",
+  "event_id": "event_COEMLNJfey1l6nT0scIWm",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": ""
+  }
+}
+voice
+10/7/2025, 11:38:25 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMLiQ168ohuGCGQ3bCf",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "You're",
+  "obfuscation": "BxyIhqnGQ2"
+}
+voice
+10/7/2025, 11:38:25 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMLnklvA6nSvk2hzEKf",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " welcome",
+  "obfuscation": "lm0bBo4U"
+}
+voice
+10/7/2025, 11:38:25 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEML0YphlRdiFmm5MJ5D",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "!",
+  "obfuscation": "opysWQSfOcos60m"
+}
+voice
+10/7/2025, 11:38:26 PM · output_audio_buffer.started
+{
+  "type": "output_audio_buffer.started",
+  "event_id": "event_f01a052cf9fc44a2",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMLz7IDNm7c3GKblndX",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " Let",
+  "obfuscation": "WcI8anP3uXAn"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMLw7sHZQqXPM4nWpjS",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " me",
+  "obfuscation": "qHv8W4tyy7vE7"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEML7Kid2dh7OWdjyngR",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " know",
+  "obfuscation": "ma9UMPOujhv"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMMCQXeugwrJyyT1QOS",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " if",
+  "obfuscation": "e5Mb9t0UcKnDd"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMMdnb3hitYxa4GVz4W",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " you",
+  "obfuscation": "NBM53yAEl5xJ"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMM1nlKtqbbm3eNeyog",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " need",
+  "obfuscation": "hqfruO6ZyTF"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMMAKtPoppjTY9XvpiC",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " anything",
+  "obfuscation": "eOtjrMv"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMMO1WZHe2NG2J0caft",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": " else",
+  "obfuscation": "Cg21nhYFgox"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.delta
+{
+  "type": "response.audio_transcript.delta",
+  "event_id": "event_COEMMjb8L9o15cYPGgbhC",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": ".",
+  "obfuscation": "76bYAQqm9wgjJP4"
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio.done
+{
+  "type": "response.audio.done",
+  "event_id": "event_COEMMI2D5Kn2F7r0OZrM3",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0
+}
+voice
+10/7/2025, 11:38:26 PM · response.audio_transcript.done
+{
+  "type": "response.audio_transcript.done",
+  "event_id": "event_COEMMxNTY0F1ahjFWubbo",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "transcript": "You're welcome! Let me know if you need anything else."
+}
+voice
+10/7/2025, 11:38:26 PM · response.content_part.done
+{
+  "type": "response.content_part.done",
+  "event_id": "event_COEMMizlO4kelXVFS6zvz",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "item_id": "item_COEMLmv9LkppPii1yBSgb",
+  "output_index": 0,
+  "content_index": 0,
+  "part": {
+    "type": "audio",
+    "transcript": "You're welcome! Let me know if you need anything else."
+  }
+}
+voice
+10/7/2025, 11:38:26 PM · response.output_item.done
+{
+  "type": "response.output_item.done",
+  "event_id": "event_COEMMNWClnc2Z3ncf0MhR",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV",
+  "output_index": 0,
+  "item": {
+    "id": "item_COEMLmv9LkppPii1yBSgb",
+    "object": "realtime.item",
+    "type": "message",
+    "status": "completed",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "audio",
+        "transcript": "You're welcome! Let me know if you need anything else."
+      }
+    ]
+  }
+}
+voice
+10/7/2025, 11:38:26 PM · response.done
+{
+  "type": "response.done",
+  "event_id": "event_COEMMYial0Sy5dD7jqtV3",
+  "response": {
+    "object": "realtime.response",
+    "id": "resp_COEMLLLcypCY1EZvxI3JV",
+    "status": "completed",
+    "status_details": null,
+    "output": [
+      {
+        "id": "item_COEMLmv9LkppPii1yBSgb",
+        "object": "realtime.item",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "audio",
+            "transcript": "You're welcome! Let me know if you need anything else."
+          }
+        ]
+      }
+    ],
+    "conversation_id": "conv_COELXYrUsTXEBXvsjSGVz",
+    "modalities": [
+      "audio",
+      "text"
+    ],
+    "voice": "ash",
+    "output_audio_format": "pcm16",
+    "temperature": 0.8,
+    "max_output_tokens": "inf",
+    "usage": {
+      "total_tokens": 1675,
+      "input_tokens": 1593,
+      "output_tokens": 82,
+      "input_token_details": {
+        "text_tokens": 959,
+        "audio_tokens": 634,
+        "image_tokens": 0,
+        "cached_tokens": 1472,
+        "cached_tokens_details": {
+          "text_tokens": 896,
+          "audio_tokens": 576,
+          "image_tokens": 0
+        }
+      },
+      "output_token_details": {
+        "text_tokens": 24,
+        "audio_tokens": 58
+      }
+    },
+    "metadata": null
+  }
+}
+voice
+10/7/2025, 11:38:26 PM · rate_limits.updated
+{
+  "type": "rate_limits.updated",
+  "event_id": "event_COEMMzFlUW7I8RsiXgwsl",
+  "rate_limits": [
+    {
+      "name": "tokens",
+      "limit": 800000,
+      "remaining": 799355,
+      "reset_seconds": 0.048
+    }
+  ]
+}
+voice
+10/7/2025, 11:38:28 PM · output_audio_buffer.stopped
+{
+  "type": "output_audio_buffer.stopped",
+  "event_id": "event_bd1c0879e7a34a1e",
+  "response_id": "resp_COEMLLLcypCY1EZvxI3JV"
+}
+controller
+10/7/2025, 11:38:31 PM · session_stopped
+{}
+nested
+10/7/2025, 11:38:31 PM · system
+{
+  "message": "WebSocket closed"
+}

@@ -16,13 +16,11 @@ import {
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
-import ToolList from './components/ToolList';
-import ToolEditor from './components/ToolEditor';
-import AgentList from './components/AgentList';
-import AgentEditor from './components/AgentEditor';
-import RunConsole from './components/RunConsole';
-import AgentDashboard from './components/AgentDashboard';
-import VoiceAssistant from './pages/VoiceAssistant';
+import AgentEditor from './features/agents/components/AgentEditor';
+import RunConsole from './features/agents/components/RunConsole';
+import AgentDashboard from './features/agents/pages/AgentDashboard';
+import ToolsDashboard from './features/tools/pages/ToolsDashboard';
+import VoiceDashboard from './features/voice/pages/VoiceDashboard';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -33,11 +31,11 @@ const lightPalette = {
   secondary: {
     main: '#f50057',
   },
-  // background: {
-  //   default: '#f4f6f8',
-  //   paper: '#ffffff',
-  //   subtile: '#e0e0e0',
-  // },
+  background: {
+    default: '#f5f7fa',
+    paper: '#ffffff',
+    subtile: '#e8ecf1',
+  },
 };
 
 const darkPalette = {
@@ -48,15 +46,15 @@ const darkPalette = {
     main: '#f48fb1',
   },
   background: {
-    default: '#121212',
-    paper: '#1e1e1e',
-    subtile: '#2c2c2c',
+    default: '#0d0d0d',
+    paper: '#1a1a1a',
+    subtile: '#242424',
   },
   text: {
-    primary: '#ffffff',
-    secondary: '#b0b0b0',
+    primary: '#e8e8e8',
+    secondary: '#a0a0a0',
   },
-  divider: '#373737',
+  divider: '#2d2d2d',
 };
 
 export default function App() {
@@ -93,8 +91,18 @@ export default function App() {
           },
         },
         shape: {
-          borderRadius: 8,
+          borderRadius: 12,
         },
+        shadows: mode === 'dark'
+          ? [
+              'none',
+              '0px 2px 4px rgba(0,0,0,0.4)',
+              '0px 4px 8px rgba(0,0,0,0.4)',
+              '0px 8px 16px rgba(0,0,0,0.4)',
+              '0px 12px 24px rgba(0,0,0,0.4)',
+              ...Array(20).fill('0px 16px 32px rgba(0,0,0,0.4)')
+            ]
+          : undefined,
         components: {
           MuiAppBar: {
             styleOverrides: {
@@ -112,11 +120,13 @@ export default function App() {
             },
             styleOverrides: {
               root: ({ theme }) => ({
-                transition: 'background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                transition: 'background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
                 backgroundColor: theme.palette.background.paper,
+                backdropFilter: 'blur(10px)',
               }),
               outlined: ({ theme }) => ({
                 borderColor: theme.palette.divider,
+                borderWidth: '1px',
               }),
             },
           },
@@ -163,11 +173,143 @@ export default function App() {
               variant: 'outlined',
               size: 'small',
             },
+            styleOverrides: {
+              root: ({ theme }) => ({
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.05)'
+                    : 'rgba(0, 0, 0, 0.02)',
+                  transition: 'all 0.2s ease-in-out',
+                  '& fieldset': {
+                    borderColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : 'rgba(0, 0, 0, 0.12)',
+                    borderWidth: '1px',
+                  },
+                  '&:hover': {
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.08)'
+                      : 'rgba(0, 0, 0, 0.04)',
+                    '& fieldset': {
+                      borderColor: theme.palette.mode === 'dark'
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : 'rgba(0, 0, 0, 0.23)',
+                    },
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.09)'
+                      : 'rgba(0, 0, 0, 0.05)',
+                    '& fieldset': {
+                      borderColor: theme.palette.primary.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '&.Mui-disabled': {
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.02)'
+                      : 'rgba(0, 0, 0, 0.01)',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: theme.palette.text.secondary,
+                  '&.Mui-focused': {
+                    color: theme.palette.primary.main,
+                  },
+                },
+              }),
+            },
           },
           MuiSelect: {
             defaultProps: {
               variant: 'outlined',
               size: 'small',
+            },
+            styleOverrides: {
+              root: ({ theme }) => ({
+                backgroundColor: theme.palette.mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.05)'
+                  : 'rgba(0, 0, 0, 0.02)',
+                transition: 'all 0.2s ease-in-out',
+                '& fieldset': {
+                  borderColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.1)'
+                    : 'rgba(0, 0, 0, 0.12)',
+                  borderWidth: '1px',
+                },
+                '&:hover': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.08)'
+                    : 'rgba(0, 0, 0, 0.04)',
+                  '& fieldset': {
+                    borderColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : 'rgba(0, 0, 0, 0.23)',
+                  },
+                },
+                '&.Mui-focused': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.09)'
+                    : 'rgba(0, 0, 0, 0.05)',
+                  '& fieldset': {
+                    borderColor: theme.palette.primary.main,
+                    borderWidth: '2px',
+                  },
+                },
+              }),
+            },
+          },
+          MuiOutlinedInput: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                backgroundColor: theme.palette.mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.05)'
+                  : 'rgba(0, 0, 0, 0.02)',
+                transition: 'all 0.2s ease-in-out',
+                '& fieldset': {
+                  borderColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.1)'
+                    : 'rgba(0, 0, 0, 0.12)',
+                  borderWidth: '1px',
+                },
+                '&:hover': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.08)'
+                    : 'rgba(0, 0, 0, 0.04)',
+                  '& fieldset': {
+                    borderColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : 'rgba(0, 0, 0, 0.23)',
+                  },
+                },
+                '&.Mui-focused': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.09)'
+                    : 'rgba(0, 0, 0, 0.05)',
+                  '& fieldset': {
+                    borderColor: theme.palette.primary.main,
+                    borderWidth: '2px',
+                  },
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.02)'
+                    : 'rgba(0, 0, 0, 0.01)',
+                },
+              }),
+              notchedOutline: {
+                transition: 'all 0.2s ease-in-out',
+              },
+            },
+          },
+          MuiInputLabel: {
+            styleOverrides: {
+              root: ({ theme }) => ({
+                color: theme.palette.text.secondary,
+                '&.Mui-focused': {
+                  color: theme.palette.primary.main,
+                },
+              }),
             },
           },
         },
@@ -179,11 +321,39 @@ export default function App() {
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <style>
+          {`
+            /* Global scrollbar styling */
+            * {
+              scrollbar-width: thin;
+              scrollbar-color: ${mode === 'dark' ? '#3a3a3a #1a1a1a' : '#c0c0c0 #ffffff'};
+            }
+
+            *::-webkit-scrollbar {
+              width: 12px;
+              height: 12px;
+            }
+
+            *::-webkit-scrollbar-track {
+              background: ${mode === 'dark' ? '#1a1a1a' : '#ffffff'};
+            }
+
+            *::-webkit-scrollbar-thumb {
+              background-color: ${mode === 'dark' ? '#3a3a3a' : '#c0c0c0'};
+              border-radius: 6px;
+              border: 2px solid ${mode === 'dark' ? '#1a1a1a' : '#ffffff'};
+            }
+
+            *::-webkit-scrollbar-thumb:hover {
+              background-color: ${mode === 'dark' ? '#4a4a4a' : '#a0a0a0'};
+            }
+          `}
+        </style>
         <Router>
           <AppBar position="static">
             <Toolbar>
-              <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
-                AutoGen Dashboard
+              <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit', pt: 1 }}>
+                Agentic
               </Typography>
               <Button color="inherit" component={RouterLink} to="/">Agents</Button>
               <Button color="inherit" component={RouterLink} to="/tools">Tools</Button>
@@ -204,15 +374,15 @@ export default function App() {
           >
             <Container maxWidth="xl">
               <Routes>
-                <Route path="/" element={<AgentList />} />
+                <Route path="/" element={<AgentDashboard />} />
                 <Route path="/agents/new" element={<AgentEditor />} />
                 <Route path="/agents/:name" element={<AgentDashboard />} />
                 <Route path="/agents/:name/edit" element={<AgentEditor nested={true} />} />
                 <Route path="/runs/:name" element={<RunConsole />} />
-                <Route path="/tools" element={<ToolList />} />
-                <Route path="/tools/new" element={<ToolEditor />} />
-                <Route path="/tools/edit/:filename" element={<ToolEditor />} />
-                <Route path="/voice" element={<VoiceAssistant />} />
+                <Route path="/tools" element={<ToolsDashboard />} />
+                <Route path="/tools/:filename" element={<ToolsDashboard />} />
+                <Route path="/voice" element={<VoiceDashboard />} />
+                <Route path="/voice/:conversationId" element={<VoiceDashboard />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Container>
