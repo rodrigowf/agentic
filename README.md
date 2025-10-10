@@ -18,7 +18,7 @@ Build once. Deploy anywhere. Control with your voice.
 - ✏️ **Self-Editing System** - Agents that improve their own codebase
 - 🛠️ **Extensible by Design** - Custom tools, models, and integrations
 
-![Voice Assistant Main View](_debug/screenshots/readme/voice-main-view.png)
+![Voice Assistant Main View](debug/screenshots/readme/voice-main-view.png)
 
 ---
 
@@ -336,7 +336,7 @@ npm install
 cd ..
 
 # 5. Install debug tools
-cd _debug
+cd debug
 npm install
 cd ..
 
@@ -374,7 +374,7 @@ npm install
 cd ..
 
 # 5. Install debug tools
-cd _debug
+cd debug
 npm install
 cd ..
 
@@ -410,7 +410,7 @@ npm install
 cd ..
 
 # 4. Install debug tools
-cd _debug
+cd debug
 npm install
 cd ..
 
@@ -524,7 +524,7 @@ claude --version
 
 The agent dashboard provides a comprehensive interface for creating, editing, and managing AI agents with a powerful visual editor.
 
-![Agent Dashboard](_debug/screenshots/readme/agents-dashboard.png)
+![Agent Dashboard](debug/screenshots/readme/agents-dashboard.png)
 
 #### Dashboard Features
 
@@ -987,7 +987,7 @@ agentic/
 │   ├── package.json              # Node.js dependencies
 │   └── package-lock.json
 │
-├── _debug/                       # Development tools
+├── debug/                        # Development tools
 │   ├── screenshot.js             # Puppeteer screenshot automation
 │   ├── screenshots/              # Screenshot storage
 │   │   └── readme/               # README screenshots
@@ -1114,23 +1114,23 @@ Automate visual regression testing:
 
 ```bash
 # Before making changes
-node _debug/screenshot.js http://localhost:3000/voice _debug/screenshots/before.png 3000
+node debug/screenshot.js http://localhost:3000/voice debug/screenshots/before.png 3000
 
 # Make UI changes in React components
 
 # After changes
-node _debug/screenshot.js http://localhost:3000/voice _debug/screenshots/after.png 3000
+node debug/screenshot.js http://localhost:3000/voice debug/screenshots/after.png 3000
 
 # Compare screenshots visually
 ```
 
 **Screenshot tool usage:**
 ```bash
-node _debug/screenshot.js <URL> <OUTPUT_PATH> [WAIT_MS]
+node debug/screenshot.js <URL> <OUTPUT_PATH> [WAIT_MS]
 
 # Examples:
-node _debug/screenshot.js http://localhost:3000 output.png 2000
-node _debug/screenshot.js http://localhost:3000/agents dashboard.png 5000
+node debug/screenshot.js http://localhost:3000 output.png 2000
+node debug/screenshot.js http://localhost:3000/agents dashboard.png 5000
 ```
 
 ### Voice Conversation Export
@@ -1698,7 +1698,7 @@ rm -rf backend/chroma_db/
 
 3. **Take screenshots for UI issues:**
    ```bash
-   node _debug/screenshot.js http://localhost:3000/voice error-screenshot.png 3000
+   node debug/screenshot.js http://localhost:3000/voice error-screenshot.png 3000
    ```
 
 4. **Check environment:**
@@ -1739,7 +1739,7 @@ rm -rf backend/chroma_db/
   - Debugging workflows
   - Architecture deep-dive
 
-- **[_debug/AUTOMATED_UI_DEVELOPMENT.md](_debug/AUTOMATED_UI_DEVELOPMENT.md)** - UI development workflow with screenshot automation
+- **[debug/AUTOMATED_UI_DEVELOPMENT.md](debug/AUTOMATED_UI_DEVELOPMENT.md)** - UI development workflow with screenshot automation
 
 ---
 
