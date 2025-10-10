@@ -1,0 +1,7 @@
+Ok, this is incredible and very good looking! 
+But now I want you to do the same for the nested conversation box (selected). So I want you to apply similar formating to allow us to show not only the nested conversation highlights in that box, but all the information contained in the nested conversation in a pretty and nested way.A
+
+
+I want you to create the code and json for a new agent (the Memory agent) to run in my dashboard like the others such as the Researcher (backend/agents/Researcher.json and backend/tools/research.py). This should be the same agent_type as the Researcher, and use the tools (functions inside the new tool file you create. This new Memory agent should be inspired by the docs/memory.py file, which is an old version of this same agent, but using modern libraries and techniques. Like, for instance, we don't need all the llm functionality itself, cause this is already implemented in our dashboard, mainly at backend/runner.py, where the agent features are loaded from the agent json. So please, start by carefully analysing my old version of this memory agent to understand exactly it's role and features, so you can correctly implement it within this new platform.
+
+> Ok, I like what you did, but I want you to make it generic, so other agents can be set up to have the same behavior of loading the prompt from the tool file
