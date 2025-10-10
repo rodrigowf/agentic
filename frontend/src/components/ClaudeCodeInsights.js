@@ -54,7 +54,13 @@ const ClaudeCodeInsights = ({
           icon = <CodeIcon />;
           // Content is at data.content
           descriptiveText = data.content || '';
-          previewText = truncateText(descriptiveText, 150);
+          // Show up to 250 chars or 3 lines, whichever comes first
+          const lines = descriptiveText.split('\n');
+          if (lines.length > 3) {
+            previewText = lines.slice(0, 3).join('\n') + '...';
+          } else {
+            previewText = descriptiveText.substring(0, 300);
+          }
           break;
         }
         case 'systemevent':
@@ -80,20 +86,20 @@ const ClaudeCodeInsights = ({
           // Build a descriptive preview based on tool type
           let toolDesc = '';
           if (toolName === 'Bash' && args.command) {
-            toolDesc = `$ ${truncateText(args.command, 100)}`;
-            previewText = `Bash: ${truncateText(args.command, 80)}`;
+            toolDesc = `$ ${args.command}`;
+            previewText = `${args.command}`;
           } else if (toolName === 'Glob' && args.pattern) {
             toolDesc = `Pattern: ${args.pattern}`;
-            previewText = `Glob: ${args.pattern}`;
+            previewText = `Pattern: ${args.pattern}`;
           } else if (toolName === 'Read' && args.file_path) {
             toolDesc = `Reading: ${args.file_path}`;
-            previewText = `Read: ${truncateText(args.file_path, 80)}`;
+            previewText = `${args.file_path}`;
           } else if (toolName === 'Edit' && args.file_path) {
             toolDesc = `Editing: ${args.file_path}`;
-            previewText = `Edit: ${truncateText(args.file_path, 80)}`;
+            previewText = `${args.file_path}`;
           } else if (toolName === 'Write' && args.file_path) {
             toolDesc = `Writing: ${args.file_path}`;
-            previewText = `Write: ${truncateText(args.file_path, 80)}`;
+            previewText = `${args.file_path}`;
           } else {
             previewText = `${toolName} tool`;
             toolDesc = safeStringify(args);
@@ -120,23 +126,23 @@ const ClaudeCodeInsights = ({
 
           if (data.is_error) {
             metadata.push({ label: 'Status', value: 'Error' });
-            previewText = `Error: ${truncateText(resultStr, 100)}`;
+            previewText = `Error: ${resultStr}`;
             descriptiveText = resultStr;
           } else {
             metadata.push({ label: 'Status', value: 'Success' });
             const resultLines = resultStr.split('\n').filter(line => line.trim());
             const lineCount = resultLines.length;
 
-            if (lineCount > 5) {
-              // Show first few lines as preview
-              const firstLines = resultLines.slice(0, 3).join('\n');
-              previewText = `${truncateText(firstLines, 120)}... (${lineCount} total lines)`;
+            if (lineCount > 8) {
+              // Show first 5 lines as preview
+              const firstLines = resultLines.slice(0, 5).join('\n');
+              previewText = `${firstLines}\n... (${lineCount - 5} more lines)`;
               metadata.push({ label: 'Lines', value: String(lineCount) });
             } else if (lineCount > 1) {
-              previewText = `${lineCount} lines returned`;
+              previewText = resultLines.join('\n');
               metadata.push({ label: 'Lines', value: String(lineCount) });
             } else {
-              previewText = truncateText(resultStr, 120);
+              previewText = resultStr;
             }
             descriptiveText = resultStr;
           }
@@ -269,16 +275,29 @@ const ClaudeCodeInsights = ({
                           <Typography variant="caption" color="text.secondary">{entry.timeLabel}</Typography>
                         )}
                       </Stack>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>{entry.preview}</Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.primary"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.9rem',
+                          lineHeight: 1.6,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          mt: 0.5,
+                        }}
+                      >
+                        {entry.preview}
+                      </Typography>
                       {entry.metadata.length > 0 && (
-                        <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}>
+                        <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
                           {entry.metadata.slice(0, 3).map((meta, metaIdx) => (
                             <Chip
                               key={`${entry.key}-preview-meta-${metaIdx}`}
                               size="small"
                               variant="outlined"
                               label={`${meta.label}: ${meta.value}`}
-                              sx={{ height: '20px', fontSize: '0.7rem' }}
+                              sx={{ height: '22px', fontSize: '0.75rem' }}
                             />
                           ))}
                         </Stack>
