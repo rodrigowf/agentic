@@ -4,4 +4,4 @@
 - fix claude permission issue;
   - debug/db_exports/Permission_Error.json illustrates it
 
-- 
+- Generalize custom system prompt initialization currently applied only for Memory agent
