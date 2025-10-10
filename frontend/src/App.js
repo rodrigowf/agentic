@@ -21,8 +21,7 @@ import AgentEditor from './components/AgentEditor';
 import RunConsole from './components/RunConsole';
 import AgentDashboard from './pages/AgentDashboard';
 import ToolsDashboard from './pages/ToolsDashboard';
-import VoiceConversationsList from './pages/VoiceConversationsList';
-import VoiceAssistant from './pages/VoiceAssistant';
+import VoiceDashboard from './pages/VoiceDashboard';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -376,15 +375,15 @@ export default function App() {
           >
             <Container maxWidth="xl">
               <Routes>
-                <Route path="/" element={<AgentList />} />
+                <Route path="/" element={<AgentDashboard />} />
                 <Route path="/agents/new" element={<AgentEditor />} />
                 <Route path="/agents/:name" element={<AgentDashboard />} />
                 <Route path="/agents/:name/edit" element={<AgentEditor nested={true} />} />
                 <Route path="/runs/:name" element={<RunConsole />} />
                 <Route path="/tools" element={<ToolsDashboard />} />
                 <Route path="/tools/:filename" element={<ToolsDashboard />} />
-                <Route path="/voice" element={<VoiceConversationsList />} />
-                <Route path="/voice/:conversationId" element={<VoiceAssistant />} />
+                <Route path="/voice" element={<VoiceDashboard />} />
+                <Route path="/voice/:conversationId" element={<VoiceDashboard />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Container>

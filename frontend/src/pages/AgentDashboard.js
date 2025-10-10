@@ -28,7 +28,7 @@ export default function AgentDashboard() {
     }}>
       {/* Left Panel - Agents List */}
       <Box sx={{
-        width: '250px',
+        width: '360px',
         height: '100%',
         bgcolor: theme => theme.palette.mode === 'dark'
           ? 'rgba(255, 255, 255, 0.03)'

@@ -51,7 +51,7 @@ const safeStringify = (value) => {
  * team is forwarded immediately to the OpenAI Realtime data channel so
  * the voice model narrates and stays in sync.
  */
-function VoiceAssistant() {
+function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const { conversationId } = useParams();
   const [conversation, setConversation] = useState(null);
   const [conversationLoading, setConversationLoading] = useState(true);
@@ -1081,6 +1081,154 @@ function VoiceAssistant() {
   };
 
   useEffect(() => () => stopSession(), []);
+
+  if (nested) {
+    return (
+      <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+        {/* Center Panel - Nested Team Console */}
+        <Box
+          sx={{
+            flexGrow: 1,
+            height: '100%',
+            bgcolor: 'background.paper',
+            borderRight: 1,
+            borderColor: 'divider',
+            overflowY: 'auto',
+          }}
+        >
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <Typography variant="h6">Nested Team Console</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Internal agent conversations and tool executions
+            </Typography>
+          </Box>
+          {sharedNestedWs ? (
+            <Box sx={{ height: 'calc(100% - 80px)' }}>
+              <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
+            </Box>
+          ) : (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Start a voice session to see nested team activity
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        {/* Right Panel - Conversation */}
+        <Box
+          sx={{
+            width: '700px',
+            height: '100%',
+            bgcolor: (theme) =>
+              theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            flexShrink: 0,
+          }}
+        >
+          {/* Header with controls */}
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+                {conversationTitle}
+              </Typography>
+              <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
+              <Button
+                variant="contained"
+                size="small"
+                onClick={startSession}
+                disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
+              >
+                Start
+              </Button>
+              <Button variant="contained" size="small" color="error" onClick={stopSession} disabled={!isRunning}>
+                Stop
+              </Button>
+            </Box>
+
+            {!isRunning && remoteSessionActive && !conversationError && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Another tab is currently running this voice session. You can monitor live updates here.
+              </Alert>
+            )}
+
+            {conversationError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {conversationError}
+              </Alert>
+            )}
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Message input */}
+            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+              <TextField
+                label="Message"
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Type a message to send to Voice or Nested"
+                multiline
+                minRows={2}
+                maxRows={4}
+                fullWidth
+                disabled={!isRunning}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && transcript.trim()) {
+                    e.preventDefault();
+                    sendText();
+                  }
+                }}
+              />
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Chip
+                  label={isRunning ? 'Voice connected' : remoteSessionActive ? 'Voice active' : 'Voice idle'}
+                  color={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
+                  size="small"
+                />
+                <Box sx={{ flexGrow: 1 }} />
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={sendText}
+                  disabled={!isRunning || !transcript.trim()}
+                  size="small"
+                >
+                  Send to Voice
+                </Button>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={sendToNested}
+                  disabled={!isRunning || !transcript.trim() || !nestedWsRef.current}
+                  size="small"
+                >
+                  Send to Nested
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Conversation History */}
+          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Conversation History
+            </Typography>
+            <ConversationHistory
+              messages={messages}
+              conversationLoading={conversationLoading}
+              isRunning={isRunning}
+              formatTimestamp={formatTimestamp}
+            />
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Stack spacing={2}>

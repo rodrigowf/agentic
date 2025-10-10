@@ -64,7 +64,7 @@ export default function ToolsDashboard() {
     }}>
       {/* Left Panel - Tools List */}
       <Box sx={{
-        width: '300px',
+        width: '360px',
         height: '100%',
         bgcolor: theme => theme.palette.mode === 'dark'
           ? 'rgba(255, 255, 255, 0.03)'
