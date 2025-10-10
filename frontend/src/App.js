@@ -16,7 +16,6 @@ import {
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
-import AgentList from './components/AgentList';
 import AgentEditor from './components/AgentEditor';
 import RunConsole from './components/RunConsole';
 import AgentDashboard from './pages/AgentDashboard';

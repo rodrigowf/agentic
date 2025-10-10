@@ -3,13 +3,13 @@ import importlib
 import logging
 from fastapi import WebSocket
 from starlette.websockets import WebSocketDisconnect, WebSocketState
-from schemas import AgentConfig
+from config.schemas import AgentConfig
 from datetime import datetime, timezone
 import asyncio
 import json
 import openai
 import contextvars
-from context import CURRENT_AGENT, get_current_agent
+from utils.context import CURRENT_AGENT, get_current_agent
 
 # --- Corrected AutoGen v0.4+ Imports ---
 # Core components
@@ -29,7 +29,7 @@ from autogen_agentchat.messages import (
 # Model clients
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_core.tools import FunctionTool
-from agent_factory import create_agent_from_config
+from core.agent_factory import create_agent_from_config
 
 logger = logging.getLogger(__name__)
 

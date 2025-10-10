@@ -10,7 +10,7 @@ from autogen_core.tools import FunctionTool
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
-from context import get_current_agent
+from utils.context import get_current_agent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

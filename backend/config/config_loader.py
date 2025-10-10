@@ -1,6 +1,6 @@
 import os, importlib.util, json, inspect
 from typing import List, Tuple, Dict, Any
-from schemas import AgentConfig, ToolInfo
+from config.schemas import AgentConfig, ToolInfo
 from autogen_core.tools import FunctionTool
 
 # Function to extract schema from FunctionTool (simplified)

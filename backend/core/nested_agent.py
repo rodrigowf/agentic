@@ -7,12 +7,12 @@ from autogen_agentchat.teams import RoundRobinGroupChat, SelectorGroupChat
 from autogen_agentchat.conditions import MaxMessageTermination
 from autogen_agentchat.conditions import FunctionalTermination  # use documented functional termination
 from typing import List
-from schemas import AgentConfig
+from config.schemas import AgentConfig
 from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-from agent_factory import create_agent_from_config  # centralized agent instantiation
+from core.agent_factory import create_agent_from_config  # centralized agent instantiation
 import types
-from context import CURRENT_AGENT
+from utils.context import CURRENT_AGENT
 import re  # ensure regex available
 
 # Track current team agent names and orchestrator for selector validation

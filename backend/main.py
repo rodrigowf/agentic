@@ -9,17 +9,17 @@ import asyncio  # Added asyncio
 import google.generativeai as genai
 from openai import OpenAI
 # Updated imports: Use ToolInfo for API, FunctionTool internally
-from schemas import AgentConfig, ToolInfo, GenerateToolRequest
+from config.schemas import AgentConfig, ToolInfo, GenerateToolRequest
 # Updated imports: load_tools now returns List[Tuple[FunctionTool, str]]
 # Add get_tool_infos helper
-from config_loader import load_tools, load_agents, save_agent, save_tool, get_tool_infos, _get_tool_schema
-from runner import run_agent_ws
+from config.config_loader import load_tools, load_agents, save_agent, save_tool, get_tool_infos, _get_tool_schema
+from core.runner import run_agent_ws
 from autogen_core.tools import FunctionTool  # Import FunctionTool
 import logging  # Add logging import
 from starlette.websockets import WebSocketState, WebSocketDisconnect  # Import WebSocketState and WebSocketDisconnect
 from datetime import datetime  # Import datetime
 import anthropic  # Import Anthropic client
-from claude_code_controller import ClaudeCodeSession  # Import Claude Code controller
+from api.claude_code_controller import ClaudeCodeSession  # Import Claude Code controller
 
 load_dotenv()
 
@@ -46,11 +46,11 @@ app.add_middleware(
 # Mount realtime voice router under /api/realtime
 try:
     # Prefer relative import when running as package (uvicorn backend.main:app)
-    from .realtime_voice import router as realtime_router  # type: ignore
+    from .api.realtime_voice import router as realtime_router  # type: ignore
 except Exception:
     try:
         # Fallback to absolute if executed differently
-        from realtime_voice import router as realtime_router  # type: ignore
+        from api.realtime_voice import router as realtime_router  # type: ignore
     except Exception as e:
         realtime_router = None
         logger.warning(f"Failed to import realtime voice router: {e}")

@@ -98,9 +98,9 @@ VOICE_SYSTEM_PROMPT = (
 
 
 try:
-    from .voice_conversation_store import store as conversation_store  # type: ignore
+    from ..utils.voice_conversation_store import store as conversation_store  # type: ignore
 except ImportError:  # pragma: no cover - fallback when running as script
-    from voice_conversation_store import store as conversation_store  # type: ignore
+    from utils.voice_conversation_store import store as conversation_store  # type: ignore
 
 
 class ConversationStreamManager:

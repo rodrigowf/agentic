@@ -7,12 +7,12 @@ based on a uniform AgentConfig schema.
 
 import os
 from typing import List
-from schemas import AgentConfig
+from config.schemas import AgentConfig
 from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.agents import AssistantAgent, CodeExecutorAgent
-from looping_agent import LoopingAssistantAgent
-from looping_code_executor_agent import LoopingCodeExecutorAgent
+from core.looping_agent import LoopingAssistantAgent
+from core.looping_code_executor_agent import LoopingCodeExecutorAgent
 from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
 
 
@@ -38,7 +38,7 @@ def create_agent_from_config(
 
     # Nested team agent: import locally to avoid circular import
     if agent_cfg.agent_type == "nested_team":
-        from nested_agent import NestedTeamAgent
+        from core.nested_agent import NestedTeamAgent
         # Include flag for inner dialog in nested team agent config
         return NestedTeamAgent.from_config(agent_cfg, all_tools, model_client)
 
