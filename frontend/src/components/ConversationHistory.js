@@ -554,7 +554,6 @@ const ConversationHistory = ({
 			}}
 		>
 			<Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-				<Typography variant="subtitle1">Conversation history</Typography>
 				{conversationLoading && <CircularProgress size={18} thickness={5} />}
 				{isRunning && (
 					<Chip size="small" color="success" variant="outlined" label="Live" />

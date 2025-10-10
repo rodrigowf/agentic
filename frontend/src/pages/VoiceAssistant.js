@@ -20,6 +20,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RunConsole from '../components/RunConsole';
 import ConversationHistory from '../components/ConversationHistory';
 import NestedAgentInsights from '../components/NestedAgentInsights';
+import ClaudeCodeInsights from '../components/ClaudeCodeInsights';
 import VoiceSessionControls from '../components/VoiceSessionControls';
 import {
   appendVoiceConversationEvent,
@@ -70,6 +71,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const dataChannelRef = useRef(null);
   const nestedWsRef = useRef(null);
   const [sharedNestedWs, setSharedNestedWs] = useState(null);
+  const claudeCodeWsRef = useRef(null);
+  const [sharedClaudeCodeWs, setSharedClaudeCodeWs] = useState(null);
   const audioRef = useRef(null);
   const streamRef = useRef(null);
   const micStreamRef = useRef(null);
@@ -558,6 +561,17 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     },
     {
       type: 'function',
+      name: 'send_to_claude_code',
+      description: 'Send a self-editing instruction to Claude Code to modify the codebase. Use when the user asks to change, add, or fix code.',
+      parameters: {
+        type: 'object',
+        properties: { text: { type: 'string', description: 'The instruction for Claude Code.' } },
+        required: ['text'],
+        additionalProperties: false,
+      },
+    },
+    {
+      type: 'function',
       name: 'pause',
       description: 'Request the controller to pause the current nested conversation when the user explicitly asks. Automatic calls right after sending a task are ignored.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
@@ -761,6 +775,49 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       runCompletedRef.current = false;
       void recordEvent('controller', 'session_started', { voice, sessionId });
 
+      // Open Claude Code WebSocket for self-editing
+      const claudeCodeUrl = `${wsBase}/api/runs/ClaudeCode`;
+      const claudeCodeWs = new WebSocket(claudeCodeUrl);
+      claudeCodeWsRef.current = claudeCodeWs;
+      setSharedClaudeCodeWs(claudeCodeWs);
+
+      claudeCodeWs.onopen = () => {
+        void recordEvent('claude_code', 'system', { message: 'Claude Code connection established.' });
+      };
+      claudeCodeWs.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          void recordEvent('claude_code', msg.type || 'event', msg);
+          const type = (msg.type || '').toLowerCase();
+          if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
+            const content = msg.data.content;
+            const source = msg.data.source || 'ClaudeCode';
+            const text = `[CODE ${source}] ${content}`;
+            forwardToVoice('system', text, { source, kind: 'code_text' });
+          }
+          if (type === 'taskresult' && msg.data) {
+            const outcome = msg.data.outcome || 'completed';
+            const message = msg.data.message || '';
+            if (outcome === 'error') {
+              notifyVoiceOfError(`Claude Code error: ${message}`, { source: 'claude_code' });
+            } else if (dataChannelRef.current) {
+              const text = `[CODE RESULT] ${message || 'Task completed'}`;
+              forwardToVoice('system', text, { source: 'claude_code', kind: 'code_result' });
+            }
+          }
+        } catch (e) {
+          void recordEvent('claude_code', 'parse_error', { raw: event.data });
+        }
+      };
+      claudeCodeWs.onerror = (errEvent) => {
+        const errorInfo = errEvent?.message || errEvent?.type || 'WebSocket error';
+        void recordEvent('claude_code', 'error', { message: errorInfo });
+        notifyVoiceOfError('Claude Code connection encountered an error.', { source: 'controller', kind: 'connection_error' });
+      };
+      claudeCodeWs.onclose = (closeEvent) => {
+        void recordEvent('claude_code', 'system', { message: 'Claude Code WebSocket closed', code: closeEvent?.code, reason: closeEvent?.reason });
+      };
+
       // Do NOT auto-start a run; wait for explicit user_message or Run action
       ws.onopen = () => {
         void recordEvent('nested', 'system', { message: 'Nested connection established. Awaiting task or user_message.' });
@@ -930,6 +987,17 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         }
         throw new Error('Nested WebSocket not connected');
       }
+      if (name === 'send_to_claude_code') {
+        const text = (argsObj && typeof argsObj.text === 'string') ? argsObj.text : '';
+        if (!text) throw new Error('Missing text');
+        if (claudeCodeWsRef.current && claudeCodeWsRef.current.readyState === WebSocket.OPEN) {
+          claudeCodeWsRef.current.send(JSON.stringify({ type: 'user_message', data: text }));
+          void recordEvent('controller', 'tool_exec', { tool: name, args: argsObj });
+          lastVoiceToolCallRef.current = { name, timestamp: Date.now() };
+          return { ok: true };
+        }
+        throw new Error('Claude Code WebSocket not connected');
+      }
       if (name === 'pause') {
         const now = Date.now();
         const lastCall = lastVoiceToolCallRef.current;
@@ -1080,6 +1148,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     void recordEvent('controller', 'session_stopped', {});
     if (nestedWsRef.current) { try { nestedWsRef.current.close(); } catch {} nestedWsRef.current = null; }
     setSharedNestedWs(null);
+    if (claudeCodeWsRef.current) { try { claudeCodeWsRef.current.close(); } catch {} claudeCodeWsRef.current = null; }
+    setSharedClaudeCodeWs(null);
     hasSpokenMidRef.current = false;
     runCompletedRef.current = false;
     if (micStreamRef.current) {
@@ -1140,14 +1210,15 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         >
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Box sx={{ px: 2, pt: 2 }}>
-              <Typography variant="h6">Nested Team Activity</Typography>
+              <Typography variant="h6">Team & Code Activity</Typography>
               <Typography variant="caption" color="text.secondary">
-                Internal agent conversations and tool executions
+                Internal agent conversations and self-editing actions
               </Typography>
             </Box>
             <Tabs value={nestedViewTab} onChange={(_, newValue) => setNestedViewTab(newValue)} sx={{ px: 2 }}>
-              <Tab label="Insights" />
-              <Tab label="Console" />
+              <Tab label="Team Insights" />
+              <Tab label="Team Console" />
+              <Tab label="Claude Code" />
             </Tabs>
           </Box>
 
@@ -1168,7 +1239,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                 />
               )}
             </Box>
-          ) : (
+          ) : nestedViewTab === 1 ? (
             sharedNestedWs ? (
               <Box sx={{ height: 'calc(100% - 128px)' }}>
                 <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
@@ -1180,6 +1251,23 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                 </Typography>
               </Box>
             )
+          ) : (
+            <Box sx={{ height: 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
+              {messages.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Start a voice session to see Claude Code activity
+                  </Typography>
+                </Box>
+              ) : (
+                <ClaudeCodeInsights
+                  messages={messages}
+                  formatTimestamp={formatTimestamp}
+                  truncateText={truncateText}
+                  safeStringify={safeStringify}
+                />
+              )}
+            </Box>
           )}
         </Box>
 
@@ -1285,9 +1373,6 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
           {/* Conversation History */}
           <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 2 }}>
-            <Typography variant="subtitle2" gutterBottom sx={{ flexShrink: 0 }}>
-              Conversation History
-            </Typography>
             <Box sx={{ flexGrow: 1, overflowY: 'auto', height: "100%"  }}>
               <ConversationHistory
                 messages={messages}
