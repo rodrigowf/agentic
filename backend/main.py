@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Adjust if your frontend runs elsewhere
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Support both common frontend ports
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
