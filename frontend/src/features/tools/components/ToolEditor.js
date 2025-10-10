@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Typography, Box, TextField, Alert, Paper, CircularProgress, Collapse, IconButton, Stack } from '@mui/material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
-import api from '../api';
-import CodeEditor from './CodeEditor'; // Assuming CodeEditor is in the same directory
+import api from '../../../api';
+import CodeEditor from './CodeEditor';
 
 const DEFAULT_TOOL_CODE = `"""
 Define multiple tools in this file.

@@ -16,11 +16,11 @@ import {
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
-import AgentEditor from './components/AgentEditor';
-import RunConsole from './components/RunConsole';
-import AgentDashboard from './pages/AgentDashboard';
-import ToolsDashboard from './pages/ToolsDashboard';
-import VoiceDashboard from './pages/VoiceDashboard';
+import AgentEditor from './features/agents/components/AgentEditor';
+import RunConsole from './features/agents/components/RunConsole';
+import AgentDashboard from './features/agents/pages/AgentDashboard';
+import ToolsDashboard from './features/tools/pages/ToolsDashboard';
+import VoiceDashboard from './features/voice/pages/VoiceDashboard';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 

@@ -15,7 +15,7 @@ import {
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import ToolEditor from '../components/ToolEditor';
-import api from '../api';
+import api from '../../../api';
 
 export default function ToolsDashboard() {
   const { filename } = useParams();

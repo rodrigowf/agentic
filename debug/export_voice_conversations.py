@@ -10,13 +10,13 @@ Usage examples
 --------------
 
 Export using the default database path and write files into
-``exports/voice_conversations`` under the backend directory::
+``debug/db_exports/voice_conversations``::
 
-    python scripts/export_voice_conversations.py
+    python debug/export_voice_conversations.py
 
 Specify a custom database path and output directory::
 
-    python scripts/export_voice_conversations.py \
+    python debug/export_voice_conversations.py \
         --db /path/to/voice_conversations.db \
         --out /tmp/voice_exports
 
@@ -34,11 +34,11 @@ from typing import Any, Dict, List
 import sys
 
 # Ensure the backend package root is importable when the script is run directly.
-BACKEND_ROOT = Path(__file__).resolve().parent.parent
+BACKEND_ROOT = Path(__file__).resolve().parent.parent / "backend"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from voice_conversation_store import ConversationStore, DEFAULT_DB_PATH
+from utils.voice_conversation_store import ConversationStore, DEFAULT_DB_PATH
 
 
 def _dump_json(path: Path, payload: Dict[str, Any]) -> None:
@@ -78,7 +78,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--out",
         dest="output_dir",
-        default=Path(__file__).resolve().parent.parent / "exports" / "voice_conversations",
+        default=Path(__file__).resolve().parent / "db_exports" / "voice_conversations",
         type=Path,
         help="Directory where JSON exports will be written (created if missing).",
     )

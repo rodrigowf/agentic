@@ -16,7 +16,7 @@ import {
 import ReplayIcon from '@mui/icons-material/Replay';
 import ClearIcon from '@mui/icons-material/Clear';
 import DownloadIcon from '@mui/icons-material/Download';
-import api from '../api';
+import api from '../../../api';
 import LogEntry from './LogMessageDisplay';
 
 export default function RunConsole({ nested = false, agentName, sharedSocket, readOnlyControls }) {

@@ -17,7 +17,7 @@ import {
   Tab,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import RunConsole from '../components/RunConsole';
+import RunConsole from '../../agents/components/RunConsole';
 import ConversationHistory from '../components/ConversationHistory';
 import NestedAgentInsights from '../components/NestedAgentInsights';
 import ClaudeCodeInsights from '../components/ClaudeCodeInsights';
@@ -26,7 +26,7 @@ import {
   appendVoiceConversationEvent,
   getVoiceConversation,
   connectVoiceConversationStream,
-} from '../api';
+} from '../../../api';
 
 const MAX_REPLAY_ITEMS = 50;
 const MAX_NESTED_HIGHLIGHTS = 25;

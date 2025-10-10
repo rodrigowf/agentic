@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Box, List, ListItem, ListItemButton, ListItemText, Typography, Divider } from '@mui/material';
 import AgentEditor from '../components/AgentEditor';
 import RunConsole from '../components/RunConsole';
-import api from '../api';
+import api from '../../../api';
 
 export default function AgentDashboard() {
   const { name } = useParams();

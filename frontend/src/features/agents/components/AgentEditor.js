@@ -22,7 +22,7 @@ import {
   Switch,
   Snackbar,
 } from '@mui/material';
-import api from '../api';
+import api from '../../../api';
 
 const DEFAULT_AGENT_CONFIG = {
   agent_type: 'assistant',

@@ -26,7 +26,7 @@ import {
   createVoiceConversation,
   updateVoiceConversation,
   deleteVoiceConversation,
-} from '../api';
+} from '../../../api';
 
 const formatTimestamp = (value) => {
   if (!value) return '—';

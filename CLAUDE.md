@@ -61,33 +61,72 @@ This is an **agentic AI system** with a Python backend using AutoGen and a React
 ```
 /home/rodrigo/agentic/
 ├── backend/                    # Python FastAPI server
+│   ├── main.py                 # FastAPI app entry point (root)
+│   ├── requirements.txt        # Python dependencies
+│   ├── run.sh                  # Backend startup script
+│   ├── .env                    # Environment variables
+│   │
+│   ├── config/                 # Configuration & schemas
+│   │   ├── __init__.py
+│   │   ├── schemas.py          # Pydantic data models
+│   │   └── config_loader.py    # Agent/tool configuration loading
+│   │
+│   ├── utils/                  # Utility modules
+│   │   ├── __init__.py
+│   │   ├── context.py          # Agent context management
+│   │   └── voice_conversation_store.py  # SQLite storage
+│   │
+│   ├── core/                   # Core agent logic
+│   │   ├── __init__.py
+│   │   ├── agent_factory.py    # Agent instantiation
+│   │   ├── runner.py           # Agent execution engine
+│   │   ├── looping_agent.py    # Single looping agent
+│   │   ├── looping_code_executor_agent.py  # Code executor agent
+│   │   └── nested_agent.py     # Nested team logic
+│   │
+│   ├── api/                    # API-specific modules
+│   │   ├── __init__.py
+│   │   ├── realtime_voice.py   # Voice assistant backend
+│   │   └── claude_code_controller.py  # Claude Code integration
+│   │
 │   ├── agents/                 # Agent JSON configurations
+│   │   └── *.json              # Agent config files
+│   │
 │   ├── tools/                  # Custom tool implementations
-│   ├── scripts/                # Utility scripts (exports, etc.)
-│   ├── exports/                # Exported data
-│   │   └── voice_conversations/  # Database exports
+│   │   ├── __pycache__/
+│   │   ├── memory.py           # Memory management tools
+│   │   └── research.py         # Research/web tools
+│   │
+│   │
 │   ├── workspace/              # Agent workspace
-│   ├── memories/               # ChromaDB memory storage
-│   ├── main.py                 # FastAPI app entry point
-│   ├── runner.py               # Agent execution engine
-│   ├── agent_factory.py        # Agent instantiation
-│   ├── nested_agent.py         # Nested team logic
-│   ├── realtime_voice.py       # Voice assistant backend
-│   ├── claude_code_controller.py  # Claude Code integration
-│   ├── voice_conversation_store.py  # SQLite storage
-│   └── ... (other modules)
+│   ├── venv/                   # Python virtual environment
+│   └── voice_conversations.db  # SQLite database
 │
 ├── frontend/                   # React application
 │   ├── src/
-│   │   ├── components/         # Reusable React components
-│   │   ├── pages/              # Page-level components
 │   │   ├── api.js              # Backend API client
-│   │   └── App.js              # Root component
+│   │   ├── App.js              # Root component
+│   │   ├── index.js            # Entry point
+│   │   ├── features/           # Feature-based architecture
+│   │   │   ├── agents/         # Agent management
+│   │   │   │   ├── components/ # Agent-specific components
+│   │   │   │   └── pages/      # Agent pages
+│   │   │   ├── tools/          # Tool management
+│   │   │   │   ├── components/ # Tool-specific components
+│   │   │   │   └── pages/      # Tool pages
+│   │   │   └── voice/          # Voice assistant
+│   │   │       ├── components/ # Voice-specific components
+│   │   │       └── pages/      # Voice pages
+│   │   └── shared/             # Shared components
+│   │       └── components/
 │   └── public/                 # Static assets
 │
-├── _debug/                     # Debugging tools
+├── debug/                      # Debugging & export tools
 │   ├── screenshot.js           # Puppeteer screenshot automation
 │   ├── screenshots/            # Screenshot storage
+│   ├── export_voice_conversations.py  # Voice DB export script
+│   ├── db_exports/             # Database exports
+│   │   └── voice_conversations/  # Voice conversation JSON exports
 │   ├── AUTOMATED_UI_DEVELOPMENT.md  # UI dev workflow guide
 │   └── package.json            # Debug tool dependencies
 │
@@ -96,7 +135,8 @@ This is an **agentic AI system** with a Python backend using AutoGen and a React
 │
 ├── docs/                       # Documentation
 │
-└── CLAUDE.md                   # This file
+├── CLAUDE.md                   # This file
+└── REFACTORING_SUMMARY.md      # Latest refactoring details
 
 ```
 
@@ -109,9 +149,9 @@ WebSocket Connection
     ↓
 FastAPI Backend (main.py)
     ↓
-Agent Factory (agent_factory.py)
+Agent Factory (core/agent_factory.py)
     ↓
-Agent Execution (runner.py)
+Agent Execution (core/runner.py)
     ↓
 Tool Execution (tools/*.py)
     ↓
@@ -128,7 +168,7 @@ UI Display
 
 ### 1. Screenshot Automation (Critical for UI Development)
 
-**Location:** `/home/rodrigo/agentic/_debug/screenshot.js`
+**Location:** `/home/rodrigo/agentic/debug/screenshot.js`
 
 **Purpose:** Take automated screenshots of the running React app for visual verification during development.
 
@@ -136,12 +176,12 @@ UI Display
 
 ```bash
 # Basic screenshot
-node /home/rodrigo/agentic/_debug/screenshot.js http://localhost:3000
+node /home/rodrigo/agentic/debug/screenshot.js http://localhost:3000
 
 # Screenshot specific route with custom output
-node /home/rodrigo/agentic/_debug/screenshot.js \
+node /home/rodrigo/agentic/debug/screenshot.js \
   http://localhost:3000/agents/MainConversation \
-  /home/rodrigo/agentic/_debug/screenshots/my-screenshot.png \
+  /home/rodrigo/agentic/debug/screenshots/my-screenshot.png \
   3000  # wait time in ms
 ```
 
@@ -154,9 +194,9 @@ node /home/rodrigo/agentic/_debug/screenshot.js \
 
 ```bash
 # 1. Take "before" screenshot
-node /home/rodrigo/agentic/_debug/screenshot.js \
+node /home/rodrigo/agentic/debug/screenshot.js \
   http://localhost:3000/voice \
-  /home/rodrigo/agentic/_debug/screenshots/before-change.png \
+  /home/rodrigo/agentic/debug/screenshots/before-change.png \
   2000
 
 # 2. Read the screenshot to understand current state
@@ -168,9 +208,9 @@ node /home/rodrigo/agentic/_debug/screenshot.js \
 sleep 3
 
 # 5. Take "after" screenshot
-node /home/rodrigo/agentic/_debug/screenshot.js \
+node /home/rodrigo/agentic/debug/screenshot.js \
   http://localhost:3000/voice \
-  /home/rodrigo/agentic/_debug/screenshots/after-change.png \
+  /home/rodrigo/agentic/debug/screenshots/after-change.png \
   3000
 
 # 6. Read and compare screenshots
@@ -185,24 +225,24 @@ node /home/rodrigo/agentic/_debug/screenshot.js \
 
 ### 2. Voice Conversation Database Export
 
-**Location:** `/home/rodrigo/agentic/backend/scripts/export_voice_conversations.py`
+**Location:** `/home/rodrigo/agentic/debug/export_voice_conversations.py`
 
 **Purpose:** Export voice conversation data from SQLite to JSON for debugging and analysis.
 
 **Usage:**
 
 ```bash
-cd /home/rodrigo/agentic/backend
+cd /home/rodrigo/agentic
 
-# Export all conversations (default location)
-python3 scripts/export_voice_conversations.py
+# Export all conversations (default location: debug/db_exports/voice_conversations/)
+python3 debug/export_voice_conversations.py
 
 # Export to custom location
-python3 scripts/export_voice_conversations.py \
-  --out /home/rodrigo/agentic/logs/voice_exports
+python3 debug/export_voice_conversations.py \
+  --out /tmp/voice_exports
 
 # Custom database path
-python3 scripts/export_voice_conversations.py \
+python3 debug/export_voice_conversations.py \
   --db /path/to/voice_conversations.db \
   --out /path/to/output/
 ```
@@ -242,7 +282,7 @@ python3 scripts/export_voice_conversations.py \
 **Debugging Workflow:**
 
 1. **Export conversations** after a voice session
-2. **Search for specific events** in the JSON
+2. **Search for specific events** in the JSON (exported to `debug/db_exports/voice_conversations/`)
 3. **Analyze event sequences** to debug agent behavior
 4. **Verify data structures** for frontend display
 
@@ -346,7 +386,9 @@ async def my_websocket(websocket: WebSocket):
         logger.info("Client disconnected")
 ```
 
-#### 2. `runner.py` - Agent Execution Engine
+#### 2. `core/runner.py` - Agent Execution Engine
+
+**Location:** `/home/rodrigo/agentic/backend/core/runner.py`
 
 **Purpose:** Runs agents and streams events via WebSocket
 
@@ -355,7 +397,16 @@ async def my_websocket(websocket: WebSocket):
 - Event streaming to frontend
 - Tool execution monitoring
 
-#### 3. `agent_factory.py` - Agent Instantiation
+**Imports:**
+```python
+from config.schemas import AgentConfig
+from utils.context import get_current_agent
+from core.agent_factory import create_agent_from_config
+```
+
+#### 3. `core/agent_factory.py` - Agent Instantiation
+
+**Location:** `/home/rodrigo/agentic/backend/core/agent_factory.py`
 
 **Purpose:** Creates agent instances from JSON configurations
 
@@ -364,7 +415,17 @@ async def my_websocket(websocket: WebSocket):
 - `nested_team` - Multiple coordinated agents
 - `code_executor` - Agent with code execution capability
 
-#### 4. `claude_code_controller.py` - Claude Code Integration
+**Imports:**
+```python
+from config.schemas import AgentConfig
+from core.looping_agent import LoopingAgent
+from core.looping_code_executor_agent import LoopingCodeExecutorAgent
+from core.nested_agent import NestedTeamAgent
+```
+
+#### 4. `api/claude_code_controller.py` - Claude Code Integration
+
+**Location:** `/home/rodrigo/agentic/backend/api/claude_code_controller.py`
 
 **Purpose:** Manages Claude Code CLI subprocess for self-editing
 
@@ -391,7 +452,9 @@ async def my_websocket(websocket: WebSocket):
 {"type": "ToolCallRequestEvent", "data": {"name": "Bash", ...}}
 ```
 
-#### 5. `voice_conversation_store.py` - SQLite Storage
+#### 5. `utils/voice_conversation_store.py` - SQLite Storage
+
+**Location:** `/home/rodrigo/agentic/backend/utils/voice_conversation_store.py`
 
 **Purpose:** Persist voice conversation data
 
@@ -419,7 +482,7 @@ CREATE TABLE events (
 
 **Usage:**
 ```python
-from voice_conversation_store import ConversationStore
+from utils.voice_conversation_store import ConversationStore
 
 store = ConversationStore()
 conv_id = store.create_conversation("MyConversation")
@@ -427,15 +490,98 @@ store.add_event(conv_id, "claude_code", "ToolCallRequestEvent", {...})
 events = store.list_events(conv_id)
 ```
 
+#### 6. `config/schemas.py` - Data Models
+
+**Location:** `/home/rodrigo/agentic/backend/config/schemas.py`
+
+**Purpose:** Pydantic models for agent configuration and data validation
+
+**Key Models:**
+- `AgentConfig` - Agent configuration structure
+- `LLMConfig` - LLM provider settings
+- `PromptConfig` - System/user prompt configuration
+
+#### 7. `config/config_loader.py` - Configuration Loading
+
+**Location:** `/home/rodrigo/agentic/backend/config/config_loader.py`
+
+**Purpose:** Load agent configurations and tools from disk
+
+**Key Functions:**
+- `load_agent_config(name)` - Load agent JSON
+- `load_tools()` - Dynamically load all tools from tools/
+
 ---
 
 ## Frontend Development
 
-### Component Architecture
+### Architecture Overview
 
-#### Pages (`frontend/src/pages/`)
+The frontend uses a **feature-based architecture** where components and pages are organized by domain rather than by type. This promotes better code organization, scalability, and maintainability.
 
-**1. `VoiceAssistant.js`** - Main voice interface
+**Structure:**
+```
+frontend/src/
+├── api.js                    # API client
+├── App.js                    # Main app component
+├── features/                 # Feature-based organization
+│   ├── agents/              # Agent management feature
+│   ├── tools/               # Tool management feature
+│   └── voice/               # Voice assistant feature
+└── shared/                   # Shared components
+```
+
+### Features
+
+#### 1. Agents Feature (`features/agents/`)
+
+**Purpose:** Agent configuration, editing, and execution
+
+**Pages:**
+- `pages/AgentDashboard.js` - Main agent management interface
+
+**Components:**
+- `components/AgentEditor.js` - Form for creating/editing agent configurations
+- `components/RunConsole.js` - Live agent execution console with WebSocket
+- `components/LogMessageDisplay.js` - Formatted log message rendering
+
+**Location:** `/home/rodrigo/agentic/frontend/src/features/agents/`
+
+#### 2. Tools Feature (`features/tools/`)
+
+**Purpose:** Custom tool management and editing
+
+**Pages:**
+- `pages/ToolsDashboard.js` - Tool listing and management
+
+**Components:**
+- `components/ToolEditor.js` - Tool code editor interface
+- `components/CodeEditor.js` - Monaco-based code editing component
+
+**Location:** `/home/rodrigo/agentic/frontend/src/features/tools/`
+
+#### 3. Voice Feature (`features/voice/`)
+
+**Purpose:** Voice assistant interface and conversation management
+
+**Pages:**
+- `pages/VoiceAssistant.js` - Main voice interface with real-time communication
+- `pages/VoiceDashboard.js` - Voice conversation listing and management
+
+**Components:**
+- `components/VoiceSessionControls.js` - Voice session start/stop controls
+- `components/AudioVisualizer.js` - Real-time audio visualization
+- `components/ConversationHistory.js` - Message history display
+- `components/NestedAgentInsights.js` - Nested team agent activity visualization
+- `components/ClaudeCodeInsights.js` - Claude Code tool usage visualization
+
+**Location:** `/home/rodrigo/agentic/frontend/src/features/voice/`
+
+### Key Components Detail
+
+#### `VoiceAssistant.js` - Main Voice Interface
+
+**Location:** `frontend/src/features/voice/pages/VoiceAssistant.js`
 
 **Key Features:**
 - OpenAI Realtime API integration (WebRTC)
@@ -453,15 +599,18 @@ const nestedWsRef = useRef(null);
 const claudeCodeWsRef = useRef(null);
 ```
 
-**2. `AgentDashboard.js`** - Agent configuration UI
+**Imports:**
+```javascript
+import RunConsole from '../../agents/components/RunConsole';
+import ConversationHistory from '../components/ConversationHistory';
+import NestedAgentInsights from '../components/NestedAgentInsights';
+import ClaudeCodeInsights from '../components/ClaudeCodeInsights';
+import VoiceSessionControls from '../components/VoiceSessionControls';
+```
 
-**3. `VoiceDashboard.js`** - Voice session management
+#### `ClaudeCodeInsights.js` - Claude Code Event Visualizer
 
-**4. `ToolsDashboard.js`** - Tool management UI
-
-#### Components (`frontend/src/components/`)
-
-**1. `ClaudeCodeInsights.js`** - Claude Code event visualizer
+**Location:** `frontend/src/features/voice/components/ClaudeCodeInsights.js`
 
 **Purpose:** Display Claude Code tool usage, outputs, and messages
 
@@ -501,26 +650,45 @@ const result = data.result;           // String result (may have \n)
 const content = data.content;         // Assistant message text
 ```
 
-**2. `NestedAgentInsights.js`** - Nested team visualizer
+#### `NestedAgentInsights.js` - Nested Team Visualizer
 
-**3. `RunConsole.js`** - Generic agent console with WebSocket
+**Location:** `frontend/src/features/voice/components/NestedAgentInsights.js`
 
-**4. `AudioVisualizer.js`** - Voice activity visualization
+**Purpose:** Visualize nested team agent activities and message flow
 
-**5. `ConversationHistory.js`** - Message display component
+#### `RunConsole.js` - Agent Execution Console
+
+**Location:** `frontend/src/features/agents/components/RunConsole.js`
+
+**Purpose:** Generic agent console with WebSocket for real-time agent execution
+
+#### `AudioVisualizer.js` - Voice Activity Visualization
+
+**Location:** `frontend/src/features/voice/components/AudioVisualizer.js`
+
+**Purpose:** Real-time audio waveform visualization during voice sessions
+
+#### `ConversationHistory.js` - Message Display
+
+**Location:** `frontend/src/features/voice/components/ConversationHistory.js`
+
+**Purpose:** Display conversation message history with formatting
 
 ### API Client (`frontend/src/api.js`)
+
+**Location:** `/home/rodrigo/agentic/frontend/src/api.js`
 
 **Purpose:** Centralized backend communication
 
 **Example Usage:**
 ```javascript
+// From any feature
 import {
   listAgents,
   getAgent,
   runAgentWebSocket,
   connectVoiceConversationStream
-} from './api';
+} from '../../../api'; // Adjust path based on nesting level
 
 // REST
 const agents = await listAgents();
@@ -532,6 +700,30 @@ ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
   // Handle events
 };
+```
+
+### Import Patterns
+
+The feature-based architecture uses relative imports:
+
+**From Pages to Components (Same Feature):**
+```javascript
+// In features/agents/pages/AgentDashboard.js
+import AgentEditor from '../components/AgentEditor';
+import RunConsole from '../components/RunConsole';
+```
+
+**From Pages to Components (Different Feature):**
+```javascript
+// In features/voice/pages/VoiceAssistant.js
+import RunConsole from '../../agents/components/RunConsole';
+```
+
+**To API Client:**
+```javascript
+// From any feature component/page
+import api from '../../../api';  // 3 levels up from features/*/components/
+import api from '../../api';     // 2 levels up from features/*/pages/
 ```
 
 ---
@@ -757,7 +949,7 @@ tools = [my_tool_func]
 **Example:** Memory tool (from `tools/memory.py`)
 
 ```python
-from context import get_current_agent
+from utils.context import get_current_agent
 from autogen_core.tools import FunctionTool
 
 def save_to_short_term_memory(content: str) -> str:
@@ -814,7 +1006,7 @@ tools = [save_memory_tool, ...]
 
 ### Registering Tools
 
-Tools are automatically loaded from `/backend/tools/` by `config_loader.py`.
+Tools are automatically loaded from `/backend/tools/` by `config/config_loader.py`.
 
 **Verification:**
 
@@ -844,7 +1036,7 @@ Microphone (WebRTC)
     ↓
 OpenAI Realtime API (WebSocket)
     ↓
-Voice Controller (backend/realtime_voice.py)
+Voice Controller (backend/api/realtime_voice.py)
     ├─→ Nested Team WebSocket
     ├─→ Claude Code WebSocket
     └─→ Tool Execution (send_to_nested, send_to_claude_code)
@@ -856,7 +1048,7 @@ Speaker Playback (WebRTC)
 
 ### Key Components
 
-**Backend:** `realtime_voice.py`
+**Backend:** `api/realtime_voice.py`
 
 **Frontend:** `pages/VoiceAssistant.js`
 
@@ -890,7 +1082,7 @@ The voice model has access to special tools:
 
 ### Voice System Prompt
 
-Located in `realtime_voice.py`:
+Located in `api/realtime_voice.py`:
 
 ```python
 VOICE_SYSTEM_PROMPT = (
@@ -1002,7 +1194,7 @@ Voice narrates significant changes
 
 ### Adding Claude Code Narration
 
-In `realtime_voice.py`, Claude Code events are forwarded to voice:
+In `api/realtime_voice.py`, Claude Code events are forwarded to voice:
 
 ```python
 # Tool use narration
@@ -1040,8 +1232,8 @@ if type === "TaskResult":
 
 ```bash
 # 1. Screenshot before
-node /home/rodrigo/agentic/_debug/screenshot.js http://localhost:3000/voice \
-  /home/rodrigo/agentic/_debug/screenshots/before.png 2000
+node /home/rodrigo/agentic/debug/screenshot.js http://localhost:3000/voice \
+  /home/rodrigo/agentic/debug/screenshots/before.png 2000
 
 # 2. Read screenshot
 
@@ -1051,8 +1243,8 @@ node /home/rodrigo/agentic/_debug/screenshot.js http://localhost:3000/voice \
 sleep 3
 
 # 5. Screenshot after
-node /home/rodrigo/agentic/_debug/screenshot.js http://localhost:3000/voice \
-  /home/rodrigo/agentic/_debug/screenshots/after.png 3000
+node /home/rodrigo/agentic/debug/screenshot.js http://localhost:3000/voice \
+  /home/rodrigo/agentic/debug/screenshots/after.png 3000
 
 # 6. Read and verify
 ```
@@ -1072,21 +1264,21 @@ node /home/rodrigo/agentic/_debug/screenshot.js http://localhost:3000/voice \
 
 ```bash
 # 1. Export conversations
-cd /home/rodrigo/agentic/backend
-python3 scripts/export_voice_conversations.py
+cd /home/rodrigo/agentic
+python3 debug/export_voice_conversations.py
 
 # 2. Find problematic conversation
-ls logs/voice_exports/
+ls debug/db_exports/voice_conversations/
 
 # 3. Analyze events
-jq '.events[] | select(.type == "Error")' logs/voice_exports/{id}.json
+jq '.events[] | select(.type == "Error")' debug/db_exports/voice_conversations/{id}.json
 ```
 
 **For UI Issues:**
 
 ```bash
 # 1. Take screenshot
-node _debug/screenshot.js http://localhost:3000/path screenshots/debug.png
+node debug/screenshot.js http://localhost:3000/path debug/screenshots/debug.png
 
 # 2. Read screenshot
 
@@ -1159,11 +1351,11 @@ cd /home/rodrigo/agentic/frontend
 npm start
 
 # Take screenshot
-node /home/rodrigo/agentic/_debug/screenshot.js http://localhost:3000
+node /home/rodrigo/agentic/debug/screenshot.js http://localhost:3000
 
 # Export voice conversations
-cd /home/rodrigo/agentic/backend
-python3 scripts/export_voice_conversations.py
+cd /home/rodrigo/agentic
+python3 debug/export_voice_conversations.py
 
 # List agents
 curl http://localhost:8000/api/agents
@@ -1176,16 +1368,30 @@ curl http://localhost:8000/api/tools
 
 | Purpose | Location |
 |---------|----------|
+| **Backend** | |
+| Main FastAPI app | `/home/rodrigo/agentic/backend/main.py` |
 | Agent configs | `/home/rodrigo/agentic/backend/agents/*.json` |
 | Tool implementations | `/home/rodrigo/agentic/backend/tools/*.py` |
-| Frontend components | `/home/rodrigo/agentic/frontend/src/components/*.js` |
-| Frontend pages | `/home/rodrigo/agentic/frontend/src/pages/*.js` |
-| Screenshot tool | `/home/rodrigo/agentic/_debug/screenshot.js` |
-| Screenshots | `/home/rodrigo/agentic/_debug/screenshots/` |
-| Export script | `/home/rodrigo/agentic/backend/scripts/export_voice_conversations.py` |
-| Voice DB exports | `/home/rodrigo/agentic/logs/voice_exports/` |
+| Configuration & schemas | `/home/rodrigo/agentic/backend/config/` |
+| Core agent logic | `/home/rodrigo/agentic/backend/core/` |
+| API modules (voice, claude) | `/home/rodrigo/agentic/backend/api/` |
+| Utility modules | `/home/rodrigo/agentic/backend/utils/` |
+| **Frontend** | |
+| API client | `/home/rodrigo/agentic/frontend/src/api.js` |
+| Agents feature | `/home/rodrigo/agentic/frontend/src/features/agents/` |
+| Tools feature | `/home/rodrigo/agentic/frontend/src/features/tools/` |
+| Voice feature | `/home/rodrigo/agentic/frontend/src/features/voice/` |
+| Shared components | `/home/rodrigo/agentic/frontend/src/shared/` |
+| **Debug & Tools** | |
+| Screenshot tool | `/home/rodrigo/agentic/debug/screenshot.js` |
+| Screenshots | `/home/rodrigo/agentic/debug/screenshots/` |
+| Export script | `/home/rodrigo/agentic/debug/export_voice_conversations.py` |
+| Voice DB exports | `/home/rodrigo/agentic/debug/db_exports/voice_conversations/` |
 | Voice database | `/home/rodrigo/agentic/backend/voice_conversations.db` |
+| **Documentation** | |
 | This guide | `/home/rodrigo/agentic/CLAUDE.md` |
+| Backend refactoring | `/home/rodrigo/agentic/REFACTORING_SUMMARY.md` |
+| Frontend refactoring | `/home/rodrigo/agentic/FRONTEND_REFACTORING.md` |
 
 ---
 
@@ -1235,7 +1441,7 @@ curl http://localhost:8000/api/agents
 
 ```bash
 # Install Puppeteer dependencies
-cd /home/rodrigo/agentic/_debug
+cd /home/rodrigo/agentic/debug
 npm install
 
 # Install system dependencies (Ubuntu/Debian)
@@ -1289,7 +1495,70 @@ ls -la ~/.claude/
 
 ---
 
+---
+
+## Recent Changes (2025-10-10)
+
+### Backend Reorganization
+
+The backend has been reorganized into a modular structure for better maintainability:
+
+**New Structure:**
+- `config/` - Configuration and data models (schemas.py, config_loader.py)
+- `utils/` - Utility functions (context.py, voice_conversation_store.py)
+- `core/` - Core agent logic (agent_factory.py, runner.py, agent implementations)
+- `api/` - API-specific modules (realtime_voice.py, claude_code_controller.py)
+
+**Import Pattern:**
+All imports now use the new module structure:
+```python
+from config.schemas import AgentConfig
+from utils.context import get_current_agent
+from core.agent_factory import create_agent_from_config
+from api.realtime_voice import router
+```
+
+**Deleted Files:**
+The following legacy/unused files were removed:
+- Backend: agent_client.py, list_openai_models.py, list_google_models.py, voice_controller.py
+- Frontend: AgentList.js, NestedInsights.js, ToolList.js, VoiceConversationsList.js, VoiceConversationPanel.js, VoiceControls.js
+
+See [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) for complete details.
+
+### Frontend Reorganization
+
+The frontend has been reorganized into a feature-based architecture:
+
+**New Structure:**
+- `features/agents/` - Agent management feature (components + pages)
+- `features/tools/` - Tool management feature (components + pages)
+- `features/voice/` - Voice assistant feature (components + pages)
+- `shared/` - Shared components (for future use)
+
+**Import Pattern:**
+Components are now imported from feature folders:
+```javascript
+// In App.js
+import AgentDashboard from './features/agents/pages/AgentDashboard';
+import VoiceAssistant from './features/voice/pages/VoiceAssistant';
+
+// Cross-feature imports
+import RunConsole from '../../agents/components/RunConsole';
+```
+
+**Benefits:**
+- Feature isolation - Each feature is self-contained
+- Better scalability - Easy to add new features
+- Clearer organization - Components grouped by domain
+- Improved maintainability - Feature-specific changes are isolated
+
+See [FRONTEND_REFACTORING.md](FRONTEND_REFACTORING.md) for complete details.
+
+---
+
 **End of CLAUDE.md**
 
 This document should be updated whenever significant architectural changes are made.
-Last updated: 2025-10-10
+
+**Last updated:** 2025-10-10
+**Changes:** Refactored backend into modular structure (config, utils, core, api) + Refactored frontend into feature-based architecture (agents, tools, voice)
