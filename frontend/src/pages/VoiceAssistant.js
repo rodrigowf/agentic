@@ -13,10 +13,13 @@ import {
   AccordionSummary,
   AccordionDetails,
   Divider,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RunConsole from '../components/RunConsole';
 import ConversationHistory from '../components/ConversationHistory';
+import NestedAgentInsights from '../components/NestedAgentInsights';
 import {
   appendVoiceConversationEvent,
   getVoiceConversation,
@@ -60,6 +63,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const [transcript, setTranscript] = useState('');
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState(null);
+  const [nestedViewTab, setNestedViewTab] = useState(0); // 0 = Insights, 1 = Console
   const peerRef = useRef(null);
   const dataChannelRef = useRef(null);
   const nestedWsRef = useRef(null);
@@ -1096,22 +1100,48 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
             overflowY: 'auto',
           }}
         >
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-            <Typography variant="h6">Nested Team Console</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Internal agent conversations and tool executions
-            </Typography>
-          </Box>
-          {sharedNestedWs ? (
-            <Box sx={{ height: 'calc(100% - 80px)' }}>
-              <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
-            </Box>
-          ) : (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Start a voice session to see nested team activity
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ px: 2, pt: 2 }}>
+              <Typography variant="h6">Nested Team Activity</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Internal agent conversations and tool executions
               </Typography>
             </Box>
+            <Tabs value={nestedViewTab} onChange={(_, newValue) => setNestedViewTab(newValue)} sx={{ px: 2 }}>
+              <Tab label="Insights" />
+              <Tab label="Console" />
+            </Tabs>
+          </Box>
+
+          {nestedViewTab === 0 ? (
+            <Box sx={{ height: 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
+              {messages.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Start a voice session to see nested team insights
+                  </Typography>
+                </Box>
+              ) : (
+                <NestedAgentInsights
+                  messages={messages}
+                  formatTimestamp={formatTimestamp}
+                  truncateText={truncateText}
+                  safeStringify={safeStringify}
+                />
+              )}
+            </Box>
+          ) : (
+            sharedNestedWs ? (
+              <Box sx={{ height: 'calc(100% - 128px)' }}>
+                <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
+              </Box>
+            ) : (
+              <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Start a voice session to see nested team console
+                </Typography>
+              </Box>
+            )
           )}
         </Box>
 
@@ -1125,10 +1155,11 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
             display: 'flex',
             flexDirection: 'column',
             flexShrink: 0,
+            overflow: 'hidden',
           }}
         >
           {/* Header with controls */}
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
                 {conversationTitle}
@@ -1214,16 +1245,18 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           </Box>
 
           {/* Conversation History */}
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
+          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 2 }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ flexShrink: 0 }}>
               Conversation History
             </Typography>
-            <ConversationHistory
-              messages={messages}
-              conversationLoading={conversationLoading}
-              isRunning={isRunning}
-              formatTimestamp={formatTimestamp}
-            />
+            <Box sx={{ flexGrow: 1, overflowY: 'auto', height: "100%"  }}>
+              <ConversationHistory
+                messages={messages}
+                conversationLoading={conversationLoading}
+                isRunning={isRunning}
+                formatTimestamp={formatTimestamp}
+              />
+            </Box>
           </Box>
         </Box>
       </Box>

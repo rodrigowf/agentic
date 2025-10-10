@@ -550,7 +550,7 @@ const ConversationHistory = ({
 				p: 2,
 				display: 'flex',
 				flexDirection: 'column',
-				height: 420,
+				height: "100%",
 			}}
 		>
 			<Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>

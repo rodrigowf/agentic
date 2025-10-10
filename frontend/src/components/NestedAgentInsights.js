@@ -2,7 +2,6 @@ import React, { useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
   Box,
-  Paper,
   Stack,
   Typography,
   Chip,
@@ -186,28 +185,17 @@ const NestedAgentInsights = ({
 
   return (
     <Box
-      component={Paper}
+      ref={nestedScrollRef}
       sx={{
-        p: 2,
-        display: 'flex',
-        flexDirection: 'column',
-        height: 420,
+        flexGrow: 1,
+        overflowY: 'auto',
+        height: '100%',
       }}
     >
-      <Typography variant="subtitle1">Nested agent insights</Typography>
-      <Box
-        ref={nestedScrollRef}
-        sx={{
-          mt: 1,
-          flexGrow: 1,
-          overflowY: 'auto',
-          pr: 1,
-        }}
-      >
-        {nestedHighlights.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No nested activity captured yet.</Typography>
-        ) : (
-          <Stack spacing={1.25}>
+      {nestedHighlights.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">No nested activity captured yet.</Typography>
+      ) : (
+        <Stack spacing={1.25}>
             {nestedHighlights.map((entry) => {
               const chipColor = ['info', 'success', 'warning', 'error'].includes(entry.tone) ? entry.tone : 'default';
               return (
@@ -279,9 +267,8 @@ const NestedAgentInsights = ({
                 </Accordion>
               );
             })}
-          </Stack>
-        )}
-      </Box>
+        </Stack>
+      )}
     </Box>
   );
 };
