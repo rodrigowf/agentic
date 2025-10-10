@@ -48,6 +48,8 @@ class AgentConfig(BaseSchema):
     sub_agents: Optional[List["AgentConfig"]] = None
     mode: Optional[str] = None
     orchestrator_prompt: Optional[str] = None
+    orchestrator_agent_name: Optional[str] = Field(default="Manager", description="Name of the orchestrator agent for nested teams. Defaults to 'Manager'.")
+    orchestrator_pattern: Optional[str] = Field(default="NEXT AGENT: <Name>", description="Pattern to use for selecting the next agent. Use <Name> as placeholder for agent name.")
     include_inner_dialog: bool = Field(default=True, description="Include inner dialog messages in the response for nested team agents.")
 
 # Resolve forward references for recursive sub_agents

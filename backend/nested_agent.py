@@ -15,15 +15,17 @@ import types
 from context import CURRENT_AGENT
 import re  # ensure regex available
 
-# Track current team agent names for selector validation
+# Track current team agent names and orchestrator for selector validation
 _TEAM_AGENT_NAMES: set[str] = set()
+_ORCHESTRATOR_NAME: str = "Manager"
+_ORCHESTRATOR_PATTERN: str = "NEXT AGENT: <Name>"
 
-# Build manager-only termination condition (case-insensitive 'terminate')
-def _manager_only_termination():
+# Build orchestrator-only termination condition (case-insensitive 'terminate')
+def _orchestrator_only_termination():
     return FunctionalTermination(
         lambda msgs: any(
             isinstance(m, BaseChatMessage)
-            and getattr(m, "source", "") == "Manager"
+            and getattr(m, "source", "") == _ORCHESTRATOR_NAME
             and "TERMINATE" in (getattr(m, "content", "") or "")
             for m in msgs
         )
@@ -54,39 +56,55 @@ def _wrap_agent_with_context(agent):
         agent.run_stream = types.MethodType(stream_with_context, agent)
     return agent
 
+def _create_pattern_regex(pattern: str) -> str:
+    """Convert a pattern like 'NEXT AGENT: <Name>' to a regex pattern.
+
+    Args:
+        pattern: Pattern string with <Name> placeholder for agent name
+
+    Returns:
+        Regex pattern string for matching agent names
+    """
+    # Escape special regex characters except for the placeholder
+    escaped_pattern = re.escape(pattern)
+    # Replace the escaped placeholder with the agent name capture group
+    regex_pattern = escaped_pattern.replace(r'\<Name\>', r'([A-Za-z0-9_ \-]+)')
+    return regex_pattern
+
 def _custom_agent_selector(messages):
     """Deterministic custom selector with safeguards.
-    Manager-only termination: Researcher/Developer saying TERMINATE just hands control back to Manager.
+    Orchestrator-only termination: Other agents saying TERMINATE just hands control back to orchestrator.
     Logic:
-      * If no messages or last speaker not in team (e.g. user) -> Manager.
-      * Manager turn: if TERMINATE -> None (custom ManagerTerminateCondition ends chat); else parse NEXT AGENT; else None.
-      * Non-manager turn: if TERMINATE -> Manager; else allow same agent (loop) since allow_repeated_speaker=True.
+      * If no messages or last speaker not in team (e.g. user) -> Orchestrator.
+      * Orchestrator turn: if TERMINATE -> None (custom termination ends chat); else parse pattern; else None.
+      * Non-orchestrator turn: if TERMINATE -> Orchestrator; else allow same agent (loop) since allow_repeated_speaker=True.
     """
     if not messages:
-        return "Manager"
+        return _ORCHESTRATOR_NAME
 
     last = messages[-1]
     content = (getattr(last, "content", "") or "").strip()
 
-    # If last speaker is outside team (e.g., 'user'), start with Manager
-    if last.source not in _TEAM_AGENT_NAMES and last.source != "Manager":
-        return "Manager"
+    # If last speaker is outside team (e.g., 'user'), start with orchestrator
+    if last.source not in _TEAM_AGENT_NAMES and last.source != _ORCHESTRATOR_NAME:
+        return _ORCHESTRATOR_NAME
 
-    # Manager logic
-    if last.source == "Manager":
+    # Orchestrator logic
+    if last.source == _ORCHESTRATOR_NAME:
         if "TERMINATE" in content:
             return None  # termination condition will catch TERMINATE token in stream
-        # Parse NEXT AGENT (case-insensitive). Accept patterns like NEXT AGENT: Researcher
-        match = re.search(r"NEXT\s+AGENT:\s*([A-Za-z0-9_ \-]+)", content, re.IGNORECASE)
+        # Parse agent selection pattern (case-insensitive)
+        pattern_regex = _create_pattern_regex(_ORCHESTRATOR_PATTERN)
+        match = re.search(pattern_regex, content, re.IGNORECASE)
         if match:
             agent_name = match.group(1).strip().rstrip('.')
-            if agent_name and agent_name.lower() != "manager" and agent_name in _TEAM_AGENT_NAMES:
+            if agent_name and agent_name.lower() != _ORCHESTRATOR_NAME.lower() and agent_name in _TEAM_AGENT_NAMES:
                 return agent_name
         return None
 
-    # Non-manager turn logic
+    # Non-orchestrator turn logic
     if "TERMINATE" in content:
-        return "Manager"  # bounce to Manager for wrap-up; termination condition may also trigger
+        return _ORCHESTRATOR_NAME  # bounce to orchestrator for wrap-up; termination condition may also trigger
     # Allow same agent to keep going (tool loop) – framework permits due to allow_repeated_speaker=True
     return last.source
 
@@ -107,14 +125,17 @@ class NestedTeamAgent(BaseChatAgent):
             create_agent_from_config(sub_cfg, self.all_tools, self.default_model_client)
             for sub_cfg in (self.agent_cfg.sub_agents or [])
         ]
-        # Update global set of team agent names for selector
-        global _TEAM_AGENT_NAMES
+        # Update global variables for orchestrator and team agent names
+        global _TEAM_AGENT_NAMES, _ORCHESTRATOR_NAME, _ORCHESTRATOR_PATTERN
         _TEAM_AGENT_NAMES = {a.name for a in sub_agents}
+        _ORCHESTRATOR_NAME = self.agent_cfg.orchestrator_agent_name or "Manager"
+        _ORCHESTRATOR_PATTERN = self.agent_cfg.orchestrator_pattern or "NEXT AGENT: <Name>"
+
         sub_agents = [_wrap_agent_with_context(sa) for sa in sub_agents]
 
-        # Compose termination: stop if Manager (or any agent) says TERMINATE, or after max messages
+        # Compose termination: stop if orchestrator (or any agent) says TERMINATE, or after max messages
         max_messages = self.agent_cfg.max_consecutive_auto_reply or 5
-        term_cond = _manager_only_termination() | MaxMessageTermination(max_messages)
+        term_cond = _orchestrator_only_termination() | MaxMessageTermination(max_messages)
         mode = self.agent_cfg.mode or "round_robin"
 
         if mode == "selector":

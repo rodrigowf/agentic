@@ -46,6 +46,9 @@ const DEFAULT_AGENT_CONFIG = {
   model_client_stream: false,
   max_consecutive_auto_reply: null, // Renamed from max_turns
   reflect_on_tool_use: true,
+  // Nested team orchestrator settings
+  orchestrator_agent_name: 'Manager',
+  orchestrator_pattern: 'NEXT AGENT: <Name>',
 };
 
 export default function AgentEditor({nested = false}) {
@@ -536,18 +539,20 @@ export default function AgentEditor({nested = false}) {
         {cfg.agent_type === 'nested_team' && (
           <Box sx={{ pb: 2 }}>
             <Typography variant="h6" sx={{ mb: 3 }}>Inner GroupChat Config</Typography>
-            <Grid container spacing={2}>
+
+            {/* Dialog and Team Mode Settings */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid item xs={24} sm={12}>
-              <FormControlLabel
-                control={
-                <Switch
-                  checked={cfg.include_inner_dialog ?? true}
-                  onChange={(e) => handleInputChange('include_inner_dialog', e.target.checked)}
-                  disabled={loading}
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={cfg.include_inner_dialog ?? true}
+                      onChange={(e) => handleInputChange('include_inner_dialog', e.target.checked)}
+                      disabled={loading}
+                    />
+                  }
+                  label="Expose Inner Dialog"
                 />
-                }
-                label="Expose Inner Dialog"
-              />
               </Grid>
               <Grid item xs={24} sm={12}>
                 <FormControl fullWidth size='small'>
@@ -558,101 +563,129 @@ export default function AgentEditor({nested = false}) {
                     onChange={(e) => handleInputChange('mode', e.target.value)}
                     disabled={loading}
                   >
-                  <MenuItem value="round_robin">Round Robin</MenuItem>
-                  <MenuItem value="selector">Selector (Orchestrator)</MenuItem>
+                    <MenuItem value="round_robin">Round Robin</MenuItem>
+                    <MenuItem value="selector">Selector (Orchestrator)</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
-              {/* New field: max_consecutive_auto_reply for nested teams */}
-              <Grid item xs={24} sm={12}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Max Consecutive Auto-Reply"
-                  value={cfg.max_consecutive_auto_reply ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    handleInputChange('max_consecutive_auto_reply', val === '' ? null : (Number.isInteger(parseInt(val)) ? parseInt(val) : val));
-                  }}
-                  inputProps={{ min: '1' }}
-                  helperText="Optional. Team message limit (default 5)."
-                  disabled={loading}
-                />
-              </Grid>
+
+              {/* Selector Strategy Settings */}
               {cfg.mode === 'selector' && (
-              <>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth size='small'>
-                    <InputLabel>Selection Strategy</InputLabel>
-                    <Select
-                      label="Selection Strategy"
-                      value={(cfg.orchestrator_prompt && !['', '__function__'].includes(cfg.orchestrator_prompt.trim())) ? 'llm' : 'pattern'}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === 'pattern') {
-                          // Use function-based selector
-                          handleInputChange('orchestrator_prompt', '__function__');
-                        } else {
-                          // Switch to LLM prompt strategy, clear current prompt for user input
-                          if (!cfg.orchestrator_prompt || cfg.orchestrator_prompt.trim() in ['', '__function__']) {
-                            handleInputChange('orchestrator_prompt', '');
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth size='small'>
+                      <InputLabel>Selection Strategy</InputLabel>
+                      <Select
+                        label="Selection Strategy"
+                        value={(cfg.orchestrator_prompt && !['', '__function__'].includes(cfg.orchestrator_prompt.trim())) ? 'llm' : 'pattern'}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === 'pattern') {
+                            handleInputChange('orchestrator_prompt', '__function__');
+                          } else {
+                            if (!cfg.orchestrator_prompt || cfg.orchestrator_prompt.trim() in ['', '__function__']) {
+                              handleInputChange('orchestrator_prompt', '');
+                            }
                           }
-                        }
-                      }}
-                      disabled={loading}
-                    >
-                      <MenuItem value='pattern'>Pattern (NEXT AGENT: &lt;Name&gt;)</MenuItem>
-                      <MenuItem value='llm'>LLM Prompt</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                { (cfg.orchestrator_prompt && !['', '__function__'].includes(cfg.orchestrator_prompt.trim())) && (
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Selector Prompt"
-                      value={cfg.orchestrator_prompt || ''}
-                      onChange={(e) => handleInputChange('orchestrator_prompt', e.target.value)}
-                      multiline
-                      minRows={2}
-                      maxRows={12}
-                      fullWidth
-                      helperText="LLM decides next agent. Leave empty & switch strategy to use pattern-based selection."
-                    />
+                        }}
+                        disabled={loading}
+                      >
+                        <MenuItem value='pattern'>Pattern (NEXT AGENT: &lt;Name&gt;)</MenuItem>
+                        <MenuItem value='llm'>LLM Prompt</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
-                )}
-              </>
+                  {(cfg.orchestrator_prompt && !['', '__function__'].includes(cfg.orchestrator_prompt.trim())) && (
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Selector Prompt"
+                        value={cfg.orchestrator_prompt || ''}
+                        onChange={(e) => handleInputChange('orchestrator_prompt', e.target.value)}
+                        multiline
+                        minRows={2}
+                        maxRows={12}
+                        fullWidth
+                        helperText="LLM decides next agent. Leave empty & switch strategy to use pattern-based selection."
+                      />
+                    </Grid>
+                  )}
+                </>
               )}
-              <Grid item xs={12}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Sub-Agents</Typography>
-              <Grid container spacing={2}>
-                {(cfg.sub_agents || []).map((sub, idx) => (
+            </Grid>
+
+            {/* Max Consecutive Auto-Reply - Standalone Field */}
+            <FormControl fullWidth sx={{ width: '300px', mb: 3 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Max Consecutive Auto-Reply"
+                value={cfg.max_consecutive_auto_reply ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  handleInputChange('max_consecutive_auto_reply', val === '' ? null : (Number.isInteger(parseInt(val)) ? parseInt(val) : val));
+                }}
+                inputProps={{ min: '1' }}
+                helperText="Optional. Team message limit (default 5)."
+                disabled={loading}
+              />
+            </FormControl>
+
+            {/* Orchestrator Configuration - Only shown for selector mode with pattern strategy */}
+            {cfg.mode === 'selector' && (!cfg.orchestrator_prompt || cfg.orchestrator_prompt.trim() === '' || cfg.orchestrator_prompt.trim() === '__function__') && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>Orchestrator Configuration</Typography>
+                <Stack spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="Orchestrator Agent Name"
+                    value={cfg.orchestrator_agent_name || 'Manager'}
+                    onChange={(e) => handleInputChange('orchestrator_agent_name', e.target.value)}
+                    disabled={loading}
+                    helperText="Name of the agent that orchestrates the team (default: Manager)."
+                    sx={{ maxWidth: '400px' }}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Selection Pattern"
+                    value={cfg.orchestrator_pattern || 'NEXT AGENT: <Name>'}
+                    onChange={(e) => handleInputChange('orchestrator_pattern', e.target.value)}
+                    disabled={loading}
+                    helperText="Pattern to identify next agent. Use <Name> as placeholder (e.g., 'NEXT AGENT: <Name>')."
+                    sx={{ maxWidth: '600px' }}
+                  />
+                </Stack>
+              </Box>
+            )}
+
+            {/* Sub-Agents Section */}
+            <Typography variant="h6" sx={{ mb: 2 }}>Sub-Agents</Typography>
+            <Grid container spacing={2}>
+              {(cfg.sub_agents || []).map((sub, idx) => (
                 <Grid item xs={12} key={idx}>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                  <FormControl fullWidth size='small'>
-                    <InputLabel>Sub-Agent {idx + 1}</InputLabel>
-                    <Select
-                      value={sub.name || ''}
-                      label={`Sub-Agent ${idx + 1}`}
-                      onChange={(e) => handleSelectSubAgent(idx, e.target.value)}
-                    >
-                    {allAgents.map(agent => (
-                      <MenuItem key={agent.name} value={agent.name}>
-                      {agent.name}
-                      </MenuItem>
-                    ))}
-                    </Select>
-                    <FormHelperText>Select an existing agent</FormHelperText>
-                  </FormControl>
-                  <Button color="error" onClick={() => handleRemoveSubAgent(idx)}>Remove</Button>
+                    <FormControl fullWidth size='small'>
+                      <InputLabel>Sub-Agent {idx + 1}</InputLabel>
+                      <Select
+                        value={sub.name || ''}
+                        label={`Sub-Agent ${idx + 1}`}
+                        onChange={(e) => handleSelectSubAgent(idx, e.target.value)}
+                      >
+                        {allAgents.map(agent => (
+                          <MenuItem key={agent.name} value={agent.name}>
+                            {agent.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText>Select an existing agent</FormHelperText>
+                    </FormControl>
+                    <Button color="error" onClick={() => handleRemoveSubAgent(idx)}>Remove</Button>
                   </Box>
                 </Grid>
-                ))}
-                <Grid item xs={12}>
+              ))}
+              <Grid item xs={12}>
                 <Button variant="outlined" onClick={handleAddSubAgent} sx={{ alignSelf: 'flex-start' }}>
                   Add Sub-Agent
                 </Button>
-                </Grid>
-              </Grid>
               </Grid>
             </Grid>
           </Box>
