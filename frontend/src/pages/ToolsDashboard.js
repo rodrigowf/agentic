@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
@@ -10,7 +10,7 @@ import {
   Divider,
   Collapse,
   IconButton,
-  Chip,
+  Button,
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -20,13 +20,14 @@ import api from '../api';
 export default function ToolsDashboard() {
   const { filename } = useParams();
   const navigate = useNavigate();
+  const isCreating = filename === 'new';
+  const activeFilename = isCreating ? null : filename;
   const [toolFiles, setToolFiles] = useState([]);
   const [expandedFiles, setExpandedFiles] = useState({});
 
-  useEffect(() => {
+  const fetchTools = useCallback(() => {
     api.getTools()
       .then(res => {
-        // Group tools by filename
         const groups = {};
         res.data.forEach(tool => {
           if (!groups[tool.filename]) {
@@ -39,17 +40,27 @@ export default function ToolsDashboard() {
         });
         setToolFiles(Object.values(groups));
 
-        // Auto-expand the selected file
-        if (filename) {
-          setExpandedFiles(prev => ({ ...prev, [filename]: true }));
+        if (activeFilename) {
+          setExpandedFiles(prev => ({ ...prev, [activeFilename]: true }));
         }
       })
       .catch(err => console.error("Error fetching tools:", err));
-  }, [filename]);
+  }, [activeFilename]);
+
+  useEffect(() => {
+    fetchTools();
+  }, [fetchTools]);
 
   const toggleExpand = (fname) => {
     setExpandedFiles(prev => ({ ...prev, [fname]: !prev[fname] }));
   };
+
+  const handleToolSaved = useCallback((savedFilename) => {
+    fetchTools();
+    if (savedFilename && savedFilename !== activeFilename) {
+      navigate(`/tools/${savedFilename}`);
+    }
+  }, [fetchTools, navigate, activeFilename]);
 
   return (
     <Box sx={{
@@ -74,10 +85,18 @@ export default function ToolsDashboard() {
         overflowY: 'auto',
         flexShrink: 0,
       }}>
-        <Box sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Typography variant="h6">
             Tools
           </Typography>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => navigate('/tools/new')}
+            sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
+          >
+            + Add new Tool
+          </Button>
         </Box>
         <Divider />
         <List disablePadding>
@@ -98,7 +117,7 @@ export default function ToolsDashboard() {
                 <ListItemButton
                   component={RouterLink}
                   to={`/tools/${fileGroup.filename}`}
-                  selected={fileGroup.filename === filename}
+                  selected={fileGroup.filename === activeFilename}
                   sx={{
                     '&.Mui-selected': {
                       bgcolor: theme => theme.palette.mode === 'dark'
@@ -183,8 +202,10 @@ export default function ToolsDashboard() {
           },
         },
       }}>
-        {filename ? (
-          <ToolEditor nested />
+        {isCreating ? (
+          <ToolEditor nested filenameOverride={null} onSaved={handleToolSaved} />
+        ) : activeFilename ? (
+          <ToolEditor nested onSaved={handleToolSaved} />
         ) : (
           <Box sx={{
             display: 'flex',

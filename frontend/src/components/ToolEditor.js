@@ -57,8 +57,10 @@ add_numbers_tool_def = ToolDefinition(
 # You can add more functions and ToolDefinition instances below
 `;
 
-export default function ToolEditor({ nested = false }) {
-  const { filename: routeFilename } = useParams();
+export default function ToolEditor({ nested = false, filenameOverride, onSaved }) {
+  const params = useParams();
+  const routeFilenameParam = params.filename;
+  const routeFilename = filenameOverride !== undefined ? filenameOverride : routeFilenameParam;
   const isEditMode = Boolean(routeFilename);
   const nav = useNavigate();
 
@@ -77,6 +79,7 @@ export default function ToolEditor({ nested = false }) {
 
   useEffect(() => {
     if (isEditMode) {
+      setFilename(routeFilename || '');
       setLoading(true);
       setError(null);
       api.getToolContent(routeFilename)
@@ -151,6 +154,7 @@ export default function ToolEditor({ nested = false }) {
       .then(() => {
         setSuccess(`Tool '${filename}' saved successfully!`);
         setInitialCode(code); // Update initial code to prevent unsaved changes warning
+        onSaved?.(filename);
         // If creating new, navigate to edit mode for the new file
         if (!isEditMode) {
           const path = nested ? `/tools/${filename}` : `/tools/edit/${filename}`;
