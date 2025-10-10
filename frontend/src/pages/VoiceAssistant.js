@@ -20,6 +20,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RunConsole from '../components/RunConsole';
 import ConversationHistory from '../components/ConversationHistory';
 import NestedAgentInsights from '../components/NestedAgentInsights';
+import VoiceSessionControls from '../components/VoiceSessionControls';
 import {
   appendVoiceConversationEvent,
   getVoiceConversation,
@@ -60,6 +61,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const [conversationLoading, setConversationLoading] = useState(true);
   const [conversationError, setConversationError] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState(null);
@@ -70,6 +72,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const [sharedNestedWs, setSharedNestedWs] = useState(null);
   const audioRef = useRef(null);
   const streamRef = useRef(null);
+  const micStreamRef = useRef(null);
   const eventsMapRef = useRef(new Map());
   const replayQueueRef = useRef([]);
   const nestedScrollRef = useRef(null);
@@ -598,6 +601,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const startSession = async () => {
     if (isRunning) return;
     setIsRunning(true);
+    setIsMuted(false); // Reset mute state when starting
     setError(null);
     try {
       const historyItems = buildReplayItems();
@@ -720,6 +724,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
       // Attach microphone audio
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream; // Store for mute/unmute control
       for (const track of stream.getAudioTracks()) pc.addTrack(track, stream);
 
       // Helper: wait for ICE gathering to complete before sending offer
@@ -900,6 +905,12 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       notifyVoiceOfError(`Realtime session setup failed: ${err?.message || err}`, { source: 'controller', kind: 'session_error' });
       setError(err.message || String(err));
       setIsRunning(false);
+      setIsMuted(false);
+      // Clean up any partial stream
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
     }
   };
 
@@ -1041,13 +1052,40 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     }
   };
 
+  const toggleMute = () => {
+    if (!micStreamRef.current) {
+      console.warn('No microphone stream available to mute');
+      return;
+    }
+
+    setIsMuted((prevMuted) => {
+      const newMutedState = !prevMuted;
+
+      // Toggle all audio tracks in the microphone stream
+      const audioTracks = micStreamRef.current.getAudioTracks();
+      audioTracks.forEach(track => {
+        track.enabled = !newMutedState; // enabled when NOT muted
+      });
+
+      // Log the mute/unmute event
+      void recordEvent('controller', newMutedState ? 'microphone_muted' : 'microphone_unmuted', {});
+
+      return newMutedState;
+    });
+  };
+
   const stopSession = () => {
     setIsRunning(false);
+    setIsMuted(false);
     void recordEvent('controller', 'session_stopped', {});
     if (nestedWsRef.current) { try { nestedWsRef.current.close(); } catch {} nestedWsRef.current = null; }
     setSharedNestedWs(null);
     hasSpokenMidRef.current = false;
     runCompletedRef.current = false;
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current = null;
+    }
     if (peerRef.current) {
       peerRef.current.getSenders().forEach((sender) => { if (sender.track) sender.track.stop(); });
       try { peerRef.current.close(); } catch {}
@@ -1160,23 +1198,24 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         >
           {/* Header with controls */}
           <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
-                {conversationTitle}
-              </Typography>
-              <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
-              <Button
-                variant="contained"
-                size="small"
-                onClick={startSession}
-                disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
-              >
-                Start
-              </Button>
-              <Button variant="contained" size="small" color="error" onClick={stopSession} disabled={!isRunning}>
-                Stop
-              </Button>
-            </Box>
+            <Typography variant="h6" noWrap sx={{ mb: 2 }}>
+              {conversationTitle}
+            </Typography>
+            <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
+
+            {/* Modern Voice Session Controls */}
+            <VoiceSessionControls
+              isRunning={isRunning}
+              isMuted={isMuted}
+              onStart={startSession}
+              onStop={stopSession}
+              onToggleMute={toggleMute}
+              disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
+              stream={micStreamRef.current}
+              statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active elsewhere' : 'Idle'}
+              statusColor={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
+              style={{ mb: 3 }}
+            />
 
             {!isRunning && remoteSessionActive && !conversationError && (
               <Alert severity="info" sx={{ mb: 2 }}>
@@ -1265,36 +1304,45 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
   return (
     <Stack spacing={2}>
-      <Box component={Paper} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h5" noWrap>{conversationTitle}</Typography>
-          <Typography variant="body2" color="text.secondary">Realtime voice with nested team controller</Typography>
-          {conversation?.id && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-              Conversation ID: {conversation.id}
-            </Typography>
-          )}
-          {conversation?.updated_at && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-              Updated {formatTimestamp(conversation.updated_at)}
-            </Typography>
-          )}
+      <Box component={Paper} sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography variant="h5" noWrap>{conversationTitle}</Typography>
+            <Typography variant="body2" color="text.secondary">Realtime voice with nested team controller</Typography>
+            {conversation?.id && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                Conversation ID: {conversation.id}
+              </Typography>
+            )}
+            {conversation?.updated_at && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                Updated {formatTimestamp(conversation.updated_at)}
+              </Typography>
+            )}
+          </Box>
+          <Chip
+            label={conversationError ? 'History error' : conversationLoading ? 'Syncing history' : 'History synced'}
+            color={conversationError ? 'error' : conversationLoading ? 'warning' : 'info'}
+          />
+          <Button component={RouterLink} to="/voice" variant="outlined" size="small">
+            Back to conversations
+          </Button>
         </Box>
-        <Chip
-          label={isRunning ? 'Voice connected' : remoteSessionActive ? 'Voice active elsewhere' : 'Voice idle'}
-          color={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
-          sx={{ ml: 'auto' }}
-        />
-        <Chip
-          label={conversationError ? 'History error' : conversationLoading ? 'Syncing history' : 'History synced'}
-          color={conversationError ? 'error' : conversationLoading ? 'warning' : 'info'}
-        />
-        <Button component={RouterLink} to="/voice" variant="outlined" size="small">
-          Back to conversations
-        </Button>
+
         <audio ref={audioRef} autoPlay />
-        <Button variant="contained" onClick={startSession} disabled={sessionLocked || conversationLoading || Boolean(conversationError)}>Start</Button>
-        <Button variant="contained" color="error" onClick={stopSession} disabled={!isRunning}>Stop</Button>
+
+        {/* Modern Voice Session Controls */}
+        <VoiceSessionControls
+          isRunning={isRunning}
+          isMuted={isMuted}
+          onStart={startSession}
+          onStop={stopSession}
+          onToggleMute={toggleMute}
+          disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
+          stream={micStreamRef.current}
+          statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active elsewhere' : 'Idle'}
+          statusColor={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
+        />
       </Box>
 
       {!isRunning && remoteSessionActive && !conversationError && (
