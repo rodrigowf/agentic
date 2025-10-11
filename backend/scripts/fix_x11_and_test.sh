@@ -63,7 +63,7 @@ echo ""
 
 cd /home/rodrigo/agentic/backend
 source venv/bin/activate
-python3 test_real_screenshot.py
+python3 tests/integration/test_real_screenshot.py
 
 exit_code=$?
 

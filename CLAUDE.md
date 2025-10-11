@@ -95,10 +95,36 @@ This is an **agentic AI system** with a Python backend using AutoGen and a React
 │   │   └── *.json              # Agent config files
 │   │
 │   ├── tools/                  # Custom tool implementations
-│   │   ├── __pycache__/
 │   │   ├── memory.py           # Memory management tools
-│   │   └── research.py         # Research/web tools
+│   │   ├── research.py         # Research/web tools
+│   │   └── image_tools.py      # Screenshot & image generation tools
 │   │
+│   ├── tests/                  # Test files
+│   │   ├── README.md           # Test documentation
+│   │   ├── test_image_tools.py # Image tools test suite
+│   │   ├── unit/               # Unit tests
+│   │   │   ├── test_screenshot.py
+│   │   │   └── test_working_image_tools.py
+│   │   └── integration/        # Integration tests
+│   │       ├── test_claude_code_permissions.py
+│   │       ├── test_multimodal_api.py
+│   │       ├── test_multimodal_integration.py
+│   │       ├── test_real_screenshot.py
+│   │       ├── test_system_message_update.py
+│   │       └── test_voice_claude_integration.py
+│   │
+│   ├── scripts/                # Utility scripts
+│   │   ├── README.md           # Scripts documentation
+│   │   ├── fix_x11_and_test.sh # X11 permission fix & test
+│   │   └── fix_gnome_screenshot.sh # GNOME screenshot fix
+│   │
+│   ├── docs/                   # Backend-specific documentation
+│   │   ├── SCREENSHOT_FIX_GUIDE.md
+│   │   ├── SCREENSHOT_TESTING_REPORT.md
+│   │   ├── SCREENSHOT_TEST_SUMMARY.md
+│   │   ├── SCREENSHOT_TOOL_README.md
+│   │   ├── MULTIMODAL_AGENT_GUIDE.md
+│   │   └── MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md
 │   │
 │   ├── workspace/              # Agent workspace
 │   ├── venv/                   # Python virtual environment
@@ -898,18 +924,16 @@ import api from '../../api';     // 2 levels up from features/*/pages/
 # Run unit tests
 cd backend
 source venv/bin/activate
-pytest tests/test_multimodal_agent_e2e.py -v
+pytest tests/test_image_tools.py -v
 
-# Run integration test
-python3 test_multimodal_integration.py
-
-# Run full stack test
-python3 test_multimodal_api.py
+# Run integration tests
+python3 tests/integration/test_multimodal_integration.py
+python3 tests/integration/test_multimodal_api.py
 ```
 
 **Documentation:**
-- See `backend/MULTIMODAL_AGENT_GUIDE.md` for complete usage guide
-- See `backend/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` for implementation details
+- See `backend/docs/MULTIMODAL_AGENT_GUIDE.md` for complete usage guide
+- See `backend/docs/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` for implementation details
 
 ### Creating a New Agent
 
@@ -1535,16 +1559,23 @@ curl http://localhost:8000/api/tools
 | Export script | `/home/rodrigo/agentic/debug/export_voice_conversations.py` |
 | Voice DB exports | `/home/rodrigo/agentic/debug/db_exports/voice_conversations/` |
 | Voice database | `/home/rodrigo/agentic/backend/voice_conversations.db` |
-| **Documentation** | |
-| This guide | `/home/rodrigo/agentic/CLAUDE.md` |
-| Backend refactoring | `/home/rodrigo/agentic/REFACTORING_SUMMARY.md` |
-| Frontend refactoring | `/home/rodrigo/agentic/FRONTEND_REFACTORING.md` |
-| Multimodal agent guide | `/home/rodrigo/agentic/backend/MULTIMODAL_AGENT_GUIDE.md` |
-| Multimodal implementation | `/home/rodrigo/agentic/backend/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` |
 | **Tests** | |
-| Multimodal unit tests | `/home/rodrigo/agentic/backend/tests/test_multimodal_agent_e2e.py` |
-| Multimodal integration | `/home/rodrigo/agentic/backend/test_multimodal_integration.py` |
-| Multimodal full stack | `/home/rodrigo/agentic/backend/test_multimodal_api.py` |
+| Test suite directory | `/home/rodrigo/agentic/backend/tests/` |
+| Image tools tests | `/home/rodrigo/agentic/backend/tests/test_image_tools.py` |
+| Unit tests | `/home/rodrigo/agentic/backend/tests/unit/` |
+| Integration tests | `/home/rodrigo/agentic/backend/tests/integration/` |
+| **Scripts** | |
+| Scripts directory | `/home/rodrigo/agentic/backend/scripts/` |
+| X11 fix & test | `/home/rodrigo/agentic/backend/scripts/fix_x11_and_test.sh` |
+| GNOME screenshot fix | `/home/rodrigo/agentic/backend/scripts/fix_gnome_screenshot.sh` |
+| **Documentation** | |
+| Main guide (this file) | `/home/rodrigo/agentic/CLAUDE.md` |
+| Root documentation | `/home/rodrigo/agentic/docs/` |
+| Backend docs | `/home/rodrigo/agentic/backend/docs/` |
+| Screenshot guides | `/home/rodrigo/agentic/backend/docs/SCREENSHOT_*.md` |
+| Multimodal guides | `/home/rodrigo/agentic/backend/docs/MULTIMODAL_*.md` |
+| Backend refactoring | `/home/rodrigo/agentic/docs/REFACTORING_SUMMARY.md` |
+| Frontend refactoring | `/home/rodrigo/agentic/docs/FRONTEND_REFACTORING.md` |
 
 ---
 
