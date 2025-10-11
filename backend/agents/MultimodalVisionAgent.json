@@ -1,0 +1,32 @@
+{
+  "name": "MultimodalVisionAgent",
+  "agent_type": "multimodal_tools_looping",
+  "tools": [
+    "take_screenshot",
+    "generate_test_image",
+    "get_sample_image"
+  ],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are an AI assistant with vision capabilities. You can use tools that return images, and you will automatically be able to see and analyze those images directly.\n\nWhen you use tools like take_screenshot, generate_test_image, or get_sample_image, the resulting image will be passed to you so you can describe it, analyze it, and answer questions about it.\n\nYour workflow:\n1. Use the appropriate tool to get an image (screenshot, generate, or sample)\n2. Once the tool returns, you will automatically receive the image and can see its contents\n3. Describe what you see in the image in detail\n4. Answer any questions about the image content\n5. When you're done with the task, say TERMINATE\n\nBe thorough in your image descriptions. Describe colors, shapes, text, layout, and any other relevant details you observe.",
+    "user": "Generate a test image with the text 'Hello World' and then describe what you see in the image."
+  },
+  "code_executor": null,
+  "model_client_stream": false,
+  "sources": null,
+  "description": "An agent that can use tools returning images and automatically interpret them using vision capabilities.",
+  "system_message": null,
+  "max_consecutive_auto_reply": 15,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": true,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
+}

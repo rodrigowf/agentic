@@ -1114,7 +1114,7 @@ Voice Model calls: send_to_claude_code({text: "Add a new feature"})
     ↓
 Frontend sends to: ws://localhost:8000/api/runs/ClaudeCode
     ↓
-ClaudeCodeSession spawns: claude --input-format=stream-json --output-format=stream-json
+ClaudeCodeSession spawns: claude --permission-mode=bypassPermissions --input-format=stream-json --output-format=stream-json
     ↓
 Events stream back:
     - SystemEvent (init)
@@ -1127,6 +1127,66 @@ Frontend displays in ClaudeCodeInsights component
     ↓
 Voice narrates significant changes
 ```
+
+### Permission Handling
+
+**Key Configuration:**
+
+The voice assistant requires **automatic permission approval** since users cannot interactively approve Claude Code's tool usage during voice sessions.
+
+**Implementation:**
+
+```python
+# backend/api/claude_code_controller.py
+
+class ClaudeCodeProcess:
+    # Claude CLI path - VSCode extension binary
+    CLAUDE_CLI_PATH = "/home/rodrigo/.vscode/extensions/anthropic.claude-code-2.0.14-linux-x64/resources/native-binary/claude"
+
+    def __init__(
+        self,
+        working_dir: str = "/home/rodrigo/agentic",
+        model: str = "claude-sonnet-4-5-20250929",
+        permission_mode: str = "bypassPermissions",  # ← Key setting
+    ):
+        ...
+
+# backend/main.py - WebSocket endpoint
+@app.websocket("/api/runs/ClaudeCode")
+async def run_claude_code_ws(websocket: WebSocket):
+    session = ClaudeCodeSession(
+        working_dir=working_dir,
+        model="claude-sonnet-4-5-20250929",
+        permission_mode="bypassPermissions",  # ← Bypass for voice assistant
+    )
+```
+
+**Available Permission Modes:**
+
+- `bypassPermissions` - **Used for voice assistant** - Executes all tools without prompts
+- `acceptEdits` - Auto-accepts file edits only, still prompts for other tools
+- `default` - Normal interactive permission prompts (not suitable for voice)
+- `plan` - Plan mode, doesn't execute tools
+
+**Testing:**
+
+```bash
+# Test permission-free execution
+cd /home/rodrigo/agentic/backend
+python3 test_claude_code_permissions.py
+```
+
+**Security Note:**
+
+The `bypassPermissions` mode is safe in this context because:
+1. The voice assistant is already trusted to execute arbitrary code
+2. Claude Code operates in the same working directory as the voice assistant
+3. The system is designed for self-modification capabilities
+
+For production deployments or untrusted environments, consider implementing:
+- Allowlisted tools: `--allowed-tools "Bash(git:*) Edit Read"`
+- Directory restrictions: `--add-dir /safe/path`
+- Tool approval workflows in the voice interface
 
 ### Event Types
 

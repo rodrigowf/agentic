@@ -333,7 +333,7 @@ async def run_claude_code_ws(websocket: WebSocket):
         session = ClaudeCodeSession(
             working_dir=working_dir,
             model="claude-sonnet-4-5-20250929",
-            permission_mode="default",
+            permission_mode="bypassPermissions",  # Bypass permissions for voice assistant
         )
         await session.start()
 

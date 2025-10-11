@@ -34,11 +34,14 @@ logger = logging.getLogger(__name__)
 class ClaudeCodeProcess:
     """Manages a Claude Code CLI subprocess with JSON streaming."""
 
+    # Claude CLI path - VSCode extension binary
+    CLAUDE_CLI_PATH = "/home/rodrigo/.vscode/extensions/anthropic.claude-code-2.0.14-linux-x64/resources/native-binary/claude"
+
     def __init__(
         self,
         working_dir: str = "/home/rodrigo/agentic",
         model: str = "claude-sonnet-4-5-20250929",
-        permission_mode: str = "default",
+        permission_mode: str = "bypassPermissions",
     ):
         self.working_dir = Path(working_dir)
         self.model = model
@@ -54,7 +57,7 @@ class ClaudeCodeProcess:
 
         # Build command: claude --print --verbose --input-format=stream-json --output-format=stream-json
         cmd = [
-            "claude",
+            self.CLAUDE_CLI_PATH,
             "--print",
             "--verbose",
             "--input-format=stream-json",
@@ -185,7 +188,7 @@ class ClaudeCodeSession:
         self,
         working_dir: str = "/home/rodrigo/agentic",
         model: str = "claude-sonnet-4-5-20250929",
-        permission_mode: str = "default",
+        permission_mode: str = "bypassPermissions",
     ):
         self.working_dir = working_dir
         self.model = model
