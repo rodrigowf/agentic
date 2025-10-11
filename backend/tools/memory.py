@@ -23,14 +23,29 @@ SHORT_TERM_MEMORY_FILE = MEMORY_BASE_PATH / "short_term_memory.txt"
 MEMORY_INDEX_FILE = MEMORY_BASE_PATH / "memory_index.json"
 CHROMA_PERSIST_DIR = str(MEMORY_BASE_PATH / "chroma_db")
 
-# Initialize OpenAI client for embeddings
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Lazy initialization for OpenAI client and ChromaDB
+_openai_client = None
+_chroma_client = None
 
-# Initialize ChromaDB client with persistence
-chroma_client = chromadb.PersistentClient(
-    path=CHROMA_PERSIST_DIR,
-    settings=Settings(anonymized_telemetry=False)
-)
+def _get_openai_client():
+    """Lazy initialization of OpenAI client"""
+    global _openai_client
+    if _openai_client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable is not set")
+        _openai_client = OpenAI(api_key=api_key)
+    return _openai_client
+
+def _get_chroma_client():
+    """Lazy initialization of ChromaDB client"""
+    global _chroma_client
+    if _chroma_client is None:
+        _chroma_client = chromadb.PersistentClient(
+            path=CHROMA_PERSIST_DIR,
+            settings=Settings(anonymized_telemetry=False)
+        )
+    return _chroma_client
 
 # --- Memory Index Management ---
 
@@ -56,7 +71,8 @@ def _save_memory_index(index: Dict[str, str]):
 def _get_embedding(text: str) -> List[float]:
     """Generate embedding for text using OpenAI"""
     try:
-        response = openai_client.embeddings.create(
+        client = _get_openai_client()
+        response = client.embeddings.create(
             model="text-embedding-3-small",
             input=text
         )
@@ -214,7 +230,8 @@ def create_memory_bank(memory_name: str, description: str) -> str:
 
         # Create ChromaDB collection
         try:
-            collection = chroma_client.get_or_create_collection(
+            client = _get_chroma_client()
+            collection = client.get_or_create_collection(
                 name=memory_name,
                 metadata={"description": description}
             )
@@ -264,7 +281,8 @@ def add_to_memory(memory_name: str, information: str) -> str:
             return f"Memory bank '{memory_name}' does not exist. Create it first using create_memory_bank."
 
         # Get collection
-        collection = chroma_client.get_collection(name=memory_name)
+        client = _get_chroma_client()
+        collection = client.get_collection(name=memory_name)
 
         # Generate embedding
         embedding = _get_embedding(information)
@@ -320,7 +338,8 @@ def search_memory(memory_name: str, search_query: str, n_results: int = 3) -> st
             return f"Memory bank '{memory_name}' does not exist."
 
         # Get collection
-        collection = chroma_client.get_collection(name=memory_name)
+        client = _get_chroma_client()
+        collection = client.get_collection(name=memory_name)
 
         # Check if empty
         if collection.count() == 0:
@@ -383,7 +402,8 @@ def replace_data(memory_name: str, old_information: str, new_information: str) -
             return f"Memory bank '{memory_name}' does not exist."
 
         # Get collection
-        collection = chroma_client.get_collection(name=memory_name)
+        client = _get_chroma_client()
+        collection = client.get_collection(name=memory_name)
 
         # Search for exact or similar match
         old_embedding = _get_embedding(old_information)
@@ -447,7 +467,8 @@ def remove_data(memory_name: str, information: str) -> str:
             return f"Memory bank '{memory_name}' does not exist."
 
         # Get collection
-        collection = chroma_client.get_collection(name=memory_name)
+        client = _get_chroma_client()
+        collection = client.get_collection(name=memory_name)
 
         # Search for the information
         embedding = _get_embedding(information)
@@ -491,9 +512,10 @@ def list_memory_banks() -> str:
             return "No memory banks exist yet. Create one using create_memory_bank."
 
         result = ["Available Memory Banks:"]
+        client = _get_chroma_client()
         for name, description in index.items():
             try:
-                collection = chroma_client.get_collection(name=name)
+                collection = client.get_collection(name=name)
                 count = collection.count()
                 result.append(f"- {name}: {description} ({count} entries)")
             except Exception:
