@@ -1,12 +1,17 @@
-"""
-Image-related tools for testing multimodal agent capabilities.
-"""
+"""Image-related tools for testing multimodal agent capabilities."""
 
-import os
 import logging
+import os
+import shutil
+import subprocess
+import sys
+import textwrap
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
+
 from pydantic import BaseModel, Field
+
 from autogen_core.tools import FunctionTool
 
 logger = logging.getLogger(__name__)
@@ -14,38 +19,265 @@ logger = logging.getLogger(__name__)
 
 class TakeScreenshotInput(BaseModel):
     """Input schema for take_screenshot tool."""
+
     description: str = Field(..., description="Description of what to capture in the screenshot")
     output_path: Optional[str] = Field(None, description="Optional path to save screenshot")
 
 
-def take_screenshot(description: str, output_path: Optional[str] = None) -> str:
-    """
-    Simulates taking a screenshot and returns the file path.
+def _select_screenshot_command(target_path: Path) -> Optional[list[str]]:
+    """Pick an available CLI screenshot tool for the current session."""
 
-    In a real implementation, this would use a tool like pyautogui or a headless browser
-    to capture a screenshot. For testing purposes, this returns a mock file path.
+    session_type = (os.environ.get("XDG_SESSION_TYPE") or "").lower()
+    wayland_display = os.environ.get("WAYLAND_DISPLAY")
+    commands: list[list[str]] = []
 
-    Args:
-        description: Description of what to capture
-        output_path: Optional custom path to save screenshot
+    # Prefer Wayland-native tools when Wayland session is detected
+    if session_type == "wayland" or wayland_display:
+        if shutil.which("grim"):
+            commands.append(["grim", str(target_path)])
+        if shutil.which("hyprshot"):
+            commands.append(["hyprshot", "--silent", "--filename", str(target_path)])
+        if shutil.which("spectacle"):
+            commands.append(["spectacle", "-b", "-n", "-o", str(target_path)])
+        if shutil.which("flameshot"):
+            commands.append(["flameshot", "full", "--path", str(target_path)])
 
-    Returns:
-        String describing the screenshot file path
-    """
+    # X11 fallback
+    if shutil.which("scrot"):
+        commands.append(["scrot", str(target_path)])
+    if shutil.which("maim"):
+        commands.append(["maim", str(target_path)])
+    if shutil.which("import"):  # ImageMagick
+        commands.append(["import", "-window", "root", str(target_path)])
+
+    # macOS fallback
+    if sys.platform == "darwin" and shutil.which("screencapture"):
+        commands.append(["screencapture", "-x", str(target_path)])
+
+    return commands[0] if commands else None
+
+
+def _image_is_effectively_black(image_path: Path, tolerance: int = 5) -> bool:
+    """Return True if the image contains only near-black pixels."""
+
     try:
-        # For testing, we'll just return a mock path
-        if output_path:
-            file_path = output_path
-        else:
-            workspace = Path(os.getcwd()) / "workspace"
-            workspace.mkdir(exist_ok=True)
-            file_path = str(workspace / "screenshot.png")
+        from PIL import Image, ImageStat
+    except ImportError:
+        logger.debug("PIL not available; cannot verify screenshot contents.")
+        return False
 
-        logger.info(f"Mock screenshot taken: {file_path}")
-        return f"Screenshot captured and saved to: {file_path}\n\nNote: This is a mock implementation. In production, this would contain an actual screenshot image file."
-    except Exception as e:
-        logger.error(f"Error in take_screenshot: {e}")
-        return f"Error taking screenshot: {str(e)}"
+    try:
+        with Image.open(image_path) as img:
+            img = img.convert("RGB")
+            extrema = img.getextrema()
+            # getextrema returns ((min_r, max_r), ...)
+            is_constant = all((channel_min == channel_max) for channel_min, channel_max in extrema)
+            if is_constant:
+                return all(channel_max <= tolerance for _, channel_max in extrema)
+
+            stats = ImageStat.Stat(img)
+            # If total luminance is extremely low, treat as black
+            avg_luminance = sum(stats.mean) / len(stats.mean)
+            return avg_luminance <= tolerance
+    except Exception as exc:  # pragma: no cover - defensive safety
+        logger.warning("Failed to analyze screenshot %s: %s", image_path, exc)
+        return False
+
+
+def _create_placeholder_image(target_path: Path, description: str, reason: str) -> Tuple[Path, str]:
+    """Generate an informative placeholder image when real capture fails."""
+
+    placeholder_path = target_path.with_stem(f"{target_path.stem}_placeholder")
+
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        message = (
+            "Error: PIL (Pillow) library not installed. Cannot create placeholder screenshot. "
+            f"Original issue: {reason}"
+        )
+        logger.error(message)
+        return placeholder_path, message
+
+    width, height = 1280, 720
+    background = (30, 30, 30)
+    accent = (255, 166, 0)
+    text_color = (230, 230, 230)
+
+    img = Image.new("RGB", (width, height), color=background)
+    draw = ImageDraw.Draw(img)
+
+    try:
+        font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
+    except Exception:  # pragma: no cover - font availability varies
+        font_title = ImageFont.load_default()
+
+    try:
+        font_body = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 26)
+    except Exception:  # pragma: no cover
+        font_body = ImageFont.load_default()
+
+    draw.text((40, 40), "Screenshot unavailable", fill=accent, font=font_title)
+
+    wrapped_reason = textwrap.fill(f"Reason: {reason}", width=50)
+    wrapped_description = textwrap.fill(f"Requested capture: {description}", width=58)
+
+    draw.text((40, 140), wrapped_reason, fill=text_color, font=font_body)
+    draw.text((40, 240), wrapped_description, fill=text_color, font=font_body)
+
+    footer = (
+        "This placeholder was generated automatically because the environment "
+        "could not capture the actual screen. Configure X11/Wayland permissions "
+        "or run in a graphical session for real screenshots."
+    )
+    draw.text((40, height - 160), textwrap.fill(footer, width=65), fill=(180, 180, 180), font=font_body)
+
+    placeholder_path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(placeholder_path)
+
+    message = (
+        f"Warning: Screenshot capture failed ({reason}). Generated placeholder image at: {placeholder_path}.\n\n"
+        f"Description: {description}"
+    )
+    logger.warning(message)
+    return placeholder_path, message
+
+
+def take_screenshot(description: str, output_path: Optional[str] = None) -> str:
+    """Capture the current screen or generate an informative placeholder."""
+
+    workspace = Path(os.getcwd()) / "workspace" / "screenshots"
+
+    if output_path:
+        file_path = Path(output_path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        workspace.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_path = workspace / f"screenshot_{timestamp}.png"
+
+    capture_errors: list[str] = []
+
+    def attempt_mss() -> tuple[bool, Optional[str]]:
+        try:
+            import mss
+
+            with mss.mss() as sct:
+                sct.shot(output=str(file_path))
+            if not file_path.exists():
+                return False, "mss wrote no file"
+            logger.info("Screenshot captured via mss: %s", file_path)
+            return True, None
+        except ImportError:
+            return False, "mss not installed"
+        except Exception as exc:  # pragma: no cover - defensive safety
+            return False, f"mss capture failed: {exc}"
+
+    def attempt_pyautogui() -> tuple[bool, Optional[str]]:
+        try:
+            import pyautogui
+
+            screenshot = pyautogui.screenshot()
+            screenshot.save(str(file_path))
+            if not file_path.exists():
+                return False, "pyautogui wrote no file"
+            logger.info("Screenshot captured via pyautogui: %s", file_path)
+            return True, None
+        except ImportError:
+            return False, "pyautogui not installed"
+        except Exception as exc:  # pragma: no cover - defensive safety
+            return False, f"pyautogui capture failed: {exc}"
+
+    def attempt_gnome_dbus() -> tuple[bool, Optional[str]]:
+        """Try GNOME/Unity Shell screenshot via D-Bus (works on GNOME/Unity Wayland)."""
+        try:
+            # Use gdbus to call GNOME Shell screenshot (works on GNOME and Unity)
+            cmd = [
+                "gdbus", "call", "--session",
+                "--dest", "org.gnome.Shell.Screenshot",
+                "--object-path", "/org/gnome/Shell/Screenshot",
+                "--method", "org.gnome.Shell.Screenshot.Screenshot",
+                "true", "false", str(file_path)
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, timeout=10, check=False)
+
+            if result.returncode != 0:
+                stderr = result.stderr.decode(errors="ignore") if result.stderr else ""
+                return False, f"D-Bus screenshot failed: {stderr}"
+
+            if not file_path.exists():
+                return False, "D-Bus screenshot did not create file"
+
+            logger.info("Screenshot captured via D-Bus: %s", file_path)
+            return True, None
+
+        except FileNotFoundError:
+            return False, "gdbus command not found"
+        except subprocess.TimeoutExpired:
+            return False, "D-Bus screenshot timed out"
+        except Exception as exc:  # pragma: no cover - defensive safety
+            return False, f"D-Bus error: {exc}"
+
+    def attempt_cli() -> tuple[bool, Optional[str]]:
+        command = _select_screenshot_command(file_path)
+        if command is None:
+            return False, "No supported screenshot utility (grim, hyprshot, scrot, screencapture)"
+
+        try:
+            result = subprocess.run(command, capture_output=True, timeout=10, check=False)
+        except FileNotFoundError:
+            return False, f"Command not found: {command[0]}"
+        except subprocess.TimeoutExpired:
+            return False, f"Screenshot command timed out: {' '.join(command)}"
+        except Exception as exc:  # pragma: no cover - defensive safety
+            return False, f"Unexpected error from {' '.join(command)}: {exc}"
+
+        if result.returncode != 0:
+            stdout = result.stdout.decode(errors="ignore") if result.stdout else ""
+            stderr = result.stderr.decode(errors="ignore") if result.stderr else ""
+            return False, f"{' '.join(command)} exited with code {result.returncode}: {stderr or stdout}"
+
+        if not file_path.exists():
+            return False, "Screenshot file was not created by CLI tool"
+
+        logger.info("Screenshot captured via command: %s", " ".join(command))
+        return True, None
+
+    capture_attempts: list[tuple[str, callable]] = [
+        ("gnome_dbus", attempt_gnome_dbus),
+        ("mss", attempt_mss),
+        ("pyautogui", attempt_pyautogui),
+        ("cli", attempt_cli),
+    ]
+
+    preferred_backend = os.environ.get("SCREENSHOT_BACKEND", "").strip().lower()
+    if preferred_backend:
+        capture_attempts.sort(key=lambda pair: 0 if pair[0] == preferred_backend else 1)
+
+    captured = False
+    used_backend: Optional[str] = None
+    for backend_name, attempt in capture_attempts:
+        success, error = attempt()
+        if success:
+            captured = True
+            used_backend = backend_name
+            break
+        if error:
+            capture_errors.append(f"{backend_name}: {error}")
+
+    if captured and _image_is_effectively_black(file_path):
+        capture_errors.append("Captured image appears to be all black")
+        captured = False
+        used_backend = None
+
+    if captured:
+        logger.info("Screenshot saved to %s using backend %s - %s", file_path, used_backend, description)
+        return f"Screenshot captured and saved to: {file_path}\n\nDescription: {description}"
+
+    reason = ", ".join(capture_errors) if capture_errors else "unknown failure"
+    placeholder_path, message = _create_placeholder_image(file_path, description, reason)
+    return message
 
 
 class GenerateImageInput(BaseModel):
@@ -206,7 +438,7 @@ def get_sample_image(image_type: str = "chart") -> str:
 take_screenshot_tool = FunctionTool(
     func=take_screenshot,
     name="take_screenshot",
-    description="Take a screenshot of the current screen or window. Returns the file path to the screenshot image."
+    description="Take a REAL screenshot of the current screen. Captures the entire display and saves it as a PNG file. Returns the file path to the screenshot image."
 )
 
 generate_test_image_tool = FunctionTool(

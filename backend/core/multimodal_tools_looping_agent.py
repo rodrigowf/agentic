@@ -59,16 +59,59 @@ class MultimodalToolsLoopingAgent(AssistantAgent):
 
     # Pattern to detect file paths in tool responses
     FILE_PATH_PATTERN = re.compile(
-        r'(?:^|[\s\'\"])((?:[\/~])?(?:[\w\-\.]+\/)*[\w\-\.]+\.(?:png|jpg|jpeg|gif|bmp|webp))(?:[\s\'\"]|$)',
+        r'(?:^|[\s\'\"\(\)\[\]\{\}:,])((?:[\/~])?(?:[\w\-\.]+\/)*[\w\-\.]+\.(?:png|jpg|jpeg|gif|bmp|webp))(?=[\s\'\"\)\]\}\.:,]|$)',
         re.IGNORECASE | re.MULTILINE
     )
 
-    def __init__(self, *args, max_consecutive_auto_reply: Optional[int] = None, **kwargs):
-        super().__init__(*args, **kwargs)
+    # Pattern to detect TERMINATE keyword (case-insensitive, word boundary)
+    TERMINATE_PATTERN = re.compile(r'\bTERMINATE\b', re.IGNORECASE)
+
+    def __init__(
+        self,
+        *args,
+        max_consecutive_auto_reply: Optional[int] = None,
+        system_message: Optional[str] = None,
+        **kwargs
+    ):
+        """
+        Initialize the MultimodalToolsLoopingAgent.
+
+        Args:
+            max_consecutive_auto_reply: Maximum number of iterations before safety stop
+            system_message: System prompt for the agent. If None, uses default multimodal prompt.
+            **kwargs: Additional arguments passed to AssistantAgent
+        """
+        # Set default system message if none provided
+        if system_message is None:
+            system_message = (
+                "You are an AI assistant with vision capabilities. "
+                "When you use tools that return images, you will automatically receive "
+                "the images and can see and analyze them directly. "
+                "Describe what you see in detail, including colors, text, layout, and any "
+                "other relevant visual elements. "
+                "Say TERMINATE when you have completed the task."
+            )
+
+        # Pass system_message to parent
+        super().__init__(*args, system_message=system_message, **kwargs)
         self.max_consecutive_auto_reply = max_consecutive_auto_reply if max_consecutive_auto_reply is not None else DEFAULT_MAX_ITERS
 
         if PILImage is None:
             logger.warning("PIL (Pillow) not installed. Image handling will be limited.")
+
+    def update_system_message(self, system_message: str) -> None:
+        """
+        Update the system message/prompt for the agent.
+
+        Args:
+            system_message: New system prompt to use
+        """
+        if hasattr(self, '_system_messages') and self._system_messages:
+            # Update the content of the existing system message
+            self._system_messages[0].content = system_message
+            logger.info(f"Updated system message for {self.name}")
+        else:
+            logger.warning(f"Could not update system message for {self.name}")
 
     def _detect_and_convert_images(self, content: str) -> List[AGImage]:
         """
@@ -93,7 +136,17 @@ class MultimodalToolsLoopingAgent(AssistantAgent):
                 logger.warning(f"Failed to parse base64 image: {e}")
 
         # 2. Check for file paths
-        file_matches = self.FILE_PATH_PATTERN.findall(content)
+        file_matches = set(self.FILE_PATH_PATTERN.findall(content))
+
+        # Additional heuristic: split text and strip punctuation to find leftover paths
+        tokens = content.replace('\n', ' ').split()
+        for token in tokens:
+            cleaned = token.strip("'\"()[]{}<>,:;")
+            if cleaned:
+                lower = cleaned.lower()
+                if any(lower.endswith(ext) for ext in self.IMAGE_EXTENSIONS):
+                    file_matches.add(cleaned)
+
         for file_path_str in file_matches:
             try:
                 file_path = Path(file_path_str).expanduser().resolve()
@@ -132,6 +185,20 @@ class MultimodalToolsLoopingAgent(AssistantAgent):
             # No images detected, return regular text message
             return TextMessage(content=tool_result_content, source=source)
 
+    def _message_contains_terminate(self, message: BaseChatMessage) -> bool:
+        """Check whether a chat message contains the TERMINATE keyword."""
+        content = getattr(message, "content", None)
+
+        if isinstance(content, str):
+            return bool(self.TERMINATE_PATTERN.search(content))
+
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, str) and self.TERMINATE_PATTERN.search(item):
+                    return True
+
+        return False
+
     async def run_stream(
         self,
         task: str,
@@ -163,6 +230,7 @@ class MultimodalToolsLoopingAgent(AssistantAgent):
             last_assistant_text_message_content: str | None = None
             accumulated_assistant_chunks: str = ""
             current_iteration_new_history: List[BaseChatMessage] = []
+            terminate_detected_this_iteration = False
 
             try:
                 async for evt in super().on_messages_stream(messages=history, cancellation_token=cancellation_token):
@@ -174,6 +242,8 @@ class MultimodalToolsLoopingAgent(AssistantAgent):
                             if evt.chat_message.content:
                                 last_assistant_text_message_content = evt.chat_message.content
                                 current_iteration_new_history.append(evt.chat_message)
+                                if self._message_contains_terminate(evt.chat_message):
+                                    terminate_detected_this_iteration = True
                                 accumulated_assistant_chunks = ""
                         yield evt.chat_message.model_dump() if evt.chat_message else evt.model_dump()
                     else:
@@ -193,6 +263,9 @@ class MultimodalToolsLoopingAgent(AssistantAgent):
 
                             current_iteration_new_history.append(msg)
 
+                            if self._message_contains_terminate(msg):
+                                terminate_detected_this_iteration = True
+
                             # Yield the multimodal message so frontend can see it
                             yield msg.model_dump()
 
@@ -201,6 +274,11 @@ class MultimodalToolsLoopingAgent(AssistantAgent):
                     elif isinstance(evt, ModelClientStreamingChunkEvent):
                         if evt.content:
                             accumulated_assistant_chunks += evt.content
+                            if self.TERMINATE_PATTERN.search(accumulated_assistant_chunks):
+                                terminate_detected_this_iteration = True
+
+                    if terminate_detected_this_iteration:
+                        break
 
             except asyncio.CancelledError:
                 yield TextMessage(content="[SYSTEM] Operation cancelled.", source="system").model_dump()
@@ -216,10 +294,18 @@ class MultimodalToolsLoopingAgent(AssistantAgent):
                 chunk_message = TextMessage(content=accumulated_assistant_chunks, source=self.name)
                 if not current_iteration_new_history or current_iteration_new_history[-1] != chunk_message:
                     current_iteration_new_history.append(chunk_message)
+                    if self._message_contains_terminate(chunk_message):
+                        terminate_detected_this_iteration = True
 
             history.extend(current_iteration_new_history)
 
-            if final_content_this_iteration and "TERMINATE" in final_content_this_iteration:
+            if (
+                terminate_detected_this_iteration
+                or (
+                    final_content_this_iteration
+                    and self.TERMINATE_PATTERN.search(final_content_this_iteration)
+                )
+            ):
                 break
 
             await asyncio.sleep(0.1)
