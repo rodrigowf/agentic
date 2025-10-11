@@ -1,6 +1,6 @@
 # CLAUDE.md - Comprehensive Development Guide
 
-**Last Updated:** 2025-10-10
+**Last Updated:** 2025-10-11
 **For:** Future Claude instances working on this codebase
 
 ---
@@ -1539,6 +1539,12 @@ curl http://localhost:8000/api/tools
 | This guide | `/home/rodrigo/agentic/CLAUDE.md` |
 | Backend refactoring | `/home/rodrigo/agentic/REFACTORING_SUMMARY.md` |
 | Frontend refactoring | `/home/rodrigo/agentic/FRONTEND_REFACTORING.md` |
+| Multimodal agent guide | `/home/rodrigo/agentic/backend/MULTIMODAL_AGENT_GUIDE.md` |
+| Multimodal implementation | `/home/rodrigo/agentic/backend/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` |
+| **Tests** | |
+| Multimodal unit tests | `/home/rodrigo/agentic/backend/tests/test_multimodal_agent_e2e.py` |
+| Multimodal integration | `/home/rodrigo/agentic/backend/test_multimodal_integration.py` |
+| Multimodal full stack | `/home/rodrigo/agentic/backend/test_multimodal_api.py` |
 
 ---
 
@@ -1745,5 +1751,7 @@ See [FRONTEND_REFACTORING.md](FRONTEND_REFACTORING.md) for complete details.
 
 This document should be updated whenever significant architectural changes are made.
 
-**Last updated:** 2025-10-10
-**Changes:** Refactored backend into modular structure (config, utils, core, api) + Refactored frontend into feature-based architecture (agents, tools, voice)
+**Last updated:** 2025-10-11
+**Changes:**
+- 2025-10-11: Added multimodal vision agent (`multimodal_tools_looping`) with automatic image detection and interpretation
+- 2025-10-10: Refactored backend into modular structure (config, utils, core, api) + Refactored frontend into feature-based architecture (agents, tools, voice)
