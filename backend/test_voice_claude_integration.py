@@ -17,7 +17,7 @@ async def test_voice_claude_integration():
     print("Testing: Permission-free Claude Code execution via WebSocket")
     print("=" * 70)
 
-    uri = "ws://localhost:8001/api/runs/ClaudeCode"
+    uri = "ws://localhost:8002/api/runs/ClaudeCode"
 
     try:
         print(f"\n1. Connecting to Claude Code WebSocket: {uri}")
@@ -26,7 +26,7 @@ async def test_voice_claude_integration():
 
             # Send a simple test message that requires tool usage
             test_message = {
-                "type": "message",
+                "type": "user_message",
                 "data": "Please list the Python files in the backend directory using the Bash tool"
             }
 

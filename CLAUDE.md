@@ -25,6 +25,7 @@
 This is an **agentic AI system** with a Python backend using AutoGen and a React frontend. The system features:
 
 - **Multi-agent coordination** using nested team agents
+- **Multimodal vision agents** that can interpret images from tool responses
 - **Voice assistant interface** using OpenAI Realtime API
 - **Claude Code self-editor integration** for live code modification
 - **Real-time WebSocket communication**
@@ -82,6 +83,7 @@ This is an **agentic AI system** with a Python backend using AutoGen and a React
 │   │   ├── runner.py           # Agent execution engine
 │   │   ├── looping_agent.py    # Single looping agent
 │   │   ├── looping_code_executor_agent.py  # Code executor agent
+│   │   ├── multimodal_tools_looping_agent.py  # Multimodal vision agent
 │   │   └── nested_agent.py     # Nested team logic
 │   │
 │   ├── api/                    # API-specific modules
@@ -824,6 +826,91 @@ import api from '../../api';     // 2 levels up from features/*/pages/
 - `mode: "selector"` - Orchestrator selects which agent responds
 - `orchestrator_prompt: "__function__"` - Uses built-in orchestration logic
 
+#### 3. Multimodal Tools Looping Agent (Vision-Capable Agent)
+
+**Example:** `MultimodalVisionAgent.json`
+
+**Added:** 2025-10-11
+
+```json
+{
+  "name": "MyVisionAgent",
+  "agent_type": "multimodal_tools_looping",
+  "tools": [
+    "take_screenshot",
+    "generate_test_image",
+    "get_sample_image"
+  ],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are an AI assistant with vision capabilities. When you use tools that return images, you will automatically be able to see and analyze those images directly. Describe what you see in detail. Say TERMINATE when done.",
+    "user": "Generate a test image and describe what you see."
+  },
+  "code_executor": null,
+  "model_client_stream": false,
+  "sources": null,
+  "description": "An agent that can interpret images from tool responses",
+  "system_message": null,
+  "max_consecutive_auto_reply": 15,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": true,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
+}
+```
+
+**Key Features:**
+- `agent_type: "multimodal_tools_looping"` - Looping agent with vision capabilities
+- **Automatic image detection** - Detects images in tool responses (file paths, base64)
+- **MultiModalMessage creation** - Converts images to multimodal messages for the LLM
+- **Vision model required** - Must use vision-capable models (gpt-4o, gpt-4o-mini, etc.)
+- **Seamless integration** - Works like regular looping agent, but can "see" images
+
+**How It Works:**
+
+1. Tool returns text with image reference: `"Screenshot saved to /path/image.png"`
+2. Agent automatically detects the image path or base64 data
+3. Agent converts to `MultiModalMessage` containing text + image
+4. LLM receives and can "see" the image directly
+5. LLM describes/analyzes the image content
+
+**Supported Image Formats:**
+- File paths: `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`
+- Base64 encoded: `data:image/png;base64,...`
+- Absolute or relative paths
+
+**Example Tools for Multimodal Agents:**
+- `take_screenshot` - Capture screen images
+- `generate_test_image` - Create test images with PIL
+- `get_sample_image` - Generate charts, diagrams, photos
+- Any tool that returns image file paths
+
+**Testing:**
+```bash
+# Run unit tests
+cd backend
+source venv/bin/activate
+pytest tests/test_multimodal_agent_e2e.py -v
+
+# Run integration test
+python3 test_multimodal_integration.py
+
+# Run full stack test
+python3 test_multimodal_api.py
+```
+
+**Documentation:**
+- See `backend/MULTIMODAL_AGENT_GUIDE.md` for complete usage guide
+- See `backend/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` for implementation details
+
 ### Creating a New Agent
 
 **Step 1:** Create JSON configuration
@@ -870,10 +957,10 @@ EOF
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | string | Agent name (must match filename) |
-| `agent_type` | string | "looping" or "nested_team" |
+| `agent_type` | string | "looping", "multimodal_tools_looping", or "nested_team" |
 | `tools` | array | List of tool names to provide |
 | `llm.provider` | string | "openai", "anthropic", "google" |
-| `llm.model` | string | Model identifier |
+| `llm.model` | string | Model identifier (use gpt-4o for multimodal) |
 | `llm.temperature` | float | 0.0-2.0, controls randomness |
 | `prompt.system` | string | System prompt for agent |
 | `tool_call_loop` | bool | Continue calling tools in loop |
@@ -1557,9 +1644,47 @@ ls -la ~/.claude/
 
 ---
 
-## Recent Changes (2025-10-10)
+## Recent Changes
 
-### Backend Reorganization
+### Multimodal Vision Agent (2025-10-11)
+
+A new agent type has been added that can automatically interpret images and visual content from tool responses.
+
+**What's New:**
+- **New Agent Type:** `multimodal_tools_looping` - Looping agent with vision capabilities
+- **Automatic Image Detection:** Detects images in tool responses (file paths, base64)
+- **MultiModalMessage Creation:** Converts images to multimodal messages for vision-capable LLMs
+- **Test Coverage:** 8/8 unit tests + integration tests passing
+
+**New Files:**
+- `backend/core/multimodal_tools_looping_agent.py` - Core implementation
+- `backend/tools/image_tools.py` - Sample image generation tools
+- `backend/agents/MultimodalVisionAgent.json` - Example configuration
+- `backend/tests/test_multimodal_agent_e2e.py` - Comprehensive test suite
+- `backend/MULTIMODAL_AGENT_GUIDE.md` - Complete documentation
+- `backend/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` - Implementation details
+
+**How It Works:**
+1. Tool returns: `"Screenshot saved to /path/image.png"`
+2. Agent detects image reference automatically
+3. Converts to MultiModalMessage with text + image
+4. Vision LLM (gpt-4o) "sees" and describes the image
+
+**Example Use Cases:**
+- Screenshot analysis and UI testing
+- Chart interpretation and data extraction
+- Image description for accessibility
+- Visual debugging and verification
+
+**Testing:**
+```bash
+cd backend && source venv/bin/activate
+pytest tests/test_multimodal_agent_e2e.py -v  # Unit tests
+python3 test_multimodal_integration.py        # Integration test
+python3 test_multimodal_api.py                # Full stack test
+```
+
+### Backend Reorganization (2025-10-10)
 
 The backend has been reorganized into a modular structure for better maintainability:
 
