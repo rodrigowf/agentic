@@ -13,6 +13,7 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.agents import AssistantAgent, CodeExecutorAgent
 from core.looping_agent import LoopingAssistantAgent
 from core.looping_code_executor_agent import LoopingCodeExecutorAgent
+from core.multimodal_tools_looping_agent import MultimodalToolsLoopingAgent
 from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
 
 
@@ -91,6 +92,18 @@ def create_agent_from_config(
             description=agent_cfg.description,
             sources=agent_cfg.sources,
             model_client_stream=agent_cfg.model_client_stream,
+            max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply
+        )
+
+    # Multimodal tools looping agent
+    if agent_cfg.agent_type == 'multimodal_tools_looping':
+        return MultimodalToolsLoopingAgent(
+            name=agent_cfg.name,
+            description=agent_cfg.description,
+            system_message=agent_cfg.prompt.system,
+            model_client=model_client,
+            tools=agent_tools,
+            reflect_on_tool_use=agent_cfg.reflect_on_tool_use,
             max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply
         )
 

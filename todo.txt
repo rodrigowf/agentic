@@ -5,3 +5,7 @@
   - debug/db_exports/Permission_Error.json illustrates it
 
 - Generalize custom system prompt initialization currently applied only for Memory agent
+
+- Fix light mode
+
+- Imp0lement Multimodat functions loop agent type.

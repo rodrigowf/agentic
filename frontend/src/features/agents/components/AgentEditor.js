@@ -404,6 +404,7 @@ export default function AgentEditor({nested = false}) {
           >
             <MenuItem value="assistant">Assistant</MenuItem>
             <MenuItem value="looping">Looping Assistant</MenuItem>
+            <MenuItem value="multimodal_tools_looping">Multimodal Tools Looping Agent</MenuItem>
             <MenuItem value="nested_team">Nested Team Agent</MenuItem>
             <MenuItem value="code_executor">Code Executor</MenuItem>
             <MenuItem value="looping_code_executor">Looping Code Executor</MenuItem>
@@ -425,7 +426,7 @@ export default function AgentEditor({nested = false}) {
         <Divider />
 
         {/* Prompts for assistant and looping types */}
-        {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping') && (
+        {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping' || cfg.agent_type === 'multimodal_tools_looping') && (
           <React.Fragment>
             <Box>
               {/* <Typography variant="h6" sx={{ mb: 3 }}>Prompt</Typography> */}
@@ -494,7 +495,7 @@ export default function AgentEditor({nested = false}) {
         )}
 
         {/* Looping Agent specific configuration */}
-        {cfg.agent_type === 'looping' && (
+        {(cfg.agent_type === 'looping' || cfg.agent_type === 'multimodal_tools_looping') && (
           <React.Fragment>
             <Box>
               {/* <Typography variant="h6" sx={{ mb: 2 }}>Behavior</Typography> */}
