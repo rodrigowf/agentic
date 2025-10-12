@@ -169,8 +169,8 @@ const AgentEditor: FC<AgentEditorProps> = ({ nested = false }) => {
     setToolsLoading(true);
     api.getTools()
       .then((r) => {
-        setAllTools(r.data.tools);
-        console.log('Loaded tools:', r.data.tools);
+        setAllTools(r.data);
+        console.log('Loaded tools:', r.data);
       })
       .catch((err) => {
         console.error('Error fetching tools:', err);
@@ -179,7 +179,7 @@ const AgentEditor: FC<AgentEditorProps> = ({ nested = false }) => {
       .finally(() => setToolsLoading(false));
 
     api.getAgents()
-      .then(r => setAllAgents(r.data.agents))
+      .then(r => setAllAgents(r.data))
       .catch(e => console.error('Error fetching agents:', e));
   }, []);
 
@@ -191,7 +191,7 @@ const AgentEditor: FC<AgentEditorProps> = ({ nested = false }) => {
       api
         .getAgents()
         .then((r) => {
-          const agentToEdit = r.data.agents.find((x: AgentSummary) => x.name === name);
+          const agentToEdit = r.data.find((x: AgentSummary) => x.name === name);
           if (agentToEdit) {
             console.log('Found agent to edit:', agentToEdit);
             const config = {

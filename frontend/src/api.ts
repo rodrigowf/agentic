@@ -19,7 +19,7 @@ const VOICE_BASE = '/realtime';
 // Tools API
 // ============================================================================
 
-export const getTools = (): Promise<AxiosResponse<{ tools: ToolFile[] }>> => {
+export const getTools = (): Promise<AxiosResponse<ToolFile[]>> => {
   return API.get('/tools');
 };
 
@@ -60,7 +60,7 @@ export const generateToolCode = (prompt: string): Promise<AxiosResponse<string>>
 // Agents API
 // ============================================================================
 
-export const getAgents = (): Promise<AxiosResponse<{ agents: AgentSummary[] }>> => {
+export const getAgents = (): Promise<AxiosResponse<AgentSummary[]>> => {
   return API.get('/agents');
 };
 
@@ -144,7 +144,7 @@ export const createVoiceConversation = (
 };
 
 export const listVoiceConversations = (): Promise<
-  AxiosResponse<{ conversations: VoiceConversation[] }>
+  AxiosResponse<VoiceConversation[]>
 > => {
   return API.get(`${VOICE_BASE}/conversations`);
 };

@@ -24,7 +24,7 @@ const AgentDashboard: FC = () => {
 
   useEffect(() => {
     api.getAgents()
-      .then(res => setAgents(res.data.agents))
+      .then(res => setAgents(res.data))
       .catch(err => console.error("Error fetching agents:", err));
   }, []);
 

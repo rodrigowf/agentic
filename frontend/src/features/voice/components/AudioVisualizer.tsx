@@ -15,7 +15,7 @@ export default function AudioVisualizer({
   const animationRef = useRef<number | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const [volume, setVolume] = useState<number>(0);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function AudioVisualizer({
         animationRef.current = null;
       }
       setVolume(0);
-      return;
+      return undefined;
     }
 
     try {
@@ -102,6 +102,7 @@ export default function AudioVisualizer({
       };
     } catch (error) {
       console.error('Error setting up audio visualizer:', error);
+      return undefined;
     }
   }, [stream, isActive, isMuted]);
 

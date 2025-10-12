@@ -33,14 +33,14 @@ const MAX_REPLAY_ITEMS = 50;
 const MAX_NESTED_HIGHLIGHTS = 25;
 const TOOL_AUTOPAUSE_WINDOW_MS = 1200;
 
-const truncateText = (value, max = 160) => {
+const truncateText = (value: any, max: number = 160): string => {
   if (value == null) return '';
   const str = typeof value === 'string' ? value.trim() : String(value);
   if (str.length <= max) return str;
   return `${str.slice(0, max - 1)}…`;
 };
 
-const safeStringify = (value) => {
+const safeStringify = (value: unknown): string => {
   if (value == null) return '';
   if (typeof value === 'string') return value;
   try {
@@ -99,9 +99,9 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       if (Number.isNaN(date.getTime())) return String(value);
       const now = new Date();
       const sameDay = date.toDateString() === now.toDateString();
-      const options = sameDay
-        ? { hour: 'numeric', minute: '2-digit', second: '2-digit' }
-        : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+      const options: Intl.DateTimeFormatOptions = sameDay
+        ? { hour: 'numeric' as const, minute: '2-digit' as const, second: '2-digit' as const }
+        : { month: 'short' as const, day: 'numeric' as const, hour: 'numeric' as const, minute: '2-digit' as const };
       return new Intl.DateTimeFormat(undefined, options).format(date);
     } catch (e) {
       return String(value);
@@ -123,17 +123,17 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
 
   const nestedHighlights = useMemo(() => {
     if (!messages || messages.length === 0) return [];
-    const entries = [];
+    const entries: any[] = [];
     messages.forEach((msg, index) => {
       if ((msg?.source || '').toLowerCase() !== 'nested') return;
 
       const typeRaw = msg?.type || 'event';
       const typeLower = typeRaw.toLowerCase();
-      const data = msg?.data || {};
-      const nestedData = (typeof data.data === 'object' && data.data !== null) ? data.data : {};
+      const data: any = msg?.data || {};
+      const nestedData: any = (typeof data.data === 'object' && data.data !== null) ? data.data : {};
       const agentName = nestedData.source || data.source || data.agent || 'Nested agent';
       const role = nestedData.role || nestedData.role_name || data.role;
-      const metadata = [];
+      const metadata: any[] = [];
       const contentItems = Array.isArray(data.content) && data.content.length
         ? data.content
         : (Array.isArray(nestedData.content) ? nestedData.content : []);
@@ -284,13 +284,14 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
 
   const buildReplayItems = useCallback(() => {
     if (!messages || messages.length === 0) return [];
-    const items = [];
+    const items: any[] = [];
     messages.forEach((msg) => {
       if (!msg || !msg.data) return;
       const sourceLower = (msg.source || '').toLowerCase();
       const typeLower = (msg.type || '').toLowerCase();
+      const msgData: any = msg.data;
       if (sourceLower === 'user' && typeLower === 'voice_user_message') {
-        const text = msg.data?.text || msg.data?.transcript || msg.data?.message;
+        const text = msgData?.text || msgData?.transcript || msgData?.message;
         if (text) {
           items.push({
             type: 'message',
@@ -300,15 +301,15 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
         }
       }
   if (sourceLower === 'controller' && (typeLower === 'voice_forward' || typeLower === 'voice_forward_pending')) {
-        const text = msg.data?.text || msg.data?.message;
+        const text = msgData?.text || msgData?.message;
         if (text) {
-          const item = {
+          const item: any = {
             type: 'message',
-            role: msg.data?.role || 'system',
+            role: msgData?.role || 'system',
             content: [{ type: 'input_text', text }],
           };
-          if (msg.data?.metadata && Object.keys(msg.data.metadata).length > 0) {
-            item.metadata = msg.data.metadata;
+          if (msgData?.metadata && Object.keys(msgData.metadata).length > 0) {
+            item.metadata = msgData.metadata;
           }
           items.push(item);
         }
@@ -317,7 +318,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
     return items;
   }, [messages]);
 
-  const normalizeEvent = useCallback((event) => {
+  const normalizeEvent = useCallback((event: any) => {
     if (!event) return null;
     const { id, timestamp, source, type, payload } = event;
     return {
@@ -329,7 +330,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
     };
   }, []);
 
-  const upsertEvents = useCallback((incoming) => {
+  const upsertEvents = useCallback((incoming: any[]) => {
     if (!incoming || incoming.length === 0) return;
     const map = eventsMapRef.current;
     incoming.forEach((item) => {
@@ -344,18 +345,18 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
     setMessages(sorted);
   }, []);
 
-  const recordEvent = useCallback(async (source, type, payload) => {
+  const recordEvent = useCallback(async (source: string, type: string, payload: any) => {
     if (!conversationId) return null;
     try {
       const res = await appendVoiceConversationEvent(conversationId, {
         source,
         type,
-        payload,
+        data: payload,
       });
       const normalized = normalizeEvent(res.data);
       if (normalized) {
         upsertEvents([normalized]);
-        setConversation((prev) => (prev ? { ...prev, updated_at: normalized.timestamp } : prev));
+        setConversation((prev: any) => (prev ? { ...prev, updated_at: normalized.timestamp } : prev));
       }
       return normalized;
     } catch (err) {
@@ -364,7 +365,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
     }
   }, [conversationId, normalizeEvent, upsertEvents]);
 
-  const forwardToVoice = useCallback((role, rawText, metadata = {}) => {
+  const forwardToVoice = useCallback((role: string, rawText: any, metadata: any = {}) => {
     const text = (rawText ?? '').toString().trim();
     if (!text) return;
 
@@ -425,15 +426,16 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       void recordEvent('controller', 'voice_forward', { ...diagnostics, item, requested_response: shouldRequestResponse });
     } catch (err) {
       console.error('Failed to forward to voice', err);
+      const error: any = err;
       void recordEvent('controller', 'voice_forward_error', {
         ...diagnostics,
-        error: err?.message || String(err),
+        error: error?.message || String(err),
         requested_response: shouldRequestResponse,
       });
     }
   }, [recordEvent]);
 
-  const notifyVoiceOfError = useCallback((message, metadata = {}) => {
+  const notifyVoiceOfError = useCallback((message: any, metadata: any = {}) => {
     const detailText = (message ?? '').toString().trim() || 'An unexpected error occurred.';
     const formatted = detailText.startsWith('[TEAM ERROR]') ? detailText : `[TEAM ERROR] ${detailText}`;
     const detailMetadata = { ...metadata };
@@ -468,7 +470,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       try {
         const payload = JSON.parse(event.data);
         if (payload?.type === 'history') {
-          const normalized = (payload.events || []).map((evt) => normalizeEvent(evt)).filter(Boolean);
+          const normalized = (payload.events || []).map((evt: any) => normalizeEvent(evt)).filter(Boolean);
           if (normalized.length) upsertEvents(normalized);
           return;
         }
@@ -517,16 +519,16 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       try {
         const res = await getVoiceConversation(conversationId, { limit: 1000 });
         if (cancelled) return;
-        const detail = res.data;
+        const detail: any = res.data;
         setConversation(detail);
         eventsMapRef.current.clear();
         if (detail?.events?.length) {
-          const normalized = detail.events.map((evt) => normalizeEvent(evt)).filter(Boolean);
+          const normalized = detail.events.map((evt: any) => normalizeEvent(evt)).filter(Boolean);
           upsertEvents(normalized);
         } else {
           setMessages([]);
         }
-      } catch (err) {
+      } catch (err: any) {
         if (cancelled) return;
         console.error('Failed to load conversation', err);
         setConversation(null);
@@ -748,7 +750,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       for (const track of stream.getAudioTracks()) pc.addTrack(track, stream);
 
       // Helper: wait for ICE gathering to complete before sending offer
-      const waitForIceGathering = () => new Promise((resolve) => {
+      const waitForIceGathering = () => new Promise<void>((resolve) => {
         if (pc.iceGatheringState === 'complete') return resolve();
         const check = () => { if (pc.iceGatheringState === 'complete') { pc.removeEventListener('icegatheringstatechange', check); resolve(); } };
         pc.addEventListener('icegatheringstatechange', check);
@@ -758,6 +760,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       const offer = await pc.createOffer({ offerToReceiveAudio: true });
       await pc.setLocalDescription(offer);
       await waitForIceGathering();
+      if (!pc.localDescription) throw new Error('Local description is null');
       const answerSdpRaw = await postSdpOffer(mediaAddr, sessionId, clientSecret, pc.localDescription.sdp);
       let answerSdp = (typeof answerSdpRaw === 'string' ? answerSdpRaw : String(answerSdpRaw || ''))
         .replace(/^\uFEFF/, '');
@@ -816,12 +819,14 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
         }
       };
       claudeCodeWs.onerror = (errEvent) => {
-        const errorInfo = errEvent?.message || errEvent?.type || 'WebSocket error';
+        const err: any = errEvent;
+        const errorInfo = err?.message || errEvent?.type || 'WebSocket error';
         void recordEvent('claude_code', 'error', { message: errorInfo });
         notifyVoiceOfError('Claude Code connection encountered an error.', { source: 'controller', kind: 'connection_error' });
       };
       claudeCodeWs.onclose = (closeEvent) => {
-        void recordEvent('claude_code', 'system', { message: 'Claude Code WebSocket closed', code: closeEvent?.code, reason: closeEvent?.reason });
+        const evt: any = closeEvent;
+        void recordEvent('claude_code', 'system', { message: 'Claude Code WebSocket closed', code: evt?.code, reason: evt?.reason });
       };
 
       // Do NOT auto-start a run; wait for explicit user_message or Run action
@@ -877,12 +882,12 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
             const hasError = msg.data.is_error === true
               || msg.data.status === 'error'
               || msg.data?.result?.is_error === true
-              || contentItems.some((item) => item?.is_error || item?.status === 'error');
+              || contentItems.some((item: any) => item?.is_error || item?.status === 'error');
             if (hasError) {
               const errorDetail = msg.data.error
                 || msg.data.result?.error
-                || contentItems.find((item) => item?.error)?.error
-                || contentItems.find((item) => item?.content)?.content
+                || contentItems.find((item: any) => item?.error)?.error
+                || contentItems.find((item: any) => item?.content)?.content
                 || 'Tool execution failed.';
               const detailStr = typeof errorDetail === 'string' ? errorDetail : safeStringify(errorDetail);
               notifyVoiceOfError(`${toolName} reported an error: ${truncateText(detailStr, 220)}`, {
@@ -934,19 +939,21 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
         }
       };
       ws.onerror = (errEvent) => {
-        const errorInfo = errEvent?.message || errEvent?.type || 'WebSocket error';
+        const err: any = errEvent;
+        const errorInfo = err?.message || errEvent?.type || 'WebSocket error';
         void recordEvent('nested', 'error', { message: errorInfo });
         notifyVoiceOfError('Nested team connection encountered an error and cannot continue until it is reconnected.', { source: 'controller', kind: 'connection_error' });
-        setError((prev) => prev || 'Nested WebSocket encountered an error.');
+        setError((prev: any) => prev || 'Nested WebSocket encountered an error.');
         runCompletedRef.current = true;
         hasSpokenMidRef.current = false;
       };
       ws.onclose = (closeEvent) => {
-        void recordEvent('nested', 'system', { message: 'WebSocket closed', code: closeEvent?.code, reason: closeEvent?.reason });
+        const evt: any = closeEvent;
+        void recordEvent('nested', 'system', { message: 'WebSocket closed', code: evt?.code, reason: evt?.reason });
         if (closeEvent && closeEvent.code !== 1000) {
           const reason = closeEvent.reason || 'Unexpected disconnection.';
           notifyVoiceOfError(`Nested connection closed unexpectedly (${closeEvent.code}). ${reason}`, { source: 'controller', kind: 'connection_error', code: closeEvent.code });
-          setError((prev) => prev || `Nested WebSocket closed unexpectedly: ${reason}`);
+          setError((prev: any) => prev || `Nested WebSocket closed unexpectedly: ${reason}`);
           runCompletedRef.current = true;
           hasSpokenMidRef.current = false;
         }
@@ -960,13 +967,14 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       };
 
     } catch (err) {
+      const error: any = err;
       // Surface first 200 chars of SDP if available
       try {
-        void recordEvent('controller', 'sdp_debug', { detail: (err?.detail || err?.message || '').toString().slice(0, 200) });
+        void recordEvent('controller', 'sdp_debug', { detail: (error?.detail || error?.message || '').toString().slice(0, 200) });
       } catch {}
-      void recordEvent('controller', 'session_error', { message: err.message || String(err) });
-      notifyVoiceOfError(`Realtime session setup failed: ${err?.message || err}`, { source: 'controller', kind: 'session_error' });
-      setError(err.message || String(err));
+      void recordEvent('controller', 'session_error', { message: error.message || String(error) });
+      notifyVoiceOfError(`Realtime session setup failed: ${error?.message || error}`, { source: 'controller', kind: 'session_error' });
+      setError(error.message || String(error));
       setIsRunning(false);
       setIsMuted(false);
       // Clean up any partial stream
@@ -1118,7 +1126,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       }
       throw new Error(`Unknown tool: ${name}`);
     } catch (e) {
-      const message = String(e?.message || e);
+      const error: any = e;
+      const message = String(error?.message || error);
       void recordEvent('controller', 'tool_error', { tool: name, error: message });
       notifyVoiceOfError(`Tool ${name} failed: ${message}`, { source: 'controller', tool: name, kind: 'controller_tool_error' });
       setError((prev) => prev || `Tool ${name} failed: ${message}`);
@@ -1136,7 +1145,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
       const newMutedState = !prevMuted;
 
       // Toggle all audio tracks in the microphone stream
-      const audioTracks = micStreamRef.current.getAudioTracks();
+      const audioTracks = micStreamRef.current?.getAudioTracks() || [];
       audioTracks.forEach(track => {
         track.enabled = !newMutedState; // enabled when NOT muted
       });
@@ -1191,9 +1200,10 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
         void recordEvent('controller', 'system', { message: `Queued user_message to nested: ${transcript}` });
         setTranscript('');
       } catch (e) {
-        void recordEvent('controller', 'error', { message: `Failed to send to nested: ${e.message}` });
-        notifyVoiceOfError(`Unable to deliver message to nested team: ${e.message || e}`, { source: 'controller', kind: 'controller_error' });
-        setError((prev) => prev || `Failed to send message to nested team: ${e.message || e}`);
+        const error: any = e;
+        void recordEvent('controller', 'error', { message: `Failed to send to nested: ${error.message}` });
+        notifyVoiceOfError(`Unable to deliver message to nested team: ${error.message || error}`, { source: 'controller', kind: 'controller_error' });
+        setError((prev: any) => prev || `Failed to send message to nested team: ${error.message || error}`);
       }
     }
   };
@@ -1514,7 +1524,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
                     border: '1px solid',
                     borderColor: 'divider',
                     borderLeft: '4px solid',
-                    borderLeftColor: (theme) => (chipColor === 'default' ? theme.palette.divider : theme.palette[chipColor].main),
+                    borderLeftColor: (theme) => (chipColor === 'default' ? theme.palette.divider : (theme.palette as any)[chipColor].main),
                     bgcolor: 'background.paper',
                   }}
                 >
@@ -1549,7 +1559,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }: VoiceAssistant
                           {entry.role && (
                             <Chip size="small" variant="outlined" label={`Role: ${entry.role}`} />
                           )}
-                          {entry.metadata.map((meta, metaIdx) => (
+                          {entry.metadata.map((meta: any, metaIdx: number) => (
                             <Chip key={`${entry.key}-meta-${metaIdx}`} size="small" variant="outlined" label={`${meta.label}: ${meta.value}`} />
                           ))}
                         </Stack>

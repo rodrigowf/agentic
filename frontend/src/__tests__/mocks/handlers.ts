@@ -19,6 +19,7 @@ import {
   mockTools,
   mockConversations,
   mockAgentConfig,
+  mockModelsByProvider,
 } from './data';
 
 // ============================================================================
@@ -59,6 +60,20 @@ export const agentHandlers = [
   // Delete agent
   rest.delete(`${API_URL}/api/agents/:agentName`, (req, res, ctx) => {
     return res(ctx.status(200), ctx.json({ message: 'Agent deleted successfully' }));
+  }),
+];
+
+// ============================================================================
+// Model Endpoints
+// ============================================================================
+
+export const modelHandlers = [
+  // Get models for a provider
+  rest.get(`${API_URL}/api/models/:provider`, (req, res, ctx) => {
+    const { provider } = req.params as { provider: string };
+    const models = mockModelsByProvider[provider] || [];
+
+    return res(ctx.status(200), ctx.json({ models }));
   }),
 ];
 
@@ -176,6 +191,7 @@ export const errorHandlers = [
 
 export const handlers = [
   ...agentHandlers,
+  ...modelHandlers,
   ...toolHandlers,
   ...voiceHandlers,
   ...errorHandlers,

@@ -179,7 +179,7 @@ const NestedAgentInsights = ({
       entries.push({
         key: msg.id ?? `${msg.timestamp || 'nested'}-${index}`,
         timestamp: msg.timestamp,
-        timeLabel: formatTimestamp(msg.timestamp),
+        timeLabel: formatTimestamp(msg.timestamp || ''),
         agentName,
         role,
         typeLabel,

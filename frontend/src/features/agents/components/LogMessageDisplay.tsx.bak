@@ -44,7 +44,7 @@ interface LogEntryProps {
 
 interface LogMessageProps {
   data: unknown;
-  _type?: string;
+  type?: string;
 }
 
 interface RenderDataProps {
@@ -295,7 +295,7 @@ const TextMessageRenderer: FC<{ fields: ParsedFields }> = ({ fields }): JSX.Elem
               </Stack>
             ) : null}
           </Collapse>
-          {fields.source ? (
+          {fields.source && (
             <Chip
               label={String(fields.source).replace(/['"]/g, '')}
               size="small"
@@ -309,7 +309,7 @@ const TextMessageRenderer: FC<{ fields: ParsedFields }> = ({ fields }): JSX.Elem
                 fontSize: '0.75rem',
               }}
             />
-          ) : null}
+          )}
           <Box>{fields.content ? <RenderData data={fields.content} level={1} /> : null}</Box>
         </>
       </CardContent>
@@ -570,21 +570,21 @@ function RenderData({ data, level = 0 }: RenderDataProps): JSX.Element {
                 >
                   Tool Call Request
                 </Typography>
-                {fields.source ? (
+                {fields.source && (
                   <Chip
                     label={String(fields.source).replace(/['"]/g, '')}
                     size="small"
                     sx={{ ml: 1.5, fontSize: '0.7rem' }}
                   />
-                ) : null}
+                )}
               </AccordionSummary>
               <AccordionDetails sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
-                {fields.models_usage ? (
+                {fields.models_usage && (
                   <Box sx={{ mb: 1 }}>
                     <RenderData data={fields.models_usage} level={level + 1} />
                   </Box>
-                ) : null}
-                {fields.content ? <RenderData data={fields.content} level={level + 1} /> : null}
+                )}
+                {fields.content && <RenderData data={fields.content} level={level + 1} />}
               </AccordionDetails>
             </Accordion>
           );
@@ -612,14 +612,14 @@ function RenderData({ data, level = 0 }: RenderDataProps): JSX.Element {
                     size="small"
                     sx={{ fontWeight: 'bold' }}
                   />
-                  {fields.id ? (
+                  {fields.id && (
                     <Chip
                       label={`ID: ${String(fields.id).replace(/['"]/g, '')}`}
                       size="small"
                       variant="outlined"
                       sx={{ fontSize: '0.7rem' }}
                     />
-                  ) : null}
+                  )}
                 </Stack>
                 <Typography
                   variant="caption"
@@ -738,22 +738,23 @@ function RenderData({ data, level = 0 }: RenderDataProps): JSX.Element {
   return (
     <Box
       sx={{
-        p: 1,
+        p: 0,
         ml: level > 0 ? 1 : 0,
         my: 1,
+        p: 1,
         bgcolor: level > 0 ? 'action.focus' : undefined,
         borderRadius: 1,
       }}
     >
       <Stack spacing={1} divider={<Divider flexItem sx={{ my: 0.5, borderColor: 'divider' }} />}>
-        {Object.entries(data as Record<string, unknown>)
+        {Object.entries(data)
           .sort(([keyA], [keyB]) => {
             // Show type first
             if (keyA === 'type') return -1;
             if (keyB === 'type') return 1;
             return keyA.localeCompare(keyB);
           })
-          .filter(([_key, value]) => {
+          .filter(([key, value]) => {
             // Filter out null, undefined, or empty string values
             if (value === null || value === undefined || value === '') {
               return false;
@@ -795,7 +796,7 @@ function RenderData({ data, level = 0 }: RenderDataProps): JSX.Element {
 // Main LogMessage Component
 // ============================================================================
 
-export const LogMessage: FC<LogMessageProps> = ({ data }) => {
+export const LogMessage: FC<LogMessageProps> = ({ data, type }) => {
   return <RenderData data={data} />;
 };
 
@@ -880,7 +881,7 @@ export const LogEntry: FC<LogEntryProps> = ({ log }) => {
           pt: 0.5,
         }}
       >
-        <LogMessage data={log.data}  />
+        <LogMessage data={log.data} type={log.type} />
       </Box>
     </Box>
   );

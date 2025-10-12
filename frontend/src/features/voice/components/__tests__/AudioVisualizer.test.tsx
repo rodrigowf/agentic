@@ -90,6 +90,34 @@ class MockMediaStream {
   clearTimeout(id);
 };
 
+// Mock HTMLCanvasElement.getContext
+HTMLCanvasElement.prototype.getContext = jest.fn(function(this: HTMLCanvasElement, contextId: string) {
+  if (contextId === '2d') {
+    return {
+      canvas: this,
+      fillStyle: '',
+      strokeStyle: '',
+      lineWidth: 1,
+      clearRect: jest.fn(),
+      fillRect: jest.fn(),
+      beginPath: jest.fn(),
+      moveTo: jest.fn(),
+      lineTo: jest.fn(),
+      stroke: jest.fn(),
+      arc: jest.fn(),
+      fill: jest.fn(),
+      save: jest.fn(),
+      restore: jest.fn(),
+      scale: jest.fn(),
+      rotate: jest.fn(),
+      translate: jest.fn(),
+      transform: jest.fn(),
+      setTransform: jest.fn(),
+    } as any;
+  }
+  return null;
+}) as any;
+
 // ============================================================================
 // Test Helpers
 // ============================================================================

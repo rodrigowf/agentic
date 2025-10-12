@@ -106,7 +106,7 @@ const App: React.FC = () => {
               '0px 8px 16px rgba(0,0,0,0.4)',
               '0px 12px 24px rgba(0,0,0,0.4)',
               ...Array(20).fill('0px 16px 32px rgba(0,0,0,0.4)')
-            ]
+            ] as any  // Type assertion needed - Array(20).fill creates 20 elements, total 25
           : undefined,
         components: {
           MuiAppBar: {
@@ -143,7 +143,7 @@ const App: React.FC = () => {
               root: {
                 textTransform: 'none',
               },
-              contained: ({ theme }) => ({
+              contained: () => ({
                 fontWeight: 500,
               }),
             },

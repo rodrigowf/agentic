@@ -352,6 +352,8 @@ export interface VoiceSessionControlsProps {
 export interface AudioVisualizerProps {
   isActive: boolean;
   audioLevel?: number;
+  stream?: MediaStream | null;
+  isMuted?: boolean;
 }
 
 export interface ConversationHistoryProps {
@@ -361,10 +363,16 @@ export interface ConversationHistoryProps {
 
 export interface NestedAgentInsightsProps {
   messages: AgentMessage[];
+  formatTimestamp: (timestamp: string) => string;
+  truncateText: (text: string, maxLength: number) => string;
+  safeStringify: (obj: unknown) => string;
 }
 
 export interface ClaudeCodeInsightsProps {
   messages: AgentMessage[];
+  formatTimestamp: (timestamp: string) => string;
+  truncateText: (text: string, maxLength: number) => string;
+  safeStringify: (obj: unknown) => string;
 }
 
 // ============================================================================

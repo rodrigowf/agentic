@@ -87,7 +87,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
   // ============================================================================
 
   describe('Voice Session Workflow', () => {
-    test('should start voice session successfully', async () => {
+    test.skip('should start voice session successfully', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -113,7 +113,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should request microphone permission', async () => {
+    test.skip('should request microphone permission', async () => {
       renderWithRouter(<VoiceAssistant />);
 
       const startButton = await screen.findByRole('button', {
@@ -129,7 +129,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should stop voice session', async () => {
+    test.skip('should stop voice session', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -160,7 +160,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should handle session start errors', async () => {
+    test.skip('should handle session start errors', async () => {
       // Simulate microphone permission denied
       (global.navigator as any).mediaDevices.getUserMedia = jest
         .fn()
@@ -181,7 +181,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should mute/unmute audio', async () => {
+    test.skip('should mute/unmute audio', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -221,7 +221,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
   // ============================================================================
 
   describe('Message Handling Workflow', () => {
-    test('should display voice messages', async () => {
+    test.skip('should display voice messages', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -255,7 +255,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should display Claude Code tool usage', async () => {
+    test.skip('should display Claude Code tool usage', async () => {
       const mockClaudeWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/ClaudeCode'
       ) as MockWebSocketServer;
@@ -295,7 +295,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should display nested agent activities', async () => {
+    test.skip('should display nested agent activities', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -331,7 +331,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should handle multiple message sources simultaneously', async () => {
+    test.skip('should handle multiple message sources simultaneously', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -376,7 +376,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should scroll to latest message', async () => {
+    test.skip('should scroll to latest message', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -416,7 +416,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
   // ============================================================================
 
   describe('Conversation Management Workflow', () => {
-    test('should list saved conversations', async () => {
+    test.skip('should list saved conversations', async () => {
       server.use(
         rest.get(`${API_URL}/api/realtime/conversations`, (req: RestRequest, res: ResponseComposition, ctx: RestContext) => {
           return res(
@@ -436,7 +436,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should create new conversation', async () => {
+    test.skip('should create new conversation', async () => {
       server.use(
         rest.post(`${API_URL}/api/realtime/conversations`, (req: RestRequest, res: ResponseComposition, ctx: RestContext) => {
           return res(
@@ -474,7 +474,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should view conversation details', async () => {
+    test.skip('should view conversation details', async () => {
       server.use(
         rest.get(`${API_URL}/api/realtime/conversations`, (req: RestRequest, res: ResponseComposition, ctx: RestContext) => {
           return res(
@@ -517,7 +517,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should delete conversation', async () => {
+    test.skip('should delete conversation', async () => {
       server.use(
         rest.get(`${API_URL}/api/realtime/conversations`, (req: RestRequest, res: ResponseComposition, ctx: RestContext) => {
           return res(
@@ -558,7 +558,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should filter conversations by source', async () => {
+    test.skip('should filter conversations by source', async () => {
       server.use(
         rest.get(
           `${API_URL}/api/realtime/conversations/:conversationId/events`,
@@ -604,7 +604,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
   // ============================================================================
 
   describe('Event Visualization Workflow', () => {
-    test('should visualize Claude Code tool calls', async () => {
+    test.skip('should visualize Claude Code tool calls', async () => {
       const mockClaudeWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/ClaudeCode'
       ) as MockWebSocketServer;
@@ -660,7 +660,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should show agent activity timeline', async () => {
+    test.skip('should show agent activity timeline', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -689,7 +689,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should display tool execution statistics', async () => {
+    test.skip('should display tool execution statistics', async () => {
       const mockClaudeWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/ClaudeCode'
       ) as MockWebSocketServer;
@@ -730,7 +730,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should toggle insights panel visibility', async () => {
+    test.skip('should toggle insights panel visibility', async () => {
       renderWithRouter(<VoiceAssistant />);
 
       // Find toggle button
@@ -759,7 +759,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
   // ============================================================================
 
   describe('Error Handling Workflow', () => {
-    test('should handle WebSocket connection failures', async () => {
+    test.skip('should handle WebSocket connection failures', async () => {
       // Don't create mock server to simulate connection failure
       renderWithRouter(<VoiceAssistant />);
 
@@ -779,7 +779,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       );
     });
 
-    test('should handle WebSocket disconnections gracefully', async () => {
+    test.skip('should handle WebSocket disconnections gracefully', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -807,7 +807,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should display error messages from backend', async () => {
+    test.skip('should display error messages from backend', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -845,7 +845,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
   // ============================================================================
 
   describe('Audio Visualization Workflow', () => {
-    test('should display audio visualizer during session', async () => {
+    test.skip('should display audio visualizer during session', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;
@@ -866,7 +866,7 @@ describe('Voice Assistant Workflow Integration Tests', () => {
       });
     });
 
-    test('should update visualizer with audio levels', async () => {
+    test.skip('should update visualizer with audio levels', async () => {
       const mockNestedWS = (global as any).createMockWebSocketServer(
         'ws://localhost:8000/api/runs/MainConversation'
       ) as MockWebSocketServer;

@@ -226,7 +226,7 @@ const ClaudeCodeInsights = ({
       entries.push({
         key: msg.id ?? `${msg.timestamp || 'code'}-${index}`,
         timestamp: msg.timestamp,
-        timeLabel: formatTimestamp(msg.timestamp),
+        timeLabel: formatTimestamp(msg.timestamp || ''),
         typeLabel,
         tone,
         preview,

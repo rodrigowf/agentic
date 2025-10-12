@@ -48,11 +48,11 @@ export default function VoiceDashboard(): JSX.Element {
   const navigate = useNavigate();
 
   // Conversations list state
-  const [conversations, setConversations] = useState([]);
+  const [conversations, setConversations] = useState<any[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
-  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameTarget, setRenameTarget] = useState<any>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   // Load conversations list
@@ -65,7 +65,7 @@ export default function VoiceDashboard(): JSX.Element {
 
       // Auto-select most recent conversation if no conversation is currently selected
       if (!conversationId && convs.length > 0) {
-        const mostRecent = convs.reduce((latest, conv) => {
+        const mostRecent = convs.reduce((latest: any, conv: any) => {
           const latestDate = new Date(latest.updated_at || latest.created_at || 0);
           const convDate = new Date(conv.updated_at || conv.created_at || 0);
           return convDate > latestDate ? conv : latest;
@@ -102,7 +102,7 @@ export default function VoiceDashboard(): JSX.Element {
     }
   };
 
-  const openRenameDialog = (conv) => {
+  const openRenameDialog = (conv: any) => {
     setRenameTarget(conv);
     setRenameValue(conv?.name || '');
   };

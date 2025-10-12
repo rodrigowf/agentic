@@ -13,6 +13,31 @@ import '@testing-library/jest-dom';
 import WS from 'jest-websocket-mock';
 
 // ============================================================================
+// Mock react-markdown and related ESM modules
+// ============================================================================
+
+jest.mock('react-markdown', () => {
+  const React = jest.requireActual('react');
+  return function ReactMarkdown({ children }: { children: string }) {
+    return React.createElement('div', {}, children);
+  };
+});
+
+jest.mock('react-syntax-highlighter', () => {
+  const React = jest.requireActual('react');
+  return {
+    Prism: function SyntaxHighlighter({ children }: { children: string }) {
+      return React.createElement('pre', {}, children);
+    },
+  };
+});
+
+jest.mock('react-syntax-highlighter/dist/esm/styles/prism', () => ({
+  vs: {},
+  vscDarkPlus: {},
+}));
+
+// ============================================================================
 // Mock Service Worker (MSW) Setup
 // ============================================================================
 
@@ -176,5 +201,5 @@ expect.extend({
 // Environment Variables for Tests
 // ============================================================================
 
-process.env.REACT_APP_API_URL = 'http://localhost:8000';
+process.env.REACT_APP_API_URL = 'http://localhost:8000/api';
 process.env.REACT_APP_WS_URL = 'ws://localhost:8000';

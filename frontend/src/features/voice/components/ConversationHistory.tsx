@@ -22,7 +22,7 @@ import CodeIcon from '@mui/icons-material/Code';
 import HubIcon from '@mui/icons-material/Hub';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
-const fallbackFormatTimestamp = (value) => {
+const fallbackFormatTimestamp = (value: string): string => {
 	if (!value) return '';
 	try {
 		return new Date(value).toLocaleString();
@@ -31,14 +31,14 @@ const fallbackFormatTimestamp = (value) => {
 	}
 };
 
-const truncateText = (value, max = 140) => {
+const truncateText = (value: string, max: number = 140): string => {
 	if (!value) return '';
 	const str = String(value).trim();
 	if (str.length <= max) return str;
 	return `${str.slice(0, max - 1)}…`;
 };
 
-const formatDurationMs = (start, end) => {
+const formatDurationMs = (start: number, end: number): string | null => {
 	if (typeof start !== 'number' || typeof end !== 'number') return null;
 	const diff = Math.max(0, end - start);
 	if (!Number.isFinite(diff)) return null;
@@ -47,7 +47,7 @@ const formatDurationMs = (start, end) => {
 	return `${Math.round(diff / 1000)} s`;
 };
 
-const safeStringify = (value) => {
+const safeStringify = (value: unknown): string => {
 	if (value == null) return '';
 	if (typeof value === 'string') return value;
 	try {
@@ -57,7 +57,7 @@ const safeStringify = (value) => {
 	}
 };
 
-const summarizeEvent = (msg) => {
+const summarizeEvent = (msg: any): string => {
 	if (!msg) return '';
 	const typeLower = (msg.type || '').toLowerCase();
 	const data = msg.data || {};
@@ -88,7 +88,7 @@ const summarizeEvent = (msg) => {
 		case 'response.output_item.done': {
 			const item = data.item;
 			if (!item) return 'Output item completed';
-			const transcript = item.content?.find((c) => c?.type === 'audio')?.transcript;
+			const transcript = item.content?.find((c: any) => c?.type === 'audio')?.transcript;
 			return transcript ? `Output item completed: ${truncateText(transcript, 120)}` : 'Output item completed';
 		}
 		case 'response.content_part.added': {
@@ -164,15 +164,15 @@ const summarizeEvent = (msg) => {
 	}
 };
 
-const buildTimeSubtitle = (first, last, formatTimestamp) => {
+const buildTimeSubtitle = (first: string | undefined, last: string | undefined, formatTimestamp: (value: string) => string): string => {
 	if (!first && !last) return '';
 	if (first && last && first !== last) {
 		return `${formatTimestamp(first)} → ${formatTimestamp(last)}`;
 	}
-	return formatTimestamp(first || last);
+	return formatTimestamp(first || last || '');
 };
 
-const groupIconKind = (kind) => {
+const groupIconKind = (kind: string): any => {
 	switch (kind) {
 		case 'assistant-response':
 			return GraphicEqIcon;
@@ -187,7 +187,7 @@ const groupIconKind = (kind) => {
 	}
 };
 
-const HistoryEventRow = ({ event, formatTimestamp }) => {
+const HistoryEventRow = ({ event, formatTimestamp }: { event: any; formatTimestamp: (value: string) => string }): JSX.Element => {
 	const { msg, summary } = event;
 	const [open, setOpen] = useState(false);
 	const timeLabel = formatTimestamp(msg.timestamp);
@@ -229,7 +229,7 @@ const HistoryEventRow = ({ event, formatTimestamp }) => {
 	);
 };
 
-const HistoryDeltaGroup = ({ entry }) => {
+const HistoryDeltaGroup = ({ entry }: { entry: any }): JSX.Element => {
 	const [open, setOpen] = useState(false);
 	const [showChunks, setShowChunks] = useState(false);
 	const preview = truncateText(entry.text || '', 160) || 'Audio transcript stream';
@@ -254,7 +254,7 @@ const HistoryDeltaGroup = ({ entry }) => {
 			</Collapse>
 			<Collapse in={showChunks} timeout="auto" unmountOnExit>
 				<Stack spacing={1} sx={{ mt: 1 }}>
-					{entry.events.map((chunk, idx) => (
+					{entry.events.map((chunk: any, idx: number) => (
 						<Box key={chunk.id ?? idx} component="pre" sx={{ bgcolor: 'grey.900', color: 'grey.100', borderRadius: 1, p: 1, fontSize: 12, overflowX: 'auto' }}>
 							{safeStringify(chunk.data ?? chunk)}
 						</Box>
@@ -265,7 +265,7 @@ const HistoryDeltaGroup = ({ entry }) => {
 	);
 };
 
-const buildGroupedHistory = (messages, formatTimestamp) => {
+const buildGroupedHistory = (messages: any[], formatTimestamp: (value: string) => string): any[] => {
 	if (!messages || messages.length === 0) return [];
 
 	const itemToResponse = new Map();
@@ -282,10 +282,10 @@ const buildGroupedHistory = (messages, formatTimestamp) => {
 		}
 	});
 
-	const groupsMap = new Map();
-	const groupsList = [];
+	const groupsMap = new Map<string, any>();
+	const groupsList: any[] = [];
 
-	const ensureGroup = (key, defaults) => {
+	const ensureGroup = (key: string, defaults: any): any => {
 		let group = groupsMap.get(key);
 		if (!group) {
 			group = {
@@ -393,7 +393,7 @@ const buildGroupedHistory = (messages, formatTimestamp) => {
 					break;
 				case 'conversation.item.created': {
 					if (Array.isArray(data.item?.content)) {
-						const transcripts = data.item.content.map((c) => c?.transcript).filter(Boolean);
+						const transcripts = data.item.content.map((c: any) => c?.transcript).filter(Boolean);
 						if (transcripts.length) group.transcript = transcripts.join(' ');
 					}
 					break;
@@ -465,7 +465,7 @@ const buildGroupedHistory = (messages, formatTimestamp) => {
 	return groupsList;
 };
 
-const ConversationHistoryGroup = ({ group, formatTimestamp }) => {
+const ConversationHistoryGroup = ({ group, formatTimestamp }: { group: any; formatTimestamp: (value: string) => string }): JSX.Element => {
 	const Icon = groupIconKind(group.kind);
 	const deltaSummary = (group.deltaEvents && group.deltaEvents.length)
 		? {
@@ -500,7 +500,7 @@ const ConversationHistoryGroup = ({ group, formatTimestamp }) => {
 					<Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ '& .MuiChip-root': { mr: 0.5, mb: 0.5 } }}>
 						<Chip icon={<Icon fontSize="small" />} size="small" label={group.label} variant="outlined" />
 						{group.source && <Chip size="small" label={group.source} variant="outlined" />}
-						{group.badges.map((badge, idx) => (
+						{group.badges.map((badge: any, idx: number) => (
 							<Chip key={`${group.key}-badge-${idx}`} size="small" label={badge.label} variant="outlined" />
 						))}
 						<Box sx={{ flexGrow: 1 }} />
@@ -526,7 +526,7 @@ const ConversationHistoryGroup = ({ group, formatTimestamp }) => {
 					)}
 					{group.timeline.length > 0 && (
 						<Stack spacing={1}>
-							{group.timeline.map((item) => (
+							{group.timeline.map((item: any) => (
 								<Typography key={item.id} variant="body2" color="text.secondary">
 									{item.timestamp ? `${formatTimestamp(item.timestamp)} · ` : ''}{item.label}
 								</Typography>
@@ -535,7 +535,7 @@ const ConversationHistoryGroup = ({ group, formatTimestamp }) => {
 					)}
 					<Divider />
 					<Stack spacing={1.25}>
-						{group.events.map((msg, idx) => (
+						{group.events.map((msg: any, idx: number) => (
 							<HistoryEventRow
 								key={msg.id ?? `${group.key}-event-${idx}`}
 								event={{ msg, summary: summarizeEvent(msg) }}
@@ -554,10 +554,15 @@ const ConversationHistory = ({
 	conversationLoading = false,
 	isRunning = false,
 	formatTimestamp: formatTimestampProp,
-}) => {
+}: {
+	messages?: any[];
+	conversationLoading?: boolean;
+	isRunning?: boolean;
+	formatTimestamp?: (value: string) => string;
+}): JSX.Element => {
 	const formatter = formatTimestampProp || fallbackFormatTimestamp;
 	const groups = useMemo(() => buildGroupedHistory(messages, formatter), [messages, formatter]);
-	const scrollRef = useRef(null);
+	const scrollRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		const node = scrollRef.current;
