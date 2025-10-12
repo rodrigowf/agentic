@@ -33,8 +33,17 @@
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "test:ci": "CI=true react-scripts test --coverage",
     "test:debug": "react-scripts --inspect-brk test --runInBand --no-cache",
+    "test:integration": "react-scripts test --testPathPattern=integration",
+    "test:unit": "react-scripts test --testPathPattern=__tests__/.*\\.test\\.js$",
     "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "test:e2e:report": "playwright show-report",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
     "eject": "react-scripts eject"
   },
   "browserslist": {
