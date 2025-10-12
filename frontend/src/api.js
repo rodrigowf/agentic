@@ -62,8 +62,8 @@ export const connectVoiceConversationStream = (conversationId, params = {}) => {
   return new WebSocket(url);
 };
 
-// Export API instance and individual functions
-export default {
+// Default export object for backward compatibility
+const api = {
   API,
   getTools,
   getToolContent,
@@ -84,3 +84,5 @@ export default {
   getVoiceConversationEvents,
   connectVoiceConversationStream,
 };
+
+export default api;
