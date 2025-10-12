@@ -44,10 +44,11 @@ This is an **agentic AI system** with a Python backend using AutoGen and a React
 - OpenAI API, Anthropic API
 
 **Frontend:**
-- React 18
+- React 18 with TypeScript
 - Material-UI (MUI)
 - WebSocket client
 - React Router
+- Axios (HTTP client)
 
 **Debug Tools:**
 - Puppeteer (screenshots)
@@ -920,8 +921,10 @@ The frontend uses a **feature-based architecture** where components and pages ar
 **Structure:**
 ```
 frontend/src/
-├── api.js                    # API client
-├── App.js                    # Main app component
+├── api.ts                    # TypeScript API client
+├── App.tsx                   # Main app component
+├── types/                    # TypeScript type definitions
+│   └── index.ts             # Centralized types
 ├── features/                 # Feature-based organization
 │   ├── agents/              # Agent management feature
 │   ├── tools/               # Tool management feature
@@ -936,12 +939,12 @@ frontend/src/
 **Purpose:** Agent configuration, editing, and execution
 
 **Pages:**
-- `pages/AgentDashboard.js` - Main agent management interface
+- `pages/AgentDashboard.tsx` - Main agent management interface
 
 **Components:**
-- `components/AgentEditor.js` - Form for creating/editing agent configurations
-- `components/RunConsole.js` - Live agent execution console with WebSocket
-- `components/LogMessageDisplay.js` - Formatted log message rendering
+- `components/AgentEditor.tsx` - Form for creating/editing agent configurations
+- `components/RunConsole.tsx` - Live agent execution console with WebSocket
+- `components/LogMessageDisplay.tsx` - Formatted log message rendering
 
 **Location:** `/home/rodrigo/agentic/frontend/src/features/agents/`
 
@@ -950,11 +953,11 @@ frontend/src/
 **Purpose:** Custom tool management and editing
 
 **Pages:**
-- `pages/ToolsDashboard.js` - Tool listing and management
+- `pages/ToolsDashboard.tsx` - Tool listing and management
 
 **Components:**
-- `components/ToolEditor.js` - Tool code editor interface
-- `components/CodeEditor.js` - Monaco-based code editing component
+- `components/ToolEditor.tsx` - Tool code editor interface
+- `components/CodeEditor.tsx` - Monaco-based code editing component
 
 **Location:** `/home/rodrigo/agentic/frontend/src/features/tools/`
 
@@ -963,15 +966,15 @@ frontend/src/
 **Purpose:** Voice assistant interface and conversation management
 
 **Pages:**
-- `pages/VoiceAssistant.js` - Main voice interface with real-time communication
-- `pages/VoiceDashboard.js` - Voice conversation listing and management
+- `pages/VoiceAssistant.tsx` - Main voice interface with real-time communication
+- `pages/VoiceDashboard.tsx` - Voice conversation listing and management
 
 **Components:**
-- `components/VoiceSessionControls.js` - Voice session start/stop controls
-- `components/AudioVisualizer.js` - Real-time audio visualization
-- `components/ConversationHistory.js` - Message history display
-- `components/NestedAgentInsights.js` - Nested team agent activity visualization
-- `components/ClaudeCodeInsights.js` - Claude Code tool usage visualization
+- `components/VoiceSessionControls.tsx` - Voice session start/stop controls
+- `components/AudioVisualizer.tsx` - Real-time audio visualization
+- `components/ConversationHistory.tsx` - Message history display
+- `components/NestedAgentInsights.tsx` - Nested team agent activity visualization
+- `components/ClaudeCodeInsights.tsx` - Claude Code tool usage visualization
 
 **Location:** `/home/rodrigo/agentic/frontend/src/features/voice/`
 
@@ -1072,14 +1075,19 @@ const content = data.content;         // Assistant message text
 
 **Purpose:** Display conversation message history with formatting
 
-### API Client (`frontend/src/api.js`)
+### API Client (`frontend/src/api.ts`)
 
-**Location:** `/home/rodrigo/agentic/frontend/src/api.js`
+**Location:** `/home/rodrigo/agentic/frontend/src/api.ts`
 
-**Purpose:** Centralized backend communication
+**Purpose:** Centralized backend communication with TypeScript type safety
+
+**Important:** Backend APIs return **direct arrays**, not wrapped objects:
+- `GET /api/agents` → `AgentSummary[]` (not `{ agents: AgentSummary[] }`)
+- `GET /api/tools` → `ToolFile[]` (not `{ tools: ToolFile[] }`)
+- `GET /api/realtime/conversations` → `VoiceConversation[]` (not `{ conversations: VoiceConversation[] }`)
 
 **Example Usage:**
-```javascript
+```typescript
 // From any feature
 import {
   listAgents,
@@ -1088,9 +1096,12 @@ import {
   connectVoiceConversationStream
 } from '../../../api'; // Adjust path based on nesting level
 
-// REST
-const agents = await listAgents();
-const agent = await getAgent('MainConversation');
+// REST - properly typed responses
+const response = await listAgents();
+const agents: AgentSummary[] = response.data; // Direct array, not response.data.agents
+
+const agentResponse = await getAgent('MainConversation');
+const agent: AgentConfig = agentResponse.data;
 
 // WebSocket
 const ws = runAgentWebSocket('MainConversation');
@@ -1105,23 +1116,29 @@ ws.onmessage = (event) => {
 The feature-based architecture uses relative imports:
 
 **From Pages to Components (Same Feature):**
-```javascript
-// In features/agents/pages/AgentDashboard.js
+```typescript
+// In features/agents/pages/AgentDashboard.tsx
 import AgentEditor from '../components/AgentEditor';
 import RunConsole from '../components/RunConsole';
 ```
 
 **From Pages to Components (Different Feature):**
-```javascript
-// In features/voice/pages/VoiceAssistant.js
+```typescript
+// In features/voice/pages/VoiceAssistant.tsx
 import RunConsole from '../../agents/components/RunConsole';
 ```
 
 **To API Client:**
-```javascript
+```typescript
 // From any feature component/page
 import api from '../../../api';  // 3 levels up from features/*/components/
 import api from '../../api';     // 2 levels up from features/*/pages/
+```
+
+**Type Imports:**
+```typescript
+// Import types from centralized location
+import type { AgentConfig, AgentSummary, ToolFile, VoiceConversation } from '../../../types';
 ```
 
 ---
@@ -1851,11 +1868,14 @@ curl http://localhost:8000/api/tools
 - Handle exceptions gracefully
 - Log important events
 
-**JavaScript/React:**
+**TypeScript/React:**
 - Use functional components with hooks
+- Always add type annotations to props, state, and callbacks
 - Extract reusable logic to custom hooks
-- PropTypes for component props
+- Use TypeScript interfaces for component props (not PropTypes)
 - Descriptive variable names
+- Prefer `interface` over `type` for object shapes
+- Use strict null checking and optional chaining
 
 ### Git Workflow
 
@@ -2220,6 +2240,83 @@ import RunConsole from '../../agents/components/RunConsole';
 
 See [FRONTEND_REFACTORING.md](FRONTEND_REFACTORING.md) for complete details.
 
+### TypeScript Migration (2025-10-12)
+
+The frontend has been fully converted from JavaScript to TypeScript for improved type safety and developer experience.
+
+**What's New:**
+- **Full TypeScript Conversion:** All `.js` and `.jsx` files converted to `.ts` and `.tsx`
+- **Strict Type Checking:** TypeScript strict mode enabled with comprehensive type annotations
+- **Type-Safe API Client:** All API functions properly typed with correct response structures
+- **Fixed API Mismatches:** Corrected type definitions to match actual backend responses
+- **Successful Compilation:** All TypeScript errors resolved, production build successful
+
+**Files Converted:**
+- `frontend/src/**/*.tsx` - All React components (50+ files)
+- `frontend/src/**/*.ts` - All utility files and API client
+- `frontend/src/types/index.ts` - Centralized type definitions
+
+**Key Changes:**
+- Added explicit type annotations to all component props
+- Typed all React hooks (useState, useEffect, useCallback, etc.)
+- Fixed API response types to match backend:
+  - `getAgents()` returns `AgentSummary[]` (not `{ agents: AgentSummary[] }`)
+  - `getTools()` returns `ToolFile[]` (not `{ tools: ToolFile[] }`)
+  - `listVoiceConversations()` returns `VoiceConversation[]` (not `{ conversations: VoiceConversation[] }`)
+- Added type safety for MUI components and event handlers
+- Resolved null safety issues with optional chaining and type guards
+
+**Benefits:**
+- **Type Safety:** Catch errors at compile time instead of runtime
+- **Better IDE Support:** Improved autocomplete and IntelliSense
+- **Self-Documenting Code:** Types serve as inline documentation
+- **Easier Refactoring:** TypeScript ensures changes don't break existing code
+- **Production Ready:** Successful builds with zero type errors
+
+**Build Status:**
+```bash
+npm run build
+# ✅ Compiled successfully
+# 📦 465.66 kB (gzipped)
+```
+
+**Important Notes for Future Development:**
+1. **API Response Structure:** Backend returns direct arrays, not wrapped objects:
+   ```typescript
+   // Backend: GET /api/agents → List[AgentConfig]
+   // Frontend: response.data is AgentConfig[], NOT { agents: AgentConfig[] }
+   ```
+
+2. **Type Annotations Required:** Always add types to:
+   - Component props and state
+   - Function parameters and return values
+   - Event handlers and callbacks
+   - API response types
+
+3. **Common Patterns:**
+   ```typescript
+   // useState with type
+   const [items, setItems] = useState<Item[]>([]);
+
+   // Callback with types
+   const handleClick = useCallback((event: React.MouseEvent) => {
+     // ...
+   }, []);
+
+   // Map/filter with types
+   items.map((item: Item, index: number) => /* ... */);
+   ```
+
+4. **Error Handling:**
+   ```typescript
+   try {
+     // ...
+   } catch (err) {
+     const error: any = err;  // Type cast for error objects
+     console.error(error.message);
+   }
+   ```
+
 ---
 
 **End of CLAUDE.md**
@@ -2228,6 +2325,7 @@ This document should be updated whenever significant architectural changes are m
 
 **Last updated:** 2025-10-12
 **Changes:**
+- 2025-10-12: **TypeScript Migration** - Converted entire frontend from JavaScript to TypeScript with strict type checking; fixed API response type mismatches
 - 2025-10-12: **Added comprehensive testing suite** - 1,148+ tests covering unit, integration, and E2E testing for both backend and frontend with 82%+ coverage
 - 2025-10-11: Added multimodal vision agent (`multimodal_tools_looping`) with automatic image detection and interpretation
 - 2025-10-10: Refactored backend into modular structure (config, utils, core, api) + Refactored frontend into feature-based architecture (agents, tools, voice)
