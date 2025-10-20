@@ -969,23 +969,33 @@ agentic/
 │   ├── requirements.txt          # Python dependencies
 │   └── .env                      # Environment variables (create this)
 │
-├── frontend/                     # React 18 application
+├── frontend/                     # React 18 + TypeScript application
 │   ├── public/                   # Static assets
 │   ├── src/
-│   │   ├── components/           # Reusable React components
-│   │   │   ├── AudioVisualizer.js
-│   │   │   ├── ClaudeCodeInsights.js
-│   │   │   ├── NestedAgentInsights.js
-│   │   │   └── VoiceSessionControls.js
-│   │   ├── pages/                # Page components
-│   │   │   ├── VoiceAssistant.js # Voice UI (main interface)
-│   │   │   ├── AgentDashboard.js # Agent management
-│   │   │   └── HomePage.js       # Landing page
-│   │   ├── api.js                # API client functions
-│   │   ├── App.js                # Main app component
-│   │   └── index.js              # Entry point
+│   │   ├── types/                # TypeScript type definitions
+│   │   │   └── index.ts          # Centralized types
+│   │   ├── features/             # Feature-based architecture
+│   │   │   ├── agents/           # Agent management feature
+│   │   │   │   ├── components/   # Agent components (TypeScript)
+│   │   │   │   └── pages/        # Agent pages (TypeScript)
+│   │   │   ├── tools/            # Tool management feature
+│   │   │   │   ├── components/   # Tool components (TypeScript)
+│   │   │   │   └── pages/        # Tool pages (TypeScript)
+│   │   │   └── voice/            # Voice assistant feature
+│   │   │       ├── components/   # Voice components (TypeScript)
+│   │   │       │   ├── AudioVisualizer.tsx
+│   │   │       │   ├── ClaudeCodeInsights.tsx
+│   │   │       │   ├── NestedAgentInsights.tsx
+│   │   │       │   └── VoiceSessionControls.tsx
+│   │   │       └── pages/        # Voice pages (TypeScript)
+│   │   │           ├── VoiceAssistant.tsx
+│   │   │           └── VoiceDashboard.tsx
+│   │   ├── shared/               # Shared components
+│   │   ├── api.ts                # TypeScript API client
+│   │   ├── App.tsx               # Main app component
+│   │   └── index.tsx             # Entry point
 │   ├── package.json              # Node.js dependencies
-│   └── package-lock.json
+│   └── tsconfig.json             # TypeScript configuration
 │
 ├── debug/                        # Development tools
 │   ├── screenshot.js             # Puppeteer screenshot automation
@@ -1036,22 +1046,30 @@ async def custom_endpoint(websocket: WebSocket):
 ### Frontend Development
 
 **Key files:**
-- `VoiceAssistant.js` - Main voice interface with WebSocket management
-- `api.js` - Backend API client functions
-- `ClaudeCodeInsights.js` - Claude Code event visualization
-- `NestedAgentInsights.js` - Team agent event highlights
+- `features/voice/pages/VoiceAssistant.tsx` - Main voice interface (TypeScript)
+- `api.ts` - TypeScript API client with proper types
+- `features/voice/components/ClaudeCodeInsights.tsx` - Claude Code visualization
+- `features/voice/components/NestedAgentInsights.tsx` - Team agent highlights
+- `types/index.ts` - Centralized TypeScript type definitions
 
 **Add new page:**
-```javascript
-// frontend/src/pages/MyNewPage.js
+```typescript
+// frontend/src/features/myfeature/pages/MyNewPage.tsx
 import React from 'react';
+import { FC } from 'react';
 
-function MyNewPage() {
+const MyNewPage: FC = () => {
   return <div>New Page Content</div>;
-}
+};
 
 export default MyNewPage;
 ```
+
+**Important TypeScript Notes:**
+- Backend APIs return **direct arrays**, not wrapped objects:
+  - `GET /api/agents` → `AgentSummary[]` (not `{ agents: AgentSummary[] }`)
+  - `GET /api/tools` → `ToolFile[]` (not `{ tools: ToolFile[] }`)
+  - Use `response.data` directly, not `response.data.agents`
 
 **Hot reload:** React development server automatically reloads on file changes
 
@@ -1738,6 +1756,11 @@ rm -rf backend/chroma_db/
   - Tool development guide
   - Debugging workflows
   - Architecture deep-dive
+  - TypeScript migration notes
+
+- **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Master documentation index (all 48 docs)
+
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Complete testing guide (1,148+ tests)
 
 - **[debug/AUTOMATED_UI_DEVELOPMENT.md](debug/AUTOMATED_UI_DEVELOPMENT.md)** - UI development workflow with screenshot automation
 
@@ -1853,9 +1876,16 @@ Agentic is more than a framework—it's a **new way of thinking** about AI agent
 
 ---
 
-**Last Updated:** 2025-10-10
+**Last Updated:** 2025-10-12
 
-**Version:** 2.0.0 - The Visual Agent Revolution
+**Version:** 2.1.0 - TypeScript Edition
+
+**Recent Changes:**
+- ✅ Full TypeScript migration (2025-10-12)
+- ✅ Comprehensive testing suite with 1,148+ tests (2025-10-12)
+- ✅ Multimodal vision agents (2025-10-11)
+- ✅ Backend modular refactoring (2025-10-10)
+- ✅ Frontend feature-based architecture (2025-10-10)
 
 *Built with ❤️ for the future of human-AI collaboration*
 

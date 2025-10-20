@@ -10,6 +10,7 @@ Quick reference guide to navigate the project.
 |----------|---------|
 | [README.md](README.md) | Project overview and setup |
 | [CLAUDE.md](CLAUDE.md) | Comprehensive development guide |
+| [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) | Master documentation index (all 48 docs) |
 | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | Complete file structure reference |
 | [ORGANIZATION_SUMMARY.md](ORGANIZATION_SUMMARY.md) | Recent organization changes |
 
@@ -37,12 +38,20 @@ backend/
 ### Frontend
 ```
 frontend/src/
-├── 🎨 App.js               # Root component
-├── 🔗 api.js               # Backend client
-└── 🎭 features/            # Feature-based
+├── 🎨 App.tsx              # Root component (TypeScript)
+├── 🔗 api.ts               # Backend client (TypeScript)
+├── 📘 types/               # TypeScript definitions
+│   └── index.ts           # Centralized types
+└── 🎭 features/            # Feature-based architecture
     ├── agents/             # Agent management
+    │   ├── components/    # Agent components (.tsx)
+    │   └── pages/         # Agent pages (.tsx)
     ├── tools/              # Tool management
+    │   ├── components/    # Tool components (.tsx)
+    │   └── pages/         # Tool pages (.tsx)
     └── voice/              # Voice assistant
+        ├── components/    # Voice components (.tsx)
+        └── pages/         # Voice pages (.tsx)
 ```
 
 ---
@@ -97,9 +106,10 @@ bash scripts/fix_x11_and_test.sh
 ### Frontend Commands
 ```bash
 cd frontend
-npm start                    # Start dev server
-npm test                     # Run tests
-npm run build               # Production build
+npm start                    # Start dev server (TypeScript)
+npm test                     # Run tests (Jest + React Testing Library)
+npm run build               # Production build (TypeScript compilation)
+npm run test:e2e            # E2E tests (Playwright)
 ```
 
 ---
@@ -166,26 +176,38 @@ npm run build               # Production build
 
 ## 📊 Project Stats
 
-**Last organized:** 2025-10-11
+**Last organized:** 2025-10-12
 
 **Backend:**
-- Agents: Multiple (see `backend/agents/`)
-- Tools: 3+ custom tools
-- Tests: 8+ test files (unit + integration)
+- Agents: Multiple specialized agents (see `backend/agents/`)
+- Tools: 10+ custom tools
+- Tests: 695+ tests (400+ unit, 245+ integration, 50+ E2E)
 - Scripts: 2 utility scripts
-- Docs: 6+ documentation files
+- Docs: 14 documentation files
+- Coverage: 95%+ core infrastructure
 
 **Frontend:**
+- Language: **TypeScript** (converted 2025-10-12)
 - Features: 3 (agents, tools, voice)
-- Components: 10+ feature components
-- Pages: 5+ feature pages
+- Components: 50+ TypeScript components
+- Pages: 8+ TypeScript pages
+- Tests: 453+ tests (276+ unit, 110+ integration, 67+ E2E)
+- Coverage: 80%+
+
+**Documentation:**
+- Total Files: 48
+- Total Lines: 50,000+
+- Guides: 12 comprehensive guides
+- Test Docs: 14 files
 
 ---
 
 **Quick Tips:**
 - 🎯 Always start with [CLAUDE.md](CLAUDE.md) for development
+- 📚 Use [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) to find docs
 - 📂 Use [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) to find files
-- 🧪 Check [backend/tests/README.md](backend/tests/README.md) before testing
+- 🧪 Check [TESTING_GUIDE.md](TESTING_GUIDE.md) before testing
+- 💡 Backend APIs return **direct arrays**, not wrapped objects
 - 📝 Keep README files updated when adding features
 
-**Last updated:** 2025-10-11
+**Last updated:** 2025-10-12
