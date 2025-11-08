@@ -935,6 +935,115 @@ python3 tests/integration/test_multimodal_api.py
 - See `backend/docs/MULTIMODAL_AGENT_GUIDE.md` for complete usage guide
 - See `backend/docs/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` for implementation details
 
+#### 4. Dynamic Initialization Looping Agent
+
+**Example:** `Memory.json`
+
+**Added:** 2025-11-08
+
+```json
+{
+  "name": "MyDynamicAgent",
+  "agent_type": "dynamic_init_looping",
+  "initialization_function": "my_module.initialize_my_agent",
+  "tools": ["tool1", "tool2"],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are an agent with custom initialization. {{PLACEHOLDER}}",
+    "user": "Your task here"
+  },
+  "code_executor": null,
+  "model_client_stream": false,
+  "sources": null,
+  "description": "Agent with custom initialization logic",
+  "system_message": null,
+  "max_consecutive_auto_reply": 20,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": true,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
+}
+```
+
+**Key Features:**
+- `agent_type: "dynamic_init_looping"` - Looping agent with custom initialization
+- `initialization_function` - Python function to call on agent startup (format: `"module.function_name"`)
+- **Flexible initialization** - Can modify system prompts, load data, set up state, etc.
+- **Agent-agnostic** - Any agent can use custom initialization logic
+- **UI configurable** - Set initialization function through agent editor
+
+**How It Works:**
+
+1. Agent is created with `initialization_function: "memory.initialize_memory_agent"`
+2. Function is imported from `tools/memory.py`
+3. Function is called automatically after agent creation
+4. Function can access agent via `get_current_agent()` and modify it
+5. Common use: Replace placeholders in system prompt with dynamic content
+
+**Example Initialization Function:**
+
+```python
+# tools/my_module.py
+
+from utils.context import get_current_agent
+import logging
+
+logger = logging.getLogger(__name__)
+
+def initialize_my_agent():
+    """Initialize agent with custom logic"""
+    try:
+        agent = get_current_agent()
+
+        # Load data from file
+        data = load_my_data()
+
+        # Update agent's system message
+        if agent and agent._system_messages:
+            agent._system_messages[0].content = agent._system_messages[0].content.replace(
+                "{{PLACEHOLDER}}",
+                data
+            )
+
+        return "Agent initialized successfully"
+    except Exception as e:
+        logger.error(f"Initialization failed: {e}")
+        return f"Error: {e}"
+```
+
+**Use Cases:**
+- **Memory management** - Load memory from file and inject into prompt
+- **Database connections** - Connect to DB and load context
+- **API configuration** - Load credentials and test connections
+- **Workspace setup** - Verify directories and load project info
+- **Resource validation** - Check required files exist
+
+**Testing:**
+```bash
+# Run unit tests
+cd backend
+source venv/bin/activate
+pytest tests/unit/test_dynamic_init_agent.py -v
+
+# Run integration tests
+python3 tests/integration/test_dynamic_init_integration.py
+
+# Run end-to-end tests
+python3 tests/e2e_dynamic_init_test.py
+```
+
+**Documentation:**
+- See `docs/DYNAMIC_INIT_AGENT_IMPLEMENTATION.md` for complete implementation guide
+- Includes usage examples, troubleshooting, and migration guide
+
 ### Creating a New Agent
 
 **Step 1:** Create JSON configuration
@@ -981,7 +1090,7 @@ EOF
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | string | Agent name (must match filename) |
-| `agent_type` | string | "looping", "multimodal_tools_looping", or "nested_team" |
+| `agent_type` | string | "looping", "multimodal_tools_looping", "dynamic_init_looping", or "nested_team" |
 | `tools` | array | List of tool names to provide |
 | `llm.provider` | string | "openai", "anthropic", "google" |
 | `llm.model` | string | Model identifier (use gpt-4o for multimodal) |
@@ -989,6 +1098,7 @@ EOF
 | `prompt.system` | string | System prompt for agent |
 | `tool_call_loop` | bool | Continue calling tools in loop |
 | `reflect_on_tool_use` | bool | Reflect on tool results |
+| `initialization_function` | string | Python function for initialization (dynamic_init_looping only) |
 | `sub_agents` | array | Child agents (nested team only) |
 | `mode` | string | "selector" (nested team only) |
 | `orchestrator_prompt` | string | "__function__" for built-in orchestration |
@@ -1683,6 +1793,54 @@ ls -la ~/.claude/
 
 ## Recent Changes
 
+### Dynamic Initialization Agent (2025-11-08)
+
+A new agent type that allows custom initialization functions to be executed when an agent starts up. This replaces the hard-coded Memory agent initialization and provides a flexible, reusable system.
+
+**What's New:**
+- **New Agent Type:** `dynamic_init_looping` - Looping agent with custom initialization
+- **Agent-Agnostic:** Any agent can use custom initialization logic
+- **UI Configurable:** Set initialization function through agent editor
+- **Test Coverage:** 18/18 tests passing (11 unit + 4 integration + 3 e2e)
+
+**New Files:**
+- `backend/core/dynamic_init_looping_agent.py` - Core implementation
+- `backend/tests/unit/test_dynamic_init_agent.py` - Unit tests
+- `backend/tests/integration/test_dynamic_init_integration.py` - Integration tests
+- `backend/tests/e2e_dynamic_init_test.py` - End-to-end tests
+- `docs/DYNAMIC_INIT_AGENT_IMPLEMENTATION.md` - Complete documentation
+
+**Changes:**
+- Updated `backend/config/schemas.py` - Added `initialization_function` field
+- Updated `backend/core/agent_factory.py` - Factory support for new type
+- Updated `backend/core/runner.py` - Removed hard-coded Memory initialization
+- Updated `backend/agents/Memory.json` - Now uses dynamic initialization
+- Updated `frontend/src/features/agents/components/AgentEditor.js` - UI support
+
+**How It Works:**
+1. Agent config specifies: `"initialization_function": "memory.initialize_memory_agent"`
+2. Function is imported from `tools/memory.py`
+3. Function is called automatically after agent creation
+4. Function can access and modify agent via `get_current_agent()`
+5. Common use: Replace placeholders in system prompt with dynamic content
+
+**Example Use Cases:**
+- Memory management (load memory from file)
+- Database connections (connect and load context)
+- API configuration (load credentials)
+- Workspace setup (verify directories)
+- Resource validation (check files exist)
+
+**Testing:**
+```bash
+cd backend && source venv/bin/activate
+pytest tests/unit/test_dynamic_init_agent.py -v           # 11/11 passing
+python3 tests/integration/test_dynamic_init_integration.py # 4/4 passing
+python3 tests/e2e_dynamic_init_test.py                    # 3/3 passing
+```
+
+See [DYNAMIC_INIT_AGENT_IMPLEMENTATION.md](docs/DYNAMIC_INIT_AGENT_IMPLEMENTATION.md) for complete details.
+
 ### Multimodal Vision Agent (2025-10-11)
 
 A new agent type has been added that can automatically interpret images and visual content from tool responses.
@@ -1782,7 +1940,8 @@ See [FRONTEND_REFACTORING.md](FRONTEND_REFACTORING.md) for complete details.
 
 This document should be updated whenever significant architectural changes are made.
 
-**Last updated:** 2025-10-11
+**Last updated:** 2025-11-08
 **Changes:**
+- 2025-11-08: Added dynamic initialization agent (`dynamic_init_looping`) for flexible agent startup logic
 - 2025-10-11: Added multimodal vision agent (`multimodal_tools_looping`) with automatic image detection and interpretation
 - 2025-10-10: Refactored backend into modular structure (config, utils, core, api) + Refactored frontend into feature-based architecture (agents, tools, voice)
