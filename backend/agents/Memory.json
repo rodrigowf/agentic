@@ -1,6 +1,7 @@
 {
   "name": "Memory",
-  "agent_type": "looping",
+  "agent_type": "dynamic_init_looping",
+  "initialization_function": "memory.initialize_memory_agent",
   "tools": [
     "get_short_term_memory",
     "overwrite_short_term_memory",

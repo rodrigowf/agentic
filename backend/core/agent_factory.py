@@ -14,6 +14,7 @@ from autogen_agentchat.agents import AssistantAgent, CodeExecutorAgent
 from core.looping_agent import LoopingAssistantAgent
 from core.looping_code_executor_agent import LoopingCodeExecutorAgent
 from core.multimodal_tools_looping_agent import MultimodalToolsLoopingAgent
+from core.dynamic_init_looping_agent import DynamicInitLoopingAgent
 from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
 
 
@@ -105,6 +106,19 @@ def create_agent_from_config(
             tools=agent_tools,
             reflect_on_tool_use=agent_cfg.reflect_on_tool_use,
             max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply
+        )
+
+    # Dynamic initialization looping agent
+    if agent_cfg.agent_type == 'dynamic_init_looping':
+        return DynamicInitLoopingAgent(
+            name=agent_cfg.name,
+            description=agent_cfg.description,
+            system_message=agent_cfg.prompt.system,
+            model_client=model_client,
+            tools=agent_tools,
+            reflect_on_tool_use=agent_cfg.reflect_on_tool_use,
+            max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply,
+            initialization_function=agent_cfg.initialization_function
         )
 
     # Default: standard AssistantAgent

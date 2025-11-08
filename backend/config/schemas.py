@@ -30,7 +30,7 @@ class PromptConfig(BaseSchema):
 
 class AgentConfig(BaseSchema):
     name: str
-    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent, 'looping' for looping agent, 'looping_code_executor' for looping code executor agent")
+    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent, 'looping' for looping agent, 'looping_code_executor' for looping code executor agent, 'dynamic_init_looping' for looping agent with custom initialization")
     tools: List[str]
     llm: Optional[LLMConfig] = None
     prompt: Optional[PromptConfig] = None
@@ -44,6 +44,8 @@ class AgentConfig(BaseSchema):
     reflect_on_tool_use: bool = True
     terminate_on_text: bool = False  # Keep for potential future use or backward compat if needed, but default to False
     tool_call_loop: bool = False  # New field to control looping agent behavior
+    # Dynamic initialization configuration
+    initialization_function: Optional[str] = Field(default=None, description="Python function to call during agent initialization (format: 'module.function_name', e.g., 'memory.initialize_memory_agent'). The function will be called with no arguments after agent creation and can modify the agent's state, system prompt, or perform any setup logic.")
     # Nested team-specific configuration
     sub_agents: Optional[List["AgentConfig"]] = None
     mode: Optional[str] = None
