@@ -48,6 +48,7 @@ export const listVoiceConversations = () => API.get(`${VOICE_BASE}/conversations
 export const getVoiceConversation = (conversationId, params = {}) => API.get(`${VOICE_BASE}/conversations/${conversationId}`, { params });
 export const updateVoiceConversation = (conversationId, payload) => API.put(`${VOICE_BASE}/conversations/${conversationId}`, payload);
 export const deleteVoiceConversation = (conversationId) => API.delete(`${VOICE_BASE}/conversations/${conversationId}`);
+export const cleanupInactiveConversations = (inactiveMinutes = 30) => API.post(`${VOICE_BASE}/conversations/cleanup?inactive_minutes=${inactiveMinutes}`);
 export const appendVoiceConversationEvent = (conversationId, payload) => API.post(`${VOICE_BASE}/conversations/${conversationId}/events`, payload);
 export const getVoiceConversationEvents = (conversationId, params = {}) => API.get(`${VOICE_BASE}/conversations/${conversationId}/events`, { params });
 export const connectVoiceConversationStream = (conversationId, params = {}) => {
@@ -92,6 +93,7 @@ export default {
   getVoiceConversation,
   updateVoiceConversation,
   deleteVoiceConversation,
+  cleanupInactiveConversations,
   appendVoiceConversationEvent,
   getVoiceConversationEvents,
   connectVoiceConversationStream,

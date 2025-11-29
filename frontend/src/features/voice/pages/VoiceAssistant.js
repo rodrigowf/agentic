@@ -28,6 +28,7 @@ import {
   appendVoiceConversationEvent,
   getVoiceConversation,
   connectVoiceConversationStream,
+  cleanupInactiveConversations,
 } from '../../../api';
 import { getHttpBase, getWsUrl } from '../../../utils/urlBuilder';
 import { WebRTCPeerConnection } from '../../../utils/webrtcHelper';
@@ -320,7 +321,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           });
         }
       }
-  if (sourceLower === 'controller' && (typeLower === 'voice_forward' || typeLower === 'voice_forward_pending')) {
+      if (sourceLower === 'controller' && (typeLower === 'voice_forward' || typeLower === 'voice_forward_pending')) {
         const text = msg.data?.text || msg.data?.message;
         if (text) {
           const item = {
@@ -438,7 +439,6 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       channel.send(JSON.stringify({ type: 'conversation.item.create', item }));
       if (shouldRequestResponse) {
         channel.send(JSON.stringify({ type: 'response.create' }));
-        hasSpokenMidRef.current = true;
         if (markMidSpoken) {
           hasSpokenMidRef.current = true;
         }
@@ -636,6 +636,17 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     setIsMuted(false); // Reset mute state when starting
     setError(null);
     try {
+      // Clean up inactive conversations (older than 30 minutes)
+      try {
+        const cleanupResult = await cleanupInactiveConversations(30);
+        if (cleanupResult.data?.deleted_count > 0) {
+          console.log(`[Cleanup] Deleted ${cleanupResult.data.deleted_count} inactive conversations:`, cleanupResult.data.deleted_ids);
+        }
+      } catch (cleanupErr) {
+        console.warn('[Cleanup] Failed to cleanup inactive conversations:', cleanupErr);
+        // Don't fail the session start if cleanup fails
+      }
+
       const historyItems = buildReplayItems();
       replayQueueRef.current = (historyItems || []).slice(-MAX_REPLAY_ITEMS);
       // Request a new realtime session from our backend (mounted under /api/realtime)
@@ -756,6 +767,22 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       pc.ontrack = (evt) => {
         if (audioRef.current) {
           audioRef.current.srcObject = evt.streams[0];
+
+          // Set up desktop speaker volume control for mute functionality
+          desktopGainNodeRef.current = {
+            // Custom object that controls audio element's volume property
+            gain: {
+              get value() {
+                return audioRef.current ? audioRef.current.volume : 1.0;
+              },
+              set value(v) {
+                if (audioRef.current) {
+                  audioRef.current.volume = v;
+                }
+              }
+            }
+          };
+
           console.log('[Desktop] OpenAI response will play on desktop <audio> element');
         }
         // Store response stream for mobile relay
@@ -763,18 +790,45 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         console.log('[MobileAudio] OpenAI response stream received, will relay to mobile if connected');
 
         // If mobile is already connected, set up relay now
-        if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN && !responseRelayRef.current) {
+        if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
           try {
+            // IMPORTANT: Clean up any existing relay first to prevent duplicates!
+            if (responseRelayRef.current) {
+              console.warn('[MobileAudio] Cleaning up existing relay before creating new one (duplicate ontrack event)');
+              if (responseRelayRef.current.processor) {
+                responseRelayRef.current.processor.disconnect();
+              }
+              if (responseRelayRef.current.context) {
+                responseRelayRef.current.context.close();
+              }
+              responseRelayRef.current = null;
+            }
+
             const relayContext = new (window.AudioContext || window.webkitAudioContext)();
             const relaySource = relayContext.createMediaStreamSource(evt.streams[0]);
-            // QUALITY-FOCUSED: Use 16384 samples = ~340ms at 48kHz (matches mobile)
-            const relayProcessor = relayContext.createScriptProcessor(16384, 1, 1);
+            // Use 4096 samples = ~85ms at 48kHz for continuous voice relay
+            // Smaller buffers = smoother audio, less latency, prevents false pauses
+            const relayProcessor = relayContext.createScriptProcessor(4096, 1, 1);
+
+            // IMPORTANT: ScriptProcessor must be connected to destination to fire onaudioprocess
+            // Use a silent gain node to prevent audio output (avoid feedback)
+            const silentGain = relayContext.createGain();
+            silentGain.gain.value = 0; // Mute output (no feedback)
 
             relaySource.connect(relayProcessor);
-            relayProcessor.connect(relayContext.destination);
+            relayProcessor.connect(silentGain);
+            silentGain.connect(relayContext.destination);
 
             let relayChunkCount = 0;
             relayProcessor.onaudioprocess = (audioEvent) => {
+              relayChunkCount++;
+
+              // Debug: Log every 50 chunks regardless of sending
+              if (relayChunkCount % 50 === 0) {
+                const wsState = mobileAudioWsRef.current?.readyState;
+                console.log(`[OpenAI→Mobile] Relay processor running (ontrack), chunk #${relayChunkCount}, WS state: ${wsState}`);
+              }
+
               if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
                 const inputData = audioEvent.inputBuffer.getChannelData(0);
                 const pcmData = new Int16Array(inputData.length);
@@ -784,10 +838,9 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                 }
                 mobileAudioWsRef.current.send(pcmData.buffer);
 
-                // Log every 10th chunk to avoid spam
-                relayChunkCount++;
-                if (relayChunkCount % 10 === 0) {
-                  console.log(`[OpenAI→Mobile] Relaying response chunk #${relayChunkCount}, ${pcmData.length} samples`);
+                // Log every 50th chunk when actually sending
+                if (relayChunkCount % 50 === 0) {
+                  console.log(`[OpenAI→Mobile] Sent chunk #${relayChunkCount}, ${pcmData.length} samples to mobile`);
                 }
               }
             };
@@ -924,21 +977,59 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       mobileAudioWs.binaryType = 'arraybuffer'; // Receive binary data as ArrayBuffer
       mobileAudioWsRef.current = mobileAudioWs;
 
+      let mobileAudioChunkCount = 0;
+      let mobileAudioLastVoiceLog = 0;
+      let nextMobileAudioTime = 0; // Track next scheduled audio time for sequential playback
+
       mobileAudioWs.onopen = () => {
         void recordEvent('controller', 'mobile_audio_relay', { message: 'Mobile audio relay connected' });
+
+        // Initialize audio timeline to current time when connection opens
+        if (audioContextRef.current) {
+          nextMobileAudioTime = audioContextRef.current.currentTime;
+          console.log('[MobileAudio] Audio timeline initialized at', nextMobileAudioTime.toFixed(3), 's');
+        }
 
         // Set up OpenAI response audio relay to mobile
         if (responseStreamRef.current) {
           try {
+            // IMPORTANT: Clean up any existing relay first to prevent duplicates!
+            if (responseRelayRef.current) {
+              console.warn('[MobileAudio] Cleaning up existing relay before creating new one (delayed setup)');
+              if (responseRelayRef.current.processor) {
+                responseRelayRef.current.processor.disconnect();
+              }
+              if (responseRelayRef.current.context) {
+                responseRelayRef.current.context.close();
+              }
+              responseRelayRef.current = null;
+            }
+
             const relayContext = new (window.AudioContext || window.webkitAudioContext)();
             const relaySource = relayContext.createMediaStreamSource(responseStreamRef.current);
-            // QUALITY-FOCUSED: Use 16384 samples = ~340ms at 48kHz (matches mobile)
-            const relayProcessor = relayContext.createScriptProcessor(16384, 1, 1);
+            // Use 4096 samples = ~85ms at 48kHz for continuous voice relay
+            // Smaller buffers = smoother audio, less latency, prevents false pauses
+            const relayProcessor = relayContext.createScriptProcessor(4096, 1, 1);
+
+            // IMPORTANT: ScriptProcessor must be connected to destination to fire onaudioprocess
+            // Use a silent gain node to prevent audio output (avoid feedback)
+            const silentGain = relayContext.createGain();
+            silentGain.gain.value = 0; // Mute output (no feedback)
 
             relaySource.connect(relayProcessor);
-            relayProcessor.connect(relayContext.destination);
+            relayProcessor.connect(silentGain);
+            silentGain.connect(relayContext.destination);
 
+            let delayedRelayChunkCount = 0;
             relayProcessor.onaudioprocess = (audioEvent) => {
+              delayedRelayChunkCount++;
+
+              // Debug: Log every 50 chunks regardless of sending
+              if (delayedRelayChunkCount % 50 === 0) {
+                const wsState = mobileAudioWsRef.current?.readyState;
+                console.log(`[OpenAI→Mobile] Relay processor running, chunk #${delayedRelayChunkCount}, WS state: ${wsState}`);
+              }
+
               if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
                 const inputData = audioEvent.inputBuffer.getChannelData(0);
 
@@ -951,6 +1042,11 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
                 // Send to mobile
                 mobileAudioWsRef.current.send(pcmData.buffer);
+
+                // Log every 50th chunk when actually sending
+                if (delayedRelayChunkCount % 50 === 0) {
+                  console.log(`[OpenAI→Mobile] Sent chunk #${delayedRelayChunkCount} to mobile`);
+                }
               }
             };
 
@@ -963,9 +1059,6 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           console.log('[MobileAudio] OpenAI response stream not yet available, will relay when it arrives');
         }
       };
-
-      let mobileAudioChunkCount = 0;
-      let mobileAudioLastVoiceLog = 0;
 
       mobileAudioWs.onmessage = async (event) => {
         try {
@@ -980,8 +1073,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
             return;
           }
 
-          // Log every 50 chunks to show connection is alive
-          if (mobileAudioChunkCount % 50 === 0) {
+          // Log every 200 chunks to show connection is alive (4x more chunks due to smaller buffer)
+          if (mobileAudioChunkCount % 200 === 0) {
             console.log(`[Desktop←MobileMic] Received chunk #${mobileAudioChunkCount}, size: ${rawData.byteLength} bytes`);
           }
 
@@ -1008,11 +1101,23 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           const rms = Math.sqrt(sumSquares / pcmData.length);
           const dbLevel = 20 * Math.log10(rms + 1e-10);
 
-          // Create a buffer source and play it through the mobile gain node
+          // Schedule audio to play sequentially (prevent overlap/crackling)
+          const currentTime = audioContext.currentTime;
+          const bufferDuration = audioBuffer.duration;
+
+          // If we're behind, catch up to current time
+          if (nextMobileAudioTime < currentTime) {
+            nextMobileAudioTime = currentTime;
+          }
+
+          // Create a buffer source and schedule it
           const source = audioContext.createBufferSource();
           source.buffer = audioBuffer;
           source.connect(mobileGainNodeRef.current); // Mix with desktop mic
-          source.start(0);
+          source.start(nextMobileAudioTime); // Scheduled playback (not immediate!)
+
+          // Update next audio time for sequential playback
+          nextMobileAudioTime += bufferDuration;
 
           // Check if mixer is connected to anything
           const mixerStream = mixerDestinationRef.current?.stream;
@@ -1020,8 +1125,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
           // Log with timestamp when voice detected
           if (dbLevel > -40 && (now - mobileAudioLastVoiceLog) > 500) {
-            const timestamp = audioContext.currentTime.toFixed(3);
-            console.log(`[Desktop←MobileMic] VOICE! @${timestamp}s - ${dbLevel.toFixed(1)} dB, ${pcmData.length} samples, gain: ${mobileGainNodeRef.current.gain.value}, mixer tracks: ${mixerTracks}`);
+            console.log(`[Desktop←MobileMic] VOICE! Scheduled at ${nextMobileAudioTime.toFixed(3)}s - ${dbLevel.toFixed(1)} dB, ${pcmData.length} samples, gain: ${mobileGainNodeRef.current.gain.value}, mixer tracks: ${mixerTracks}`);
             mobileAudioLastVoiceLog = now;
           }
 
@@ -1041,139 +1145,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       };
 
       // Do NOT auto-start a run; wait for explicit user_message or Run action
-      ws.onopen = () => {
-        void recordEvent('nested', 'system', { message: 'Nested connection established. Awaiting task or user_message.' });
-      };
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          void recordEvent('nested', msg.type || 'event', msg);
-          const type = (msg.type || '').toLowerCase();
-          if (type === 'error') {
-            const raw = msg.data;
-            const detail = typeof raw === 'string'
-              ? raw
-              : raw?.message || raw?.detail || raw?.error || safeStringify(raw || {});
-            notifyVoiceOfError(detail, { source: raw?.source || 'nested_team' });
-            setError((prev) => prev || `Nested error: ${typeof detail === 'string' ? detail : safeStringify(detail)}`);
-            runCompletedRef.current = true;
-            hasSpokenMidRef.current = false;
-            return;
-          }
-          if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
-            // Forward nested text with more context about the speaker
-            const content = msg.data.content;
-            const source = msg.data.source || 'Agent';
-            const text = `[TEAM ${source}] ${content}`;
-            forwardToVoice('system', text, { source, kind: 'team_text' });
-            // Detect termination marker inside team content
-            try {
-              const cstr = String(content || '');
-              if (!runCompletedRef.current && /\bTERMINATE\b/i.test(cstr)) {
-                forwardToVoice('system', '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.', { trigger: 'team_terminate' });
-                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-                runCompletedRef.current = true;
-                hasSpokenMidRef.current = false;
-              }
-            } catch {}
-            return;
-          }
-          // Handle other message types with context
-          if (type === 'toolcallrequestevent' && msg.data && dataChannelRef.current) {
-            const toolName = msg.data.name || 'unknown_tool';
-            const source = msg.data.source || 'Agent';
-            const text = `[TEAM ${source}] Using tool: ${toolName}`;
-            forwardToVoice('system', text, { source, kind: 'team_tool_start' });
-            return;
-          }
-          if (type === 'toolcallexecutionevent' && msg.data) {
-            const source = msg.data.source || 'Agent';
-            const toolName = msg.data.name || (Array.isArray(msg.data.content) && msg.data.content[0]?.name) || 'tool';
-            const contentItems = Array.isArray(msg.data.content) ? msg.data.content : [];
-            const hasError = msg.data.is_error === true
-              || msg.data.status === 'error'
-              || msg.data?.result?.is_error === true
-              || contentItems.some((item) => item?.is_error || item?.status === 'error');
-            if (hasError) {
-              const errorDetail = msg.data.error
-                || msg.data.result?.error
-                || contentItems.find((item) => item?.error)?.error
-                || contentItems.find((item) => item?.content)?.content
-                || 'Tool execution failed.';
-              const detailStr = typeof errorDetail === 'string' ? errorDetail : safeStringify(errorDetail);
-              notifyVoiceOfError(`${toolName} reported an error: ${truncateText(detailStr, 220)}`, {
-                source,
-                tool: toolName,
-                kind: 'team_tool_error',
-              });
-              setError((prev) => prev || `Tool error from ${toolName}: ${detailStr}`);
-              runCompletedRef.current = true;
-              hasSpokenMidRef.current = false;
-            } else if (dataChannelRef.current) {
-              const result = msg.data.result || 'completed';
-              const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
-              forwardToVoice('system', text, { source, kind: 'team_tool_done' });
-            }
-            return;
-          }
-          // Detect run completion and trigger final summary (guard against duplicate triggers)
-          if (type === 'system' && msg.data && typeof msg.data.message === 'string') {
-            const sysMessage = msg.data.message;
-            if (/error|failed|exception/i.test(sysMessage)) {
-              notifyVoiceOfError(sysMessage, { source: msg.data.source || 'Manager' });
-              setError((prev) => prev || `Nested system error: ${sysMessage}`);
-              runCompletedRef.current = true;
-              hasSpokenMidRef.current = false;
-            }
-            if (sysMessage.includes('Agent run finished')) {
-            if (!runCompletedRef.current && dataChannelRef.current) {
-              forwardToVoice('system', '[RUN_FINISHED] Team has completed the task. Please provide a summary.', { trigger: 'team_finished' });
-              dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-              hasSpokenMidRef.current = false; // ready for next task
-              runCompletedRef.current = true;
-            }
-            return;
-          }
-          }
-          // Treat explicit interruption as a finish signal for narration
-          if (type === 'system' && msg.data && typeof msg.data.message === 'string' && /run (interrupted|cancelled|canceled)/i.test(msg.data.message)) {
-            if (dataChannelRef.current && !runCompletedRef.current) {
-              forwardToVoice('system', '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.', { trigger: 'team_interrupted' });
-              dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-              hasSpokenMidRef.current = false;
-              runCompletedRef.current = true;
-            }
-            return;
-          }
-        } catch (e) {
-          void recordEvent('nested', 'parse_error', { raw: event.data });
-        }
-      };
-      ws.onerror = (errEvent) => {
-        const errorInfo = errEvent?.message || errEvent?.type || 'WebSocket error';
-        void recordEvent('nested', 'error', { message: errorInfo });
-        notifyVoiceOfError('Nested team connection encountered an error and cannot continue until it is reconnected.', { source: 'controller', kind: 'connection_error' });
-        setError((prev) => prev || 'Nested WebSocket encountered an error.');
-        runCompletedRef.current = true;
-        hasSpokenMidRef.current = false;
-      };
-      ws.onclose = (closeEvent) => {
-        void recordEvent('nested', 'system', { message: 'WebSocket closed', code: closeEvent?.code, reason: closeEvent?.reason });
-        if (closeEvent && closeEvent.code !== 1000) {
-          const reason = closeEvent.reason || 'Unexpected disconnection.';
-          notifyVoiceOfError(`Nested connection closed unexpectedly (${closeEvent.code}). ${reason}`, { source: 'controller', kind: 'connection_error', code: closeEvent.code });
-          setError((prev) => prev || `Nested WebSocket closed unexpectedly: ${reason}`);
-          runCompletedRef.current = true;
-          hasSpokenMidRef.current = false;
-        }
-        // If the run ended without the explicit finished marker, still prompt a summary
-        if (dataChannelRef.current && !runCompletedRef.current) {
-          forwardToVoice('system', '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.', { trigger: 'team_socket_closed' });
-          dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-          runCompletedRef.current = true;
-          hasSpokenMidRef.current = false;
-        }
-      };
+      setupNestedWebSocketHandlers(ws);
 
     } catch (err) {
       // Surface first 200 chars of SDP if available
@@ -1192,6 +1164,148 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       }
     }
   };
+
+  // Setup nested WebSocket event handlers (reusable for initial connection and reset)
+  const setupNestedWebSocketHandlers = useCallback((ws) => {
+    ws.onopen = () => {
+      void recordEvent('nested', 'system', { message: 'Nested connection established. Awaiting task or user_message.' });
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        void recordEvent('nested', msg.type || 'event', msg);
+        const type = (msg.type || '').toLowerCase();
+
+        if (type === 'error') {
+          const raw = msg.data;
+          const detail = typeof raw === 'string'
+            ? raw
+            : raw?.message || raw?.detail || raw?.error || safeStringify(raw || {});
+          notifyVoiceOfError(detail, { source: raw?.source || 'nested_team' });
+          setError((prev) => prev || `Nested error: ${typeof detail === 'string' ? detail : safeStringify(detail)}`);
+          runCompletedRef.current = true;
+          hasSpokenMidRef.current = false;
+          return;
+        }
+
+        if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
+          const content = msg.data.content;
+          const source = msg.data.source || 'Agent';
+          const text = `[TEAM ${source}] ${content}`;
+          forwardToVoice('system', text, { source, kind: 'team_text' });
+          // Detect termination marker inside team content
+          try {
+            const cstr = String(content || '');
+            if (!runCompletedRef.current && /\bTERMINATE\b/i.test(cstr)) {
+              forwardToVoice('system', '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.', { trigger: 'team_terminate' });
+              dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+              runCompletedRef.current = true;
+              hasSpokenMidRef.current = false;
+            }
+          } catch {}
+          return;
+        }
+
+        if (type === 'toolcallrequestevent' && msg.data && dataChannelRef.current) {
+          const toolName = msg.data.name || 'unknown_tool';
+          const source = msg.data.source || 'Agent';
+          const text = `[TEAM ${source}] Using tool: ${toolName}`;
+          forwardToVoice('system', text, { source, kind: 'team_tool_start' });
+          return;
+        }
+
+        if (type === 'toolcallexecutionevent' && msg.data) {
+          const source = msg.data.source || 'Agent';
+          const toolName = msg.data.name || (Array.isArray(msg.data.content) && msg.data.content[0]?.name) || 'tool';
+          const contentItems = Array.isArray(msg.data.content) ? msg.data.content : [];
+          const hasError = msg.data.is_error === true
+            || msg.data.status === 'error'
+            || msg.data?.result?.is_error === true
+            || contentItems.some((item) => item?.is_error || item?.status === 'error');
+          if (hasError) {
+            const errorDetail = msg.data.error
+              || msg.data.result?.error
+              || contentItems.find((item) => item?.error)?.error
+              || contentItems.find((item) => item?.content)?.content
+              || 'Tool execution failed.';
+            const detailStr = typeof errorDetail === 'string' ? errorDetail : safeStringify(errorDetail);
+            notifyVoiceOfError(`${toolName} reported an error: ${truncateText(detailStr, 220)}`, {
+              source,
+              tool: toolName,
+              kind: 'team_tool_error',
+            });
+            setError((prev) => prev || `Tool error from ${toolName}: ${detailStr}`);
+            runCompletedRef.current = true;
+            hasSpokenMidRef.current = false;
+          } else if (dataChannelRef.current) {
+            const result = msg.data.result || 'completed';
+            const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
+            forwardToVoice('system', text, { source, kind: 'team_tool_done' });
+          }
+          return;
+        }
+
+        if (type === 'system' && msg.data && typeof msg.data.message === 'string') {
+          const sysMessage = msg.data.message;
+          if (/error|failed|exception/i.test(sysMessage)) {
+            notifyVoiceOfError(sysMessage, { source: msg.data.source || 'Manager' });
+            setError((prev) => prev || `Nested system error: ${sysMessage}`);
+            runCompletedRef.current = true;
+            hasSpokenMidRef.current = false;
+          }
+          if (sysMessage.includes('Agent run finished')) {
+            if (!runCompletedRef.current && dataChannelRef.current) {
+              forwardToVoice('system', '[RUN_FINISHED] Team has completed the task. Please provide a summary.', { trigger: 'team_finished' });
+              dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+              hasSpokenMidRef.current = false;
+              runCompletedRef.current = true;
+            }
+            return;
+          }
+        }
+
+        if (type === 'system' && msg.data && typeof msg.data.message === 'string' && /run (interrupted|cancelled|canceled)/i.test(msg.data.message)) {
+          if (dataChannelRef.current && !runCompletedRef.current) {
+            forwardToVoice('system', '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.', { trigger: 'team_interrupted' });
+            dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+            hasSpokenMidRef.current = false;
+            runCompletedRef.current = true;
+          }
+          return;
+        }
+      } catch (e) {
+        void recordEvent('nested', 'parse_error', { raw: event.data });
+      }
+    };
+
+    ws.onerror = (errEvent) => {
+      const errorInfo = errEvent?.message || errEvent?.type || 'WebSocket error';
+      void recordEvent('nested', 'error', { message: errorInfo });
+      notifyVoiceOfError('Nested team connection encountered an error and cannot continue until it is reconnected.', { source: 'controller', kind: 'connection_error' });
+      setError((prev) => prev || 'Nested WebSocket encountered an error.');
+      runCompletedRef.current = true;
+      hasSpokenMidRef.current = false;
+    };
+
+    ws.onclose = (closeEvent) => {
+      void recordEvent('nested', 'system', { message: 'WebSocket closed', code: closeEvent?.code, reason: closeEvent?.reason });
+      if (closeEvent && closeEvent.code !== 1000) {
+        const reason = closeEvent.reason || 'Unexpected disconnection.';
+        notifyVoiceOfError(`Nested connection closed unexpectedly (${closeEvent.code}). ${reason}`, { source: 'controller', kind: 'connection_error', code: closeEvent.code });
+        setError((prev) => prev || `Nested WebSocket closed unexpectedly: ${reason}`);
+        runCompletedRef.current = true;
+        hasSpokenMidRef.current = false;
+      }
+      // If the run ended without the explicit finished marker, still prompt a summary
+      if (dataChannelRef.current && !runCompletedRef.current) {
+        forwardToVoice('system', '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.', { trigger: 'team_socket_closed' });
+        dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
+        runCompletedRef.current = true;
+        hasSpokenMidRef.current = false;
+      }
+    };
+  }, [recordEvent, notifyVoiceOfError, forwardToVoice, setError]);
 
   // Execute a completed tool call from the voice model
   const executeToolCall = async (callId, name, argsObj) => {
@@ -1254,80 +1368,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         setSharedNestedWs(ws);
         hasSpokenMidRef.current = false;
         runCompletedRef.current = false;
-        ws.onopen = () => {
-          void recordEvent('nested', 'system', { message: 'Nested connection reset. Awaiting task or user_message.' });
-        };
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            void recordEvent('nested', msg.type || 'event', msg);
-            const type = (msg.type || '').toLowerCase();
-            if (type === 'textmessage' && msg.data && msg.data.content && dataChannelRef.current) {
-              // Forward nested text with more context about the speaker
-              const content = msg.data.content;
-              const source = msg.data.source || 'Agent';
-              const text = `[TEAM ${source}] ${content}`;
-              forwardToVoice('system', text, { source, kind: 'team_text' });
-              // Detect termination marker inside team content
-              try {
-                const cstr = String(content || '');
-                if (!runCompletedRef.current && /\bTERMINATE\b/i.test(cstr)) {
-                  forwardToVoice('system', '[RUN_FINISHED] Team signaled termination. Please provide a concise final summary.', { trigger: 'team_terminate' });
-                  dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-                  runCompletedRef.current = true;
-                  hasSpokenMidRef.current = false;
-                }
-              } catch {}
-              return;
-            }
-            // Handle other message types with context
-            if (type === 'toolcallrequestevent' && msg.data && dataChannelRef.current) {
-              const toolName = msg.data.name || 'unknown_tool';
-              const source = msg.data.source || 'Agent';
-              const text = `[TEAM ${source}] Using tool: ${toolName}`;
-              forwardToVoice('system', text, { source, kind: 'team_tool_start' });
-              return;
-            }
-            if (type === 'toolcallexecutionevent' && msg.data && dataChannelRef.current) {
-              const result = msg.data.result || 'completed';
-              const source = msg.data.source || 'Agent';
-              const text = `[TEAM ${source}] Tool completed: ${typeof result === 'string' ? result.slice(0, 200) : 'success'}`;
-              forwardToVoice('system', text, { source, kind: 'team_tool_done' });
-              return;
-            }
-            // Detect run completion and trigger final summary
-            if (type === 'system' && msg.data && typeof msg.data.message === 'string' && msg.data.message.includes('Agent run finished')) {
-              if (!runCompletedRef.current && dataChannelRef.current) {
-                forwardToVoice('system', '[RUN_FINISHED] Team has completed the task. Please provide a summary.', { trigger: 'team_finished' });
-                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-                hasSpokenMidRef.current = false;
-                runCompletedRef.current = true;
-              }
-              return;
-            }
-            if (type === 'system' && msg.data && typeof msg.data.message === 'string' && /run (interrupted|cancelled|canceled)/i.test(msg.data.message)) {
-              if (dataChannelRef.current && !runCompletedRef.current) {
-                forwardToVoice('system', '[RUN_FINISHED] Team run was interrupted. Provide a brief status of what was achieved so far.', { trigger: 'team_interrupted' });
-                dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-                hasSpokenMidRef.current = false;
-                runCompletedRef.current = true;
-              }
-              return;
-            }
-          } catch (e) {
-            void recordEvent('nested', 'parse_error', { raw: event.data });
-          }
-        };
-        ws.onerror = () => { void recordEvent('nested', 'error', { message: 'WebSocket error' }); };
-        ws.onclose = () => {
-          void recordEvent('nested', 'system', { message: 'WebSocket closed' });
-          if (dataChannelRef.current && !runCompletedRef.current) {
-            forwardToVoice('system', '[RUN_FINISHED] Team connection closed. Provide the final summary based on received context.', { trigger: 'team_socket_closed' });
-            dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-            runCompletedRef.current = true;
-            hasSpokenMidRef.current = false;
-          }
-        };
+        setupNestedWebSocketHandlers(ws);
         void recordEvent('controller', 'tool_exec', { tool: name });
         lastVoiceToolCallRef.current = { name, timestamp: now };
         return { ok: true };
@@ -1394,6 +1435,19 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     if (claudeCodeWsRef.current) { try { claudeCodeWsRef.current.close(); } catch {} claudeCodeWsRef.current = null; }
     setSharedClaudeCodeWs(null);
     if (mobileAudioWsRef.current) { try { mobileAudioWsRef.current.close(); } catch {} mobileAudioWsRef.current = null; }
+
+    // Clean up relay processor to prevent duplicates on next session
+    if (responseRelayRef.current) {
+      console.log('[MobileAudio] Cleaning up relay processor on session stop');
+      if (responseRelayRef.current.processor) {
+        responseRelayRef.current.processor.disconnect();
+      }
+      if (responseRelayRef.current.context) {
+        responseRelayRef.current.context.close();
+      }
+      responseRelayRef.current = null;
+    }
+
     hasSpokenMidRef.current = false;
     runCompletedRef.current = false;
     if (micStreamRef.current) {
@@ -1801,9 +1855,11 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         <VoiceSessionControls
           isRunning={isRunning}
           isMuted={isMuted}
+          isSpeakerMuted={isSpeakerMuted}
           onStart={startSession}
           onStop={stopSession}
           onToggleMute={toggleMute}
+          onToggleSpeakerMute={toggleSpeakerMute}
           disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
           stream={micStreamRef.current}
           statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active elsewhere' : 'Idle'}

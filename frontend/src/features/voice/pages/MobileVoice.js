@@ -21,6 +21,7 @@ import {
   getVoiceConversation,
   connectVoiceConversationStream,
   appendVoiceConversationEvent,
+  cleanupInactiveConversations,
 } from '../../../api';
 import { getHttpBase, getWsUrl } from '../../../utils/urlBuilder';
 
@@ -128,9 +129,17 @@ function MobileVoice() {
       console.log('[MobileVoice] Fetched conversations:', convs.length, convs);
       setConversations(convs);
 
-      // Auto-select if only one active conversation and no selection yet
+      // Check if currently selected conversation still exists
       // Use functional update to get current value without dependency
       setSelectedConversationId((currentId) => {
+        // If current ID is not in the list, clear it
+        if (currentId && !convs.find(c => c.id === currentId)) {
+          console.warn('[MobileVoice] Selected conversation no longer exists, clearing selection');
+          navigate('/mobile-voice', { replace: true });
+          return null;
+        }
+
+        // Auto-select if only one active conversation and no selection yet
         if (!currentId && convs.length === 1) {
           const onlyConv = convs[0];
           console.log('[MobileVoice] Auto-selecting conversation:', onlyConv.id, onlyConv.name);
@@ -170,6 +179,13 @@ function MobileVoice() {
         console.error('Failed to load conversation', err);
         setConversation(null);
         setConversationError(err?.response?.data?.detail || err.message || 'Conversation not found');
+
+        // If conversation doesn't exist (404), clear the selection and URL
+        if (err?.response?.status === 404) {
+          console.warn('[MobileVoice] Conversation not found (404), clearing selection');
+          setSelectedConversationId(null);
+          navigate('/mobile-voice', { replace: true });
+        }
       }
     })();
 
@@ -220,7 +236,7 @@ function MobileVoice() {
   // Load conversations on mount
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 10000); // Refresh every 10s
+    const interval = setInterval(fetchConversations, 30000); // Refresh every 30s (reduced from 10s)
     return () => clearInterval(interval);
   }, [fetchConversations]);
 
@@ -311,6 +327,17 @@ function MobileVoice() {
     setError(null);
 
     try {
+      // Clean up inactive conversations (older than 30 minutes)
+      try {
+        const cleanupResult = await cleanupInactiveConversations(30);
+        if (cleanupResult.data?.deleted_count > 0) {
+          console.log(`[MobileVoice Cleanup] Deleted ${cleanupResult.data.deleted_count} inactive conversations:`, cleanupResult.data.deleted_ids);
+        }
+      } catch (cleanupErr) {
+        console.warn('[MobileVoice Cleanup] Failed to cleanup inactive conversations:', cleanupErr);
+        // Don't fail the session start if cleanup fails
+      }
+
       // Get microphone access
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error(
@@ -437,8 +464,9 @@ function MobileVoice() {
       // Create audio processor to send microphone audio to desktop via WebSocket
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const micSource = audioContext.createMediaStreamSource(stream);
-      // Use 16384 samples = ~340ms at 48kHz (matches desktop settings)
-      const processor = audioContext.createScriptProcessor(16384, 1, 1);
+      // Use 4096 samples = ~85ms at 48kHz for continuous voice (prevents interruptions)
+      // Smaller buffers = smoother audio stream, less perceived pauses
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
       micSource.connect(processor);
       processor.connect(audioContext.destination);
@@ -450,8 +478,8 @@ function MobileVoice() {
         mobileMicChunkCount++;
         const now = Date.now();
 
-        // Log connection state every 50 chunks (~1.7s)
-        if (mobileMicChunkCount % 50 === 0) {
+        // Log connection state every 200 chunks (~17s with 4096 buffer size)
+        if (mobileMicChunkCount % 200 === 0) {
           console.log(`[MobileMic→Desktop] Chunk #${mobileMicChunkCount}, WS state: ${audioRelayWsRef.current?.readyState}, muted: ${isMutedRef.current}`);
         }
 
@@ -482,7 +510,7 @@ function MobileVoice() {
             console.log(`[MobileMic→Desktop] VOICE DETECTED! Level: ${dbLevel.toFixed(1)} dB, sending ${pcmData.length} samples`);
             mobileMicLastLogTime = now;
           }
-        } else if (mobileMicChunkCount % 50 === 0) {
+        } else if (mobileMicChunkCount % 200 === 0) {
           // Log why we're NOT sending
           const reason = audioRelayWsRef.current?.readyState !== WebSocket.OPEN ? 'WebSocket not open' : 'Muted';
           console.warn(`[MobileMic→Desktop] NOT SENDING - Reason: ${reason}`);

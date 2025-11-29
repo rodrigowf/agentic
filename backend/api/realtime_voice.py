@@ -351,6 +351,63 @@ class UpdateConversationRequest(BaseModel):
 router = APIRouter()
 
 
+@router.get("/connections/active")
+async def list_active_connections() -> Dict[str, Any]:
+    """List all active WebSocket connections for debugging."""
+    async with stream_manager._lock:
+        active_conversations = {
+            conv_id: len(sockets)
+            for conv_id, sockets in stream_manager._subscribers.items()
+        }
+    async with audio_relay_manager._lock:
+        audio_connections = {
+            conv_id: list(conn.keys())
+            for conv_id, conn in audio_relay_manager._connections.items()
+        }
+    return {
+        "stream_connections": active_conversations,
+        "audio_relay_connections": audio_connections,
+        "total_conversations": len(active_conversations)
+    }
+
+
+@router.post("/connections/cleanup")
+async def cleanup_all_connections() -> Dict[str, Any]:
+    """Force close all active WebSocket connections (useful for clearing zombie connections)."""
+    closed_streams = 0
+    closed_relays = 0
+
+    # Close all stream connections
+    async with stream_manager._lock:
+        for conv_id, sockets in list(stream_manager._subscribers.items()):
+            for ws in list(sockets):
+                try:
+                    await ws.close()
+                    closed_streams += 1
+                except Exception:
+                    pass
+            sockets.clear()
+        stream_manager._subscribers.clear()
+
+    # Close all audio relay connections
+    async with audio_relay_manager._lock:
+        for conv_id, connections in list(audio_relay_manager._connections.items()):
+            for client_type, ws in list(connections.items()):
+                try:
+                    await ws.close()
+                    closed_relays += 1
+                except Exception:
+                    pass
+            connections.clear()
+        audio_relay_manager._connections.clear()
+
+    return {
+        "closed_stream_connections": closed_streams,
+        "closed_relay_connections": closed_relays,
+        "total_closed": closed_streams + closed_relays
+    }
+
+
 @router.post("/conversations", response_model=ConversationSummary, status_code=201)
 def create_conversation(req: CreateConversationRequest = Body(...)) -> ConversationSummary:
     record = conversation_store.create_conversation(
@@ -407,6 +464,22 @@ def delete_conversation(conversation_id: str) -> None:
     if not deleted:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return None
+
+
+@router.post("/conversations/cleanup")
+def cleanup_inactive_conversations(
+    inactive_minutes: int = Query(30, ge=1, le=1440, description="Delete conversations inactive for this many minutes")
+) -> Dict[str, Any]:
+    """
+    Delete conversations that haven't been updated in the specified time period.
+    Default is 30 minutes. This helps clean up stale/abandoned conversations.
+    """
+    deleted_ids = conversation_store.cleanup_inactive_conversations(inactive_minutes)
+    return {
+        "deleted_count": len(deleted_ids),
+        "deleted_ids": deleted_ids,
+        "inactive_minutes": inactive_minutes
+    }
 
 
 @router.get("/conversations/{conversation_id}/events", response_model=List[ConversationEvent])

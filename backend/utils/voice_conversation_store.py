@@ -171,6 +171,37 @@ class ConversationStore:
             )
         return cursor.rowcount > 0
 
+    def cleanup_inactive_conversations(self, inactive_minutes: int = 30) -> List[str]:
+        """
+        Delete conversations that haven't been updated in the specified time period.
+        Returns list of deleted conversation IDs.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        cutoff_time = (datetime.now(timezone.utc) - timedelta(minutes=inactive_minutes)).isoformat()
+
+        with self._connection() as conn:
+            # First, get the IDs that will be deleted
+            rows = conn.execute(
+                """
+                SELECT id FROM conversations
+                WHERE datetime(updated_at) < datetime(?)
+                """,
+                (cutoff_time,),
+            ).fetchall()
+
+            deleted_ids = [row[0] for row in rows]
+
+            # Delete the conversations (CASCADE will delete events)
+            if deleted_ids:
+                placeholders = ",".join("?" * len(deleted_ids))
+                conn.execute(
+                    f"DELETE FROM conversations WHERE id IN ({placeholders})",
+                    deleted_ids,
+                )
+
+        return deleted_ids
+
     # ------------------------------------------------------------------
     # Event helpers
     # ------------------------------------------------------------------
