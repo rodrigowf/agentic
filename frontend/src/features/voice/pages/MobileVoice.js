@@ -12,6 +12,8 @@ import {
 } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import StopIcon from '@mui/icons-material/Stop';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import {
@@ -42,6 +44,7 @@ function MobileVoice() {
   // Session state
   const [isRunning, setIsRunning] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Start muted
+  const [isSpeakerMuted, setIsSpeakerMuted] = useState(false); // Speaker not muted by default
   const [error, setError] = useState(null);
 
   // Audio streaming refs
@@ -51,6 +54,11 @@ function MobileVoice() {
   const audioRelayWsRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const eventsMapRef = useRef(new Map());
+  const speakerGainNodeRef = useRef(null); // For speaker mute control
+  const audioBufferQueueRef = useRef([]); // Buffer queue for smoother playback
+  const isPlayingRef = useRef(false); // Track if currently playing audio
+  const minBufferThreshold = 3; // Wait for 3 chunks before starting (adaptive buffering)
+  const isMutedRef = useRef(true); // Ref for mute state (avoids closure issues)
 
   // Audio analysis for visualization
   const audioContextRef = useRef(null);
@@ -294,11 +302,12 @@ function MobileVoice() {
     }
   }, [isRunning]);
 
-  // Start voice session - stream audio to desktop via WebSocket relay
+  // Start voice session - use WebRTC for high-quality peer-to-peer audio
   const startSession = async () => {
     if (isRunning || !selectedConversationId) return;
     setIsRunning(true);
     setIsMuted(true); // Start muted
+    isMutedRef.current = true; // Also update ref
     setError(null);
 
     try {
@@ -311,11 +320,16 @@ function MobileVoice() {
         );
       }
 
+      // QUALITY-FOCUSED: Request highest quality audio settings
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 48000,  // Request higher sample rate (48kHz instead of 44.1kHz)
+          channelCount: 1,
+          sampleSize: 16,
+          latency: 0.02,  // 20ms latency is acceptable for quality
         }
       });
       micStreamRef.current = stream;
@@ -325,108 +339,161 @@ function MobileVoice() {
         track.enabled = false; // Muted
       });
 
-      // Connect to audio relay WebSocket
-      const audioRelayUrl = getWsUrl(`/realtime/audio-relay/${selectedConversationId}/mobile`);
+      // Create audio context for speaker playback
+      if (!window.mobilePlaybackContext) {
+        window.mobilePlaybackContext = new (window.AudioContext || window.webkitAudioContext)();
+        const gainNode = window.mobilePlaybackContext.createGain();
+        gainNode.connect(window.mobilePlaybackContext.destination);
+        speakerGainNodeRef.current = gainNode;
+      }
 
+      // Resume AudioContext (Chrome autoplay policy requires user gesture)
+      if (window.mobilePlaybackContext.state === 'suspended') {
+        await window.mobilePlaybackContext.resume();
+        console.log('[MobileVoice] AudioContext resumed - audio playback enabled');
+      }
+
+      // Connect to audio relay WebSocket to send mic audio to desktop
+      const audioRelayUrl = getWsUrl(`/realtime/audio-relay/${selectedConversationId}/mobile`);
       const audioRelayWs = new WebSocket(audioRelayUrl);
+      audioRelayWs.binaryType = 'arraybuffer';
       audioRelayWsRef.current = audioRelayWs;
 
+      console.log('[MobileVoice] Connecting to audio relay:', audioRelayUrl);
+
+      // Track next scheduled audio time to prevent overlap
+      let nextAudioTime = 0;
+
       audioRelayWs.onopen = () => {
-        console.log('[MobileVoice] Audio relay connected');
-        void recordEvent('controller', 'mobile_audio_connected', { conversationId: selectedConversationId });
-
-        // Use ScriptProcessorNode for raw PCM audio (better for streaming)
-        // Create audio context for processing
-        const mobileAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const source = mobileAudioContext.createMediaStreamSource(stream);
-        const processor = mobileAudioContext.createScriptProcessor(4096, 1, 1);
-
-        source.connect(processor);
-        processor.connect(mobileAudioContext.destination);
-
-        processor.onaudioprocess = (audioEvent) => {
-          const currentlyMuted = micStreamRef.current?.getAudioTracks()[0]?.enabled === false;
-
-          if (audioRelayWs.readyState === WebSocket.OPEN && !currentlyMuted) {
-            // Get raw audio data
-            const inputData = audioEvent.inputBuffer.getChannelData(0);
-
-            // Convert Float32Array to Int16Array (16-bit PCM)
-            const pcmData = new Int16Array(inputData.length);
-            for (let i = 0; i < inputData.length; i++) {
-              const s = Math.max(-1, Math.min(1, inputData[i]));
-              pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-            }
-
-            // Send raw PCM data
-            console.log('[MobileVoice] Sending audio chunk:', pcmData.length, 'samples, WS state:', audioRelayWs.readyState);
-            audioRelayWs.send(pcmData.buffer);
-          } else {
-            if (audioRelayWs.readyState !== WebSocket.OPEN) {
-              console.warn('[MobileVoice] WebSocket not open, state:', audioRelayWs.readyState);
-            }
-          }
-        };
-
-        // Store processor for cleanup
-        mediaRecorderRef.current = { processor, audioContext: mobileAudioContext };
+        console.log('[MobileVoice] Audio relay connected - ready to send microphone audio');
+        // Initialize audio timeline to current time when connection opens
+        nextAudioTime = window.mobilePlaybackContext.currentTime;
+        console.log('[MobileVoice] Audio timeline initialized at', nextAudioTime.toFixed(3), 's');
+        void recordEvent('controller', 'mobile_audio_relay_connected', { conversationId: selectedConversationId });
       };
 
-      audioRelayWs.onmessage = async (event) => {
-        // Receive OpenAI response audio from desktop (PCM format)
+      audioRelayWs.onmessage = (event) => {
         try {
+          // Receive desktop audio (OpenAI response) from desktop
           const rawData = event.data;
 
           if (!(rawData instanceof ArrayBuffer)) {
-            console.warn('[MobileVoice] Received non-ArrayBuffer audio:', typeof rawData);
+            console.warn('[MobileVoice] Received non-ArrayBuffer data:', typeof rawData);
             return;
           }
 
-          // Create audio context if not exists
-          if (!window.mobilePlaybackContext) {
-            window.mobilePlaybackContext = new (window.AudioContext || window.webkitAudioContext)();
-          }
           const audioContext = window.mobilePlaybackContext;
+          const gainNode = speakerGainNodeRef.current;
+
+          if (!audioContext || !gainNode) {
+            console.error('[MobileVoice] Audio context not initialized');
+            return;
+          }
 
           // Convert Int16Array PCM to Float32Array
           const pcmData = new Int16Array(rawData);
-          const audioBuffer = audioContext.createBuffer(1, pcmData.length, audioContext.sampleRate);
-          const channelData = audioBuffer.getChannelData(0);
-
-          // Convert 16-bit PCM to Float32
+          const floatData = new Float32Array(pcmData.length);
           for (let i = 0; i < pcmData.length; i++) {
-            channelData[i] = pcmData[i] / (pcmData[i] < 0 ? 0x8000 : 0x7FFF);
+            floatData[i] = pcmData[i] / 32768.0;
           }
 
-          // Play the audio
+          // Create audio buffer
+          const audioBuffer = audioContext.createBuffer(1, floatData.length, 48000);
+          audioBuffer.getChannelData(0).set(floatData);
+
+          // Schedule audio to play sequentially (prevent overlap)
+          const currentTime = audioContext.currentTime;
+          const bufferDuration = audioBuffer.duration;
+
+          // If we're behind, catch up to current time
+          if (nextAudioTime < currentTime) {
+            nextAudioTime = currentTime;
+          }
+
           const source = audioContext.createBufferSource();
           source.buffer = audioBuffer;
-          source.connect(audioContext.destination);
-          source.start(0);
+          source.connect(gainNode);
+          source.start(nextAudioTime);
 
-          console.log('[MobileVoice] Playing response audio chunk:', pcmData.length, 'samples');
+          // Update next audio time for sequential playback
+          nextAudioTime += bufferDuration;
+
+          console.log('[MobileVoice] Scheduled desktop audio chunk at', nextAudioTime.toFixed(3), 's');
         } catch (err) {
-          console.error('[MobileVoice] Failed to play response audio:', err);
+          console.error('[MobileVoice] Failed to process desktop audio:', err);
         }
       };
 
       audioRelayWs.onerror = (err) => {
         console.error('[MobileVoice] Audio relay error:', err);
-        setError('Connection to desktop failed');
-        void recordEvent('controller', 'mobile_audio_error', { error: String(err) });
+        void recordEvent('controller', 'mobile_audio_relay_error', { message: String(err) });
       };
 
-      audioRelayWs.onclose = (event) => {
-        console.log('[MobileVoice] Audio relay closed. Code:', event.code, 'Reason:', event.reason, 'Clean:', event.wasClean);
-        void recordEvent('controller', 'mobile_audio_disconnected', { code: event.code, reason: event.reason });
+      audioRelayWs.onclose = () => {
+        console.log('[MobileVoice] Audio relay closed');
+        void recordEvent('controller', 'mobile_audio_relay_closed', {});
+      };
 
-        // Stop recording
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-          mediaRecorderRef.current.stop();
+      // Create audio processor to send microphone audio to desktop via WebSocket
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const micSource = audioContext.createMediaStreamSource(stream);
+      // Use 16384 samples = ~340ms at 48kHz (matches desktop settings)
+      const processor = audioContext.createScriptProcessor(16384, 1, 1);
+
+      micSource.connect(processor);
+      processor.connect(audioContext.destination);
+
+      let mobileMicChunkCount = 0;
+      let mobileMicLastLogTime = 0;
+
+      processor.onaudioprocess = (audioEvent) => {
+        mobileMicChunkCount++;
+        const now = Date.now();
+
+        // Log connection state every 50 chunks (~1.7s)
+        if (mobileMicChunkCount % 50 === 0) {
+          console.log(`[MobileMic→Desktop] Chunk #${mobileMicChunkCount}, WS state: ${audioRelayWsRef.current?.readyState}, muted: ${isMutedRef.current}`);
+        }
+
+        // Only send if unmuted and WebSocket is open (use ref to avoid closure stale state)
+        if (audioRelayWsRef.current?.readyState === WebSocket.OPEN && !isMutedRef.current) {
+          const inputData = audioEvent.inputBuffer.getChannelData(0);
+
+          // Calculate RMS level to detect actual voice
+          let sumSquares = 0;
+          for (let i = 0; i < inputData.length; i++) {
+            sumSquares += inputData[i] * inputData[i];
+          }
+          const rms = Math.sqrt(sumSquares / inputData.length);
+          const dbLevel = 20 * Math.log10(rms + 1e-10);
+
+          // Convert Float32Array to Int16Array PCM
+          const pcmData = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+
+          // Send to desktop
+          audioRelayWsRef.current.send(pcmData.buffer);
+
+          // Log when voice detected (> -40 dB) but max once per 500ms
+          if (dbLevel > -40 && (now - mobileMicLastLogTime) > 500) {
+            console.log(`[MobileMic→Desktop] VOICE DETECTED! Level: ${dbLevel.toFixed(1)} dB, sending ${pcmData.length} samples`);
+            mobileMicLastLogTime = now;
+          }
+        } else if (mobileMicChunkCount % 50 === 0) {
+          // Log why we're NOT sending
+          const reason = audioRelayWsRef.current?.readyState !== WebSocket.OPEN ? 'WebSocket not open' : 'Muted';
+          console.warn(`[MobileMic→Desktop] NOT SENDING - Reason: ${reason}`);
         }
       };
 
+      // Store for cleanup
+      mediaRecorderRef.current = { processor, audioContext };
+
       void recordEvent('controller', 'mobile_session_started', { conversationId: selectedConversationId });
+      console.log('[MobileVoice] Session started successfully with audio relay');
     } catch (err) {
       void recordEvent('controller', 'mobile_session_error', { message: err.message || String(err) });
       setError(err.message || String(err));
@@ -443,19 +510,8 @@ function MobileVoice() {
   const stopSession = () => {
     setIsRunning(false);
     setIsMuted(true);
+    isMutedRef.current = true;
     void recordEvent('controller', 'mobile_session_stopped', {});
-
-    // Stop audio processor
-    if (mediaRecorderRef.current) {
-      const { processor, audioContext } = mediaRecorderRef.current;
-      if (processor) {
-        processor.disconnect();
-      }
-      if (audioContext) {
-        audioContext.close();
-      }
-      mediaRecorderRef.current = null;
-    }
 
     // Stop microphone
     if (micStreamRef.current) {
@@ -471,21 +527,55 @@ function MobileVoice() {
       audioRelayWsRef.current = null;
     }
 
+    // Stop audio processor
+    if (mediaRecorderRef.current) {
+      const { processor, audioContext } = mediaRecorderRef.current;
+      if (processor) {
+        processor.disconnect();
+      }
+      if (audioContext) {
+        audioContext.close();
+      }
+      mediaRecorderRef.current = null;
+    }
+
     setMicLevel(0);
     setSpeakerLevel(0);
   };
 
-  // Toggle mute
+  // Toggle microphone mute
   const toggleMute = () => {
     if (!micStreamRef.current) return;
 
     setIsMuted((prevMuted) => {
       const newMutedState = !prevMuted;
+
+      // Update ref immediately (for processor callback)
+      isMutedRef.current = newMutedState;
+
+      // Also update track enabled state
       const audioTracks = micStreamRef.current.getAudioTracks();
       audioTracks.forEach((track) => {
         track.enabled = !newMutedState;
       });
+
+      console.log(`[MobileMute] Toggled to: ${newMutedState ? 'MUTED' : 'UNMUTED'}, ref updated`);
       void recordEvent('controller', newMutedState ? 'mobile_microphone_muted' : 'mobile_microphone_unmuted', {});
+      return newMutedState;
+    });
+  };
+
+  // Toggle speaker mute
+  const toggleSpeakerMute = () => {
+    setIsSpeakerMuted((prevMuted) => {
+      const newMutedState = !prevMuted;
+
+      // Update gain node volume
+      if (speakerGainNodeRef.current) {
+        speakerGainNodeRef.current.gain.value = newMutedState ? 0 : 1;
+      }
+
+      void recordEvent('controller', newMutedState ? 'mobile_speaker_muted' : 'mobile_speaker_unmuted', {});
       return newMutedState;
     });
   };
@@ -686,42 +776,69 @@ function MobileVoice() {
           {isRunning ? 'Connected' : 'Tap to start'}
         </Typography>
 
-        {/* Mute/Unmute Button */}
+        {/* Control Buttons Row */}
         {isRunning && (
-          <IconButton
-            onClick={toggleMute}
-            sx={{
-              width: 100,
-              height: 100,
-              bgcolor: isMuted ? 'warning.main' : 'success.main',
-              color: 'white',
-              boxShadow: 3,
-              '&:hover': {
-                bgcolor: isMuted ? 'warning.dark' : 'success.dark',
-                transform: 'scale(1.05)',
-              },
-              '&:active': {
-                transform: 'scale(0.95)',
-              },
-              transition: 'all 0.2s ease',
-            }}
-          >
-            {isMuted ? <MicOffIcon sx={{ fontSize: 50 }} /> : <MicIcon sx={{ fontSize: 50 }} />}
-          </IconButton>
-        )}
+          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+            {/* Microphone Mute/Unmute Button */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+              <IconButton
+                onClick={toggleMute}
+                sx={{
+                  width: 100,
+                  height: 100,
+                  bgcolor: isMuted ? 'warning.main' : 'success.main',
+                  color: 'white',
+                  boxShadow: 3,
+                  '&:hover': {
+                    bgcolor: isMuted ? 'warning.dark' : 'success.dark',
+                    transform: 'scale(1.05)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.95)',
+                  },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {isMuted ? <MicOffIcon sx={{ fontSize: 50 }} /> : <MicIcon sx={{ fontSize: 50 }} />}
+              </IconButton>
+              <Chip
+                label={isMuted ? 'Mic Off' : 'Mic On'}
+                color={isMuted ? 'warning' : 'success'}
+                size="small"
+                sx={{ fontWeight: 500 }}
+              />
+            </Box>
 
-        {/* Mute Status */}
-        {isRunning && (
-          <Chip
-            label={isMuted ? 'Muted' : 'Listening'}
-            color={isMuted ? 'warning' : 'success'}
-            sx={{
-              fontSize: '1rem',
-              fontWeight: 500,
-              px: 2,
-              py: 2.5,
-            }}
-          />
+            {/* Speaker Mute/Unmute Button */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+              <IconButton
+                onClick={toggleSpeakerMute}
+                sx={{
+                  width: 100,
+                  height: 100,
+                  bgcolor: isSpeakerMuted ? 'warning.main' : 'info.main',
+                  color: 'white',
+                  boxShadow: 3,
+                  '&:hover': {
+                    bgcolor: isSpeakerMuted ? 'warning.dark' : 'info.dark',
+                    transform: 'scale(1.05)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.95)',
+                  },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {isSpeakerMuted ? <VolumeOffIcon sx={{ fontSize: 50 }} /> : <VolumeUpIcon sx={{ fontSize: 50 }} />}
+              </IconButton>
+              <Chip
+                label={isSpeakerMuted ? 'Speaker Off' : 'Speaker On'}
+                color={isSpeakerMuted ? 'warning' : 'info'}
+                size="small"
+                sx={{ fontWeight: 500 }}
+              />
+            </Box>
+          </Box>
         )}
 
         {/* Dual Audio Visualizer */}

@@ -157,6 +157,8 @@ class AudioRelayManager:
         self._lock = asyncio.Lock()
         # conversation_id -> {"desktop": WebSocket, "mobile": WebSocket}
         self._connections: Dict[str, Dict[str, WebSocket]] = {}
+        # WebRTC signaling connections: conversation_id -> {"desktop": WebSocket, "mobile": WebSocket}
+        self._signaling: Dict[str, Dict[str, WebSocket]] = {}
 
     async def register_desktop(self, conversation_id: str, websocket: WebSocket) -> None:
         async with self._lock:
@@ -211,6 +213,37 @@ class AudioRelayManager:
     def has_mobile(self, conversation_id: str) -> bool:
         """Check if mobile client is connected."""
         return conversation_id in self._connections and "mobile" in self._connections[conversation_id]
+
+    async def register_signaling_peer(self, conversation_id: str, peer_id: str, websocket: WebSocket) -> None:
+        """Register a WebRTC signaling peer (desktop or mobile)."""
+        async with self._lock:
+            if conversation_id not in self._signaling:
+                self._signaling[conversation_id] = {}
+            self._signaling[conversation_id][peer_id] = websocket
+
+    async def unregister_signaling_peer(self, conversation_id: str, peer_id: str) -> None:
+        """Unregister a WebRTC signaling peer."""
+        async with self._lock:
+            if conversation_id in self._signaling:
+                self._signaling[conversation_id].pop(peer_id, None)
+                if not self._signaling[conversation_id]:
+                    self._signaling.pop(conversation_id, None)
+
+    async def forward_signaling(self, conversation_id: str, target_peer: str, message: Dict[str, Any]) -> bool:
+        """Forward a WebRTC signaling message to the target peer."""
+        async with self._lock:
+            peers = self._signaling.get(conversation_id)
+            if not peers or target_peer not in peers:
+                logger.warning(f"[WebRTC] Target peer {target_peer} not connected for conversation {conversation_id}")
+                return False
+            target_ws = peers[target_peer]
+
+        try:
+            await target_ws.send_json(message)
+            return True
+        except Exception as e:
+            logger.error(f"[WebRTC] Failed to forward signaling to {target_peer}: {e}")
+            return False
 
 
 audio_relay_manager = AudioRelayManager()
@@ -463,6 +496,46 @@ async def mobile_audio_relay(websocket: WebSocket, conversation_id: str) -> None
         logger.info(f"[AudioRelay] Mobile disconnected for conversation {conversation_id}")
     finally:
         await audio_relay_manager.unregister(conversation_id, "mobile")
+
+
+@router.websocket("/webrtc-signal/{conversation_id}")
+async def webrtc_signaling(websocket: WebSocket, conversation_id: str) -> None:
+    """
+    WebRTC signaling endpoint for peer-to-peer audio between desktop and mobile.
+    Handles SDP exchange and ICE candidates.
+    """
+    conversation = conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        await websocket.close(code=4404, reason="Conversation not found")
+        return
+
+    await websocket.accept()
+
+    # Store this connection in a signaling manager
+    peer_id = None
+
+    try:
+        async for message in websocket.iter_text():
+            data = json.loads(message)
+            msg_type = data.get("type")
+
+            if msg_type == "register":
+                # Client registers as "desktop" or "mobile"
+                peer_id = data.get("peerId")  # "desktop" or "mobile"
+                await audio_relay_manager.register_signaling_peer(conversation_id, peer_id, websocket)
+                logger.info(f"[WebRTC] {peer_id} registered for signaling on conversation {conversation_id}")
+
+            elif msg_type in ["offer", "answer", "ice-candidate"]:
+                # Forward signaling messages to the other peer
+                target = "mobile" if peer_id == "desktop" else "desktop"
+                await audio_relay_manager.forward_signaling(conversation_id, target, data)
+                logger.debug(f"[WebRTC] Forwarded {msg_type} from {peer_id} to {target}")
+
+    except WebSocketDisconnect:
+        logger.info(f"[WebRTC] {peer_id} disconnected from signaling")
+    finally:
+        if peer_id:
+            await audio_relay_manager.unregister_signaling_peer(conversation_id, peer_id)
 
 
 @router.websocket("/conversations/{conversation_id}/stream")

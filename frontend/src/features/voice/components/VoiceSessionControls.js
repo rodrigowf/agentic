@@ -2,6 +2,8 @@ import React from 'react';
 import { Box, IconButton, Tooltip, Typography, Chip } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import AudioVisualizer from './AudioVisualizer';
@@ -13,9 +15,11 @@ import AudioVisualizer from './AudioVisualizer';
 export default function VoiceSessionControls({
   isRunning,
   isMuted,
+  isSpeakerMuted = false,
   onStart,
   onStop,
   onToggleMute,
+  onToggleSpeakerMute,
   disabled = false,
   stream = null,
   statusLabel = 'Idle',
@@ -124,7 +128,7 @@ export default function VoiceSessionControls({
           </Tooltip>
         )}
 
-        {/* Mute/Unmute Button */}
+        {/* Mute/Unmute Microphone Button */}
         {isRunning && (
           <Tooltip title={isMuted ? 'Unmute microphone' : 'Mute microphone'}>
             <span>
@@ -160,6 +164,47 @@ export default function VoiceSessionControls({
                 }}
               >
                 {isMuted ? <MicOffIcon sx={{ fontSize: 28 }} /> : <MicIcon sx={{ fontSize: 28 }} />}
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+
+        {/* Mute/Unmute Speaker Button */}
+        {isRunning && onToggleSpeakerMute && (
+          <Tooltip title={isSpeakerMuted ? 'Unmute speaker' : 'Mute speaker'}>
+            <span>
+              <IconButton
+                onClick={onToggleSpeakerMute}
+                data-tv-focusable="true"
+                sx={{
+                  width: 56,
+                  height: 56,
+                  bgcolor: isSpeakerMuted ? 'warning.main' : 'rgba(0, 0, 0, 0.1)',
+                  color: isSpeakerMuted ? 'white' : 'text.primary',
+                  border: '2px solid',
+                  borderColor: isSpeakerMuted ? 'warning.dark' : 'divider',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    bgcolor: isSpeakerMuted ? 'warning.dark' : 'rgba(0, 0, 0, 0.15)',
+                    transform: 'scale(1.05)',
+                  },
+                  '&:focus': {
+                    outline: '3px solid',
+                    outlineColor: isSpeakerMuted ? 'warning.light' : 'primary.main',
+                    outlineOffset: '4px',
+                  },
+                  '&[data-tv-focused="true"]': {
+                    outline: '4px solid',
+                    outlineColor: isSpeakerMuted ? 'warning.light' : 'primary.main',
+                    outlineOffset: '4px',
+                    transform: 'scale(1.1)',
+                    boxShadow: isSpeakerMuted
+                      ? '0 0 20px rgba(237, 108, 2, 0.6)'
+                      : '0 0 20px rgba(25, 118, 210, 0.6)',
+                  },
+                }}
+              >
+                {isSpeakerMuted ? <VolumeOffIcon sx={{ fontSize: 28 }} /> : <VolumeUpIcon sx={{ fontSize: 28 }} />}
               </IconButton>
             </span>
           </Tooltip>

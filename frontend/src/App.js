@@ -356,9 +356,13 @@ export default function App() {
             {/* Debug route */}
             <Route path="/debug-network" element={<DebugNetwork />} />
 
-            {/* Mobile Voice routes - full screen, no AppBar, no Container */}
+            {/* Mobile Voice routes - full screen, no AppBar, no Container (WebRTC enabled) */}
             <Route path="/mobile-voice" element={<MobileVoice />} />
             <Route path="/mobile-voice/:conversationId" element={<MobileVoice />} />
+
+            {/* Legacy WebRTC routes - redirect to main mobile-voice */}
+            <Route path="/mobile-voice-webrtc" element={<MobileVoice />} />
+            <Route path="/mobile-voice-webrtc/:conversationId" element={<MobileVoice />} />
 
             {/* Regular routes with AppBar and Container */}
             <Route

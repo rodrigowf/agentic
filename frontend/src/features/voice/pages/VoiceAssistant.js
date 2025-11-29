@@ -30,6 +30,7 @@ import {
   connectVoiceConversationStream,
 } from '../../../api';
 import { getHttpBase, getWsUrl } from '../../../utils/urlBuilder';
+import { WebRTCPeerConnection } from '../../../utils/webrtcHelper';
 
 const MAX_REPLAY_ITEMS = 50;
 const MAX_NESTED_HIGHLIGHTS = 25;
@@ -66,6 +67,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const [conversationError, setConversationError] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState(null);
@@ -87,11 +89,13 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const streamRef = useRef(null);
   const micStreamRef = useRef(null);
   const mobileAudioWsRef = useRef(null);
+  const mobileWebRTCPeerRef = useRef(null); // WebRTC peer connection to mobile (better quality than WebSocket)
   const audioContextRef = useRef(null);
   const mobileAudioSourceRef = useRef(null);
   const mixerDestinationRef = useRef(null);
   const desktopSourceRef = useRef(null);
   const mobileGainNodeRef = useRef(null);
+  const desktopGainNodeRef = useRef(null); // For desktop speaker mute control
   const eventsMapRef = useRef(new Map());
   const responseStreamRef = useRef(null); // Store OpenAI response audio stream
   const responseRelayRef = useRef(null); // Store relay processor for cleanup
@@ -752,21 +756,24 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       pc.ontrack = (evt) => {
         if (audioRef.current) {
           audioRef.current.srcObject = evt.streams[0];
+          console.log('[Desktop] OpenAI response will play on desktop <audio> element');
         }
         // Store response stream for mobile relay
         responseStreamRef.current = evt.streams[0];
-        console.log('[MobileAudio] OpenAI response stream received');
+        console.log('[MobileAudio] OpenAI response stream received, will relay to mobile if connected');
 
         // If mobile is already connected, set up relay now
         if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN && !responseRelayRef.current) {
           try {
             const relayContext = new (window.AudioContext || window.webkitAudioContext)();
             const relaySource = relayContext.createMediaStreamSource(evt.streams[0]);
-            const relayProcessor = relayContext.createScriptProcessor(4096, 1, 1);
+            // QUALITY-FOCUSED: Use 16384 samples = ~340ms at 48kHz (matches mobile)
+            const relayProcessor = relayContext.createScriptProcessor(16384, 1, 1);
 
             relaySource.connect(relayProcessor);
             relayProcessor.connect(relayContext.destination);
 
+            let relayChunkCount = 0;
             relayProcessor.onaudioprocess = (audioEvent) => {
               if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
                 const inputData = audioEvent.inputBuffer.getChannelData(0);
@@ -776,6 +783,12 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                   pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                 }
                 mobileAudioWsRef.current.send(pcmData.buffer);
+
+                // Log every 10th chunk to avoid spam
+                relayChunkCount++;
+                if (relayChunkCount % 10 === 0) {
+                  console.log(`[OpenAI→Mobile] Relaying response chunk #${relayChunkCount}, ${pcmData.length} samples`);
+                }
               }
             };
 
@@ -919,7 +932,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           try {
             const relayContext = new (window.AudioContext || window.webkitAudioContext)();
             const relaySource = relayContext.createMediaStreamSource(responseStreamRef.current);
-            const relayProcessor = relayContext.createScriptProcessor(4096, 1, 1);
+            // QUALITY-FOCUSED: Use 16384 samples = ~340ms at 48kHz (matches mobile)
+            const relayProcessor = relayContext.createScriptProcessor(16384, 1, 1);
 
             relaySource.connect(relayProcessor);
             relayProcessor.connect(relayContext.destination);
@@ -950,14 +964,25 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         }
       };
 
+      let mobileAudioChunkCount = 0;
+      let mobileAudioLastVoiceLog = 0;
+
       mobileAudioWs.onmessage = async (event) => {
         try {
+          mobileAudioChunkCount++;
+          const now = Date.now();
+
           // Receive raw PCM audio data from mobile
           const rawData = event.data;
 
           if (!(rawData instanceof ArrayBuffer)) {
             console.warn('[MobileAudio] Received non-ArrayBuffer data:', typeof rawData);
             return;
+          }
+
+          // Log every 50 chunks to show connection is alive
+          if (mobileAudioChunkCount % 50 === 0) {
+            console.log(`[Desktop←MobileMic] Received chunk #${mobileAudioChunkCount}, size: ${rawData.byteLength} bytes`);
           }
 
           const audioContext = audioContextRef.current;
@@ -972,10 +997,16 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           const audioBuffer = audioContext.createBuffer(1, pcmData.length, sampleRate);
           const channelData = audioBuffer.getChannelData(0);
 
-          // Convert 16-bit PCM to Float32
+          // Convert 16-bit PCM to Float32 and calculate RMS
+          let sumSquares = 0;
           for (let i = 0; i < pcmData.length; i++) {
-            channelData[i] = pcmData[i] / (pcmData[i] < 0 ? 0x8000 : 0x7FFF);
+            const floatVal = pcmData[i] / (pcmData[i] < 0 ? 0x8000 : 0x7FFF);
+            channelData[i] = floatVal;
+            sumSquares += floatVal * floatVal;
           }
+
+          const rms = Math.sqrt(sumSquares / pcmData.length);
+          const dbLevel = 20 * Math.log10(rms + 1e-10);
 
           // Create a buffer source and play it through the mobile gain node
           const source = audioContext.createBufferSource();
@@ -983,7 +1014,16 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           source.connect(mobileGainNodeRef.current); // Mix with desktop mic
           source.start(0);
 
-          console.log('[MobileAudio] Playing mobile PCM chunk:', pcmData.length, 'samples');
+          // Check if mixer is connected to anything
+          const mixerStream = mixerDestinationRef.current?.stream;
+          const mixerTracks = mixerStream?.getTracks().length || 0;
+
+          // Log with timestamp when voice detected
+          if (dbLevel > -40 && (now - mobileAudioLastVoiceLog) > 500) {
+            const timestamp = audioContext.currentTime.toFixed(3);
+            console.log(`[Desktop←MobileMic] VOICE! @${timestamp}s - ${dbLevel.toFixed(1)} dB, ${pcmData.length} samples, gain: ${mobileGainNodeRef.current.gain.value}, mixer tracks: ${mixerTracks}`);
+            mobileAudioLastVoiceLog = now;
+          }
 
           mobileAudioSourceRef.current = source;
         } catch (err) {
@@ -1309,10 +1349,37 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       // Control desktop audio via gain node (better than disabling tracks)
       if (desktopSourceRef.current && desktopSourceRef.current.gain) {
         desktopSourceRef.current.gain.gain.value = newMutedState ? 0.0 : 1.0;
+        console.log('[DesktopMute] Desktop mic gain set to:', newMutedState ? 0.0 : 1.0);
+      }
+
+      // Log mobile gain to verify it's not affected
+      if (mobileGainNodeRef.current) {
+        console.log('[DesktopMute] Mobile gain still at:', mobileGainNodeRef.current.gain.value);
+      }
+
+      // Log mixer state
+      if (mixerDestinationRef.current) {
+        console.log('[DesktopMute] Mixer still active, stream tracks:', mixerDestinationRef.current.stream.getTracks().length);
       }
 
       // Log the mute/unmute event
       void recordEvent('controller', newMutedState ? 'desktop_microphone_muted' : 'desktop_microphone_unmuted', {});
+
+      return newMutedState;
+    });
+  };
+
+  const toggleSpeakerMute = () => {
+    setIsSpeakerMuted((prevMuted) => {
+      const newMutedState = !prevMuted;
+
+      // Control desktop speaker via gain node
+      if (desktopGainNodeRef.current) {
+        desktopGainNodeRef.current.gain.value = newMutedState ? 0.0 : 1.0;
+      }
+
+      // Log the mute/unmute event
+      void recordEvent('controller', newMutedState ? 'desktop_speaker_muted' : 'desktop_speaker_unmuted', {});
 
       return newMutedState;
     });
@@ -1555,9 +1622,11 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
             <VoiceSessionControls
               isRunning={isRunning}
               isMuted={isMuted}
+              isSpeakerMuted={isSpeakerMuted}
               onStart={startSession}
               onStop={stopSession}
               onToggleMute={toggleMute}
+              onToggleSpeakerMute={toggleSpeakerMute}
               disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
               stream={micStreamRef.current}
               statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active elsewhere' : 'Idle'}

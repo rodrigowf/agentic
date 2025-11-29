@@ -24,6 +24,7 @@ from starlette.websockets import WebSocketState, WebSocketDisconnect  # Import W
 from datetime import datetime  # Import datetime
 import anthropic  # Import Anthropic client
 from api.claude_code_controller import ClaudeCodeSession  # Import Claude Code controller
+from api.webrtc_signaling import handle_webrtc_signaling  # Import WebRTC signaling handler
 
 load_dotenv()
 
@@ -570,3 +571,15 @@ async def run_ws(websocket: WebSocket, agent_name: str = Path(...)):
                 logger.warning(f"Error closing WebSocket (might be already closed): {re}")
         except Exception as e:
             logger.warning(f"Unexpected error closing WebSocket: {e}")
+
+@app.websocket("/api/webrtc-signal/{conversation_id}")
+async def webrtc_signaling_ws(websocket: WebSocket, conversation_id: str):
+    """
+    WebRTC signaling WebSocket endpoint for peer-to-peer audio connections
+
+    Handles:
+    - Peer registration
+    - SDP offer/answer exchange
+    - ICE candidate exchange
+    """
+    await handle_webrtc_signaling(websocket, conversation_id)
