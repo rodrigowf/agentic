@@ -790,10 +790,37 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
         // If mobile WebRTC peer exists, add this track dynamically
         if (mobileWebRTCPeerRef.current && responseStreamRef.current) {
+          console.log('[MobileWebRTC] Mobile peer exists, adding OpenAI response track dynamically');
+          const tracksBefore = mobileWebRTCPeerRef.current.getSenders().length;
+
           for (const track of responseStreamRef.current.getAudioTracks()) {
             mobileWebRTCPeerRef.current.addTrack(track, responseStreamRef.current);
           }
-          console.log('[MobileWebRTC] Added OpenAI response track to existing peer connection');
+
+          const tracksAfter = mobileWebRTCPeerRef.current.getSenders().length;
+          console.log('[MobileWebRTC] Added OpenAI response track. Senders before:', tracksBefore, 'after:', tracksAfter);
+
+          // IMPORTANT: Renegotiate to send the new track to mobile
+          console.log('[MobileWebRTC] Starting renegotiation...');
+          mobileWebRTCPeerRef.current.createOffer().then((offer) => {
+            console.log('[MobileWebRTC] Renegotiation offer created');
+            return mobileWebRTCPeerRef.current.setLocalDescription(offer);
+          }).then(() => {
+            console.log('[MobileWebRTC] Local description set for renegotiation');
+            if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
+              mobileAudioWsRef.current.send(JSON.stringify({
+                type: 'offer',
+                sdp: mobileWebRTCPeerRef.current.localDescription.sdp
+              }));
+              console.log('[MobileWebRTC] Sent renegotiation offer with OpenAI response track to mobile');
+            } else {
+              console.error('[MobileWebRTC] Cannot send renegotiation offer - signaling WebSocket not open, state:', mobileAudioWsRef.current?.readyState);
+            }
+          }).catch((err) => {
+            console.error('[MobileWebRTC] Failed to renegotiate after adding track:', err);
+          });
+        } else {
+          console.log('[MobileWebRTC] NOT adding track dynamically - mobile peer exists:', !!mobileWebRTCPeerRef.current, 'response stream exists:', !!responseStreamRef.current);
         }
       };
 
@@ -934,8 +961,13 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
           // Handle peer_joined notification
           if (msg.type === 'peer_joined') {
-            console.log('[MobileWebRTC] Mobile peer joined! Creating offer now...');
-            setupMobileWebRTC();
+            // Only setup peer if it doesn't already exist
+            if (!mobileWebRTCPeerRef.current) {
+              console.log('[MobileWebRTC] Mobile peer joined! Creating offer now...');
+              setupMobileWebRTC();
+            } else {
+              console.log('[MobileWebRTC] Mobile peer joined but connection already exists, ignoring');
+            }
             return;
           }
 
@@ -1297,9 +1329,14 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
     // Also send OpenAI response audio to mobile when available
     if (responseStreamRef.current) {
-      for (const track of responseStreamRef.current.getAudioTracks()) {
+      const openAITracks = responseStreamRef.current.getAudioTracks();
+      console.log('[MobileWebRTC Setup] Found OpenAI response stream with', openAITracks.length, 'audio track(s)');
+      for (const track of openAITracks) {
         pc.addTrack(track, responseStreamRef.current);
+        console.log('[MobileWebRTC Setup] Added OpenAI track - id:', track.id, 'enabled:', track.enabled, 'muted:', track.muted, 'readyState:', track.readyState);
       }
+    } else {
+      console.log('[MobileWebRTC Setup] No OpenAI response stream available yet');
     }
 
     // Create and send offer to mobile
