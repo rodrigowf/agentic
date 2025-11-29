@@ -23,6 +23,7 @@ import NestedAgentInsights from '../components/NestedAgentInsights';
 import ClaudeCodeInsights from '../components/ClaudeCodeInsights';
 import VoiceSessionControls from '../components/VoiceSessionControls';
 import VoiceConfigEditor from '../components/VoiceConfigEditor';
+import useTVNavigation from '../hooks/useTVNavigation';
 import {
   appendVoiceConversationEvent,
   getVoiceConversation,
@@ -102,6 +103,11 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const lastVoiceToolCallRef = useRef({ name: null, timestamp: 0 });
   const hasSpokenMidRef = useRef(false);
   const runCompletedRef = useRef(false);
+
+  // TV remote navigation support
+  const { containerRef: tvNavContainerRef } = useTVNavigation({
+    enabled: false, // Only activates when TV-focusable elements are focused
+  });
 
   const formatTimestamp = useCallback((value) => {
     if (!value) return '';
@@ -1371,7 +1377,11 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
   if (nested) {
     return (
-      <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+      <Box
+        ref={tvNavContainerRef}
+        tabIndex={-1}
+        sx={{ display: 'flex', height: '100%', overflow: 'hidden', outline: 'none' }}
+      >
         {/* Center Panel - Nested Team Console */}
         <Box
           sx={{
@@ -1385,9 +1395,63 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         >
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={nestedViewTab} onChange={(_, newValue) => setNestedViewTab(newValue)} sx={{ px: 2, pt: 2 }}>
-              <Tab label="Team Insights" />
-              <Tab label="Team Console" />
-              <Tab label="Claude Code" />
+              <Tab
+                label="Team Insights"
+                data-tv-focusable="true"
+                sx={{
+                  '&:focus': {
+                    outline: '3px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: '4px',
+                  },
+                  '&[data-tv-focused="true"]': {
+                    outline: '4px solid',
+                    outlineColor: 'primary.light',
+                    outlineOffset: '4px',
+                    bgcolor: 'rgba(25, 118, 210, 0.08)',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 0 20px rgba(25, 118, 210, 0.4)',
+                  },
+                }}
+              />
+              <Tab
+                label="Team Console"
+                data-tv-focusable="true"
+                sx={{
+                  '&:focus': {
+                    outline: '3px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: '4px',
+                  },
+                  '&[data-tv-focused="true"]': {
+                    outline: '4px solid',
+                    outlineColor: 'primary.light',
+                    outlineOffset: '4px',
+                    bgcolor: 'rgba(25, 118, 210, 0.08)',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 0 20px rgba(25, 118, 210, 0.4)',
+                  },
+                }}
+              />
+              <Tab
+                label="Claude Code"
+                data-tv-focusable="true"
+                sx={{
+                  '&:focus': {
+                    outline: '3px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: '4px',
+                  },
+                  '&[data-tv-focused="true"]': {
+                    outline: '4px solid',
+                    outlineColor: 'primary.light',
+                    outlineOffset: '4px',
+                    bgcolor: 'rgba(25, 118, 210, 0.08)',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 0 20px rgba(25, 118, 210, 0.4)',
+                  },
+                }}
+              />
             </Tabs>
           </Box>
 
@@ -1467,6 +1531,21 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                 variant="outlined"
                 onClick={() => setConfigEditorOpen(true)}
                 disabled={isRunning}
+                data-tv-focusable="true"
+                sx={{
+                  '&:focus': {
+                    outline: '3px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: '4px',
+                  },
+                  '&[data-tv-focused="true"]': {
+                    outline: '4px solid',
+                    outlineColor: 'primary.light',
+                    outlineOffset: '4px',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 0 15px rgba(25, 118, 210, 0.5)',
+                  },
+                }}
               >
                 Configure
               </Button>
@@ -1536,6 +1615,21 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                   onClick={sendText}
                   disabled={!isRunning || !transcript.trim()}
                   size="small"
+                  data-tv-focusable="true"
+                  sx={{
+                    '&:focus': {
+                      outline: '3px solid',
+                      outlineColor: 'success.light',
+                      outlineOffset: '4px',
+                    },
+                    '&[data-tv-focused="true"]': {
+                      outline: '4px solid',
+                      outlineColor: 'success.light',
+                      outlineOffset: '4px',
+                      transform: 'scale(1.08)',
+                      boxShadow: '0 0 20px rgba(46, 125, 50, 0.6)',
+                    },
+                  }}
                 >
                   Send to Voice
                 </Button>
@@ -1545,6 +1639,21 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                   onClick={sendToNested}
                   disabled={!isRunning || !transcript.trim() || !nestedWsRef.current}
                   size="small"
+                  data-tv-focusable="true"
+                  sx={{
+                    '&:focus': {
+                      outline: '3px solid',
+                      outlineColor: 'secondary.light',
+                      outlineOffset: '4px',
+                    },
+                    '&[data-tv-focused="true"]': {
+                      outline: '4px solid',
+                      outlineColor: 'secondary.light',
+                      outlineOffset: '4px',
+                      transform: 'scale(1.08)',
+                      boxShadow: '0 0 20px rgba(156, 39, 176, 0.6)',
+                    },
+                  }}
                 >
                   Send to Nested
                 </Button>

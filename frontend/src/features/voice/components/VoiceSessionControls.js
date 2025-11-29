@@ -21,7 +21,7 @@ export default function VoiceSessionControls({
   statusLabel = 'Idle',
   statusColor = 'default',
   ...props
-}) {  
+}) {
   return (
     <Box
       sx={{
@@ -46,6 +46,7 @@ export default function VoiceSessionControls({
               <IconButton
                 onClick={onStart}
                 disabled={disabled}
+                data-tv-focusable="true"
                 sx={{
                   width: 56,
                   height: 56,
@@ -55,6 +56,18 @@ export default function VoiceSessionControls({
                   '&:hover': {
                     bgcolor: 'primary.dark',
                     transform: 'scale(1.05)',
+                  },
+                  '&:focus': {
+                    outline: '3px solid',
+                    outlineColor: 'primary.light',
+                    outlineOffset: '4px',
+                  },
+                  '&[data-tv-focused="true"]': {
+                    outline: '4px solid',
+                    outlineColor: 'primary.light',
+                    outlineOffset: '4px',
+                    transform: 'scale(1.1)',
+                    boxShadow: '0 0 20px rgba(25, 118, 210, 0.6)',
                   },
                   '&:disabled': {
                     bgcolor: 'action.disabledBackground',
@@ -71,6 +84,7 @@ export default function VoiceSessionControls({
               <IconButton
                 onClick={onStop}
                 disabled={disabled && !isRunning}
+                data-tv-focusable="true"
                 sx={{
                   width: 56,
                   height: 56,
@@ -90,6 +104,18 @@ export default function VoiceSessionControls({
                     bgcolor: 'error.dark',
                     transform: 'scale(1.05)',
                   },
+                  '&:focus': {
+                    outline: '3px solid',
+                    outlineColor: 'error.light',
+                    outlineOffset: '4px',
+                  },
+                  '&[data-tv-focused="true"]': {
+                    outline: '4px solid',
+                    outlineColor: 'error.light',
+                    outlineOffset: '4px',
+                    transform: 'scale(1.1)',
+                    boxShadow: '0 0 20px rgba(244, 67, 54, 0.6)',
+                  },
                 }}
               >
                 <StopIcon sx={{ fontSize: 32 }} />
@@ -104,6 +130,7 @@ export default function VoiceSessionControls({
             <span>
               <IconButton
                 onClick={onToggleMute}
+                data-tv-focusable="true"
                 sx={{
                   width: 56,
                   height: 56,
@@ -115,6 +142,20 @@ export default function VoiceSessionControls({
                   '&:hover': {
                     bgcolor: isMuted ? 'warning.dark' : 'rgba(0, 0, 0, 0.15)',
                     transform: 'scale(1.05)',
+                  },
+                  '&:focus': {
+                    outline: '3px solid',
+                    outlineColor: isMuted ? 'warning.light' : 'primary.main',
+                    outlineOffset: '4px',
+                  },
+                  '&[data-tv-focused="true"]': {
+                    outline: '4px solid',
+                    outlineColor: isMuted ? 'warning.light' : 'primary.main',
+                    outlineOffset: '4px',
+                    transform: 'scale(1.1)',
+                    boxShadow: isMuted
+                      ? '0 0 20px rgba(237, 108, 2, 0.6)'
+                      : '0 0 20px rgba(25, 118, 210, 0.6)',
                   },
                 }}
               >
