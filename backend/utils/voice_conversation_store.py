@@ -12,7 +12,7 @@ _CONNECTION_ARGS = dict(check_same_thread=False, isolation_level=None)
 
 DEFAULT_DB_PATH = os.getenv(
     "VOICE_CONVERSATION_DB_PATH",
-    os.path.join(os.path.dirname(__file__), "voice_conversations.db"),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "voice_conversations.db"),
 )
 
 

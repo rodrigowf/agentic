@@ -90,7 +90,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const streamRef = useRef(null);
   const micStreamRef = useRef(null);
   const mobileAudioWsRef = useRef(null);
-  const mobileWebRTCPeerRef = useRef(null); // WebRTC peer connection to mobile (better quality than WebSocket)
+  const mobileWebRTCPeerRef = useRef(null); // WebRTC peer connection to mobile
   const audioContextRef = useRef(null);
   const mobileAudioSourceRef = useRef(null);
   const mixerDestinationRef = useRef(null);
@@ -99,7 +99,6 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const desktopGainNodeRef = useRef(null); // For desktop speaker mute control
   const eventsMapRef = useRef(new Map());
   const responseStreamRef = useRef(null); // Store OpenAI response audio stream
-  const responseRelayRef = useRef(null); // Store relay processor for cleanup
   const replayQueueRef = useRef([]);
   const nestedScrollRef = useRef(null);
 
@@ -787,69 +786,14 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         }
         // Store response stream for mobile relay
         responseStreamRef.current = evt.streams[0];
-        console.log('[MobileAudio] OpenAI response stream received, will relay to mobile if connected');
+        console.log('[MobileAudio] OpenAI response stream received, will be sent via WebRTC if mobile connected');
 
-        // If mobile is already connected, set up relay now
-        if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
-          try {
-            // IMPORTANT: Clean up any existing relay first to prevent duplicates!
-            if (responseRelayRef.current) {
-              console.warn('[MobileAudio] Cleaning up existing relay before creating new one (duplicate ontrack event)');
-              if (responseRelayRef.current.processor) {
-                responseRelayRef.current.processor.disconnect();
-              }
-              if (responseRelayRef.current.context) {
-                responseRelayRef.current.context.close();
-              }
-              responseRelayRef.current = null;
-            }
-
-            const relayContext = new (window.AudioContext || window.webkitAudioContext)();
-            const relaySource = relayContext.createMediaStreamSource(evt.streams[0]);
-            // Use 4096 samples = ~85ms at 48kHz for continuous voice relay
-            // Smaller buffers = smoother audio, less latency, prevents false pauses
-            const relayProcessor = relayContext.createScriptProcessor(4096, 1, 1);
-
-            // IMPORTANT: ScriptProcessor must be connected to destination to fire onaudioprocess
-            // Use a silent gain node to prevent audio output (avoid feedback)
-            const silentGain = relayContext.createGain();
-            silentGain.gain.value = 0; // Mute output (no feedback)
-
-            relaySource.connect(relayProcessor);
-            relayProcessor.connect(silentGain);
-            silentGain.connect(relayContext.destination);
-
-            let relayChunkCount = 0;
-            relayProcessor.onaudioprocess = (audioEvent) => {
-              relayChunkCount++;
-
-              // Debug: Log every 50 chunks regardless of sending
-              if (relayChunkCount % 50 === 0) {
-                const wsState = mobileAudioWsRef.current?.readyState;
-                console.log(`[OpenAI→Mobile] Relay processor running (ontrack), chunk #${relayChunkCount}, WS state: ${wsState}`);
-              }
-
-              if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
-                const inputData = audioEvent.inputBuffer.getChannelData(0);
-                const pcmData = new Int16Array(inputData.length);
-                for (let i = 0; i < inputData.length; i++) {
-                  const s = Math.max(-1, Math.min(1, inputData[i]));
-                  pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                }
-                mobileAudioWsRef.current.send(pcmData.buffer);
-
-                // Log every 50th chunk when actually sending
-                if (relayChunkCount % 50 === 0) {
-                  console.log(`[OpenAI→Mobile] Sent chunk #${relayChunkCount}, ${pcmData.length} samples to mobile`);
-                }
-              }
-            };
-
-            responseRelayRef.current = { processor: relayProcessor, context: relayContext };
-            console.log('[MobileAudio] Started relaying OpenAI response to mobile (from pc.ontrack)');
-          } catch (err) {
-            console.error('[MobileAudio] Failed to set up response relay:', err);
+        // If mobile WebRTC peer exists, add this track dynamically
+        if (mobileWebRTCPeerRef.current && responseStreamRef.current) {
+          for (const track of responseStreamRef.current.getAudioTracks()) {
+            mobileWebRTCPeerRef.current.addTrack(track, responseStreamRef.current);
           }
+          console.log('[MobileWebRTC] Added OpenAI response track to existing peer connection');
         }
       };
 
@@ -971,182 +915,65 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         void recordEvent('claude_code', 'system', { message: 'Claude Code WebSocket closed', code: closeEvent?.code, reason: closeEvent?.reason });
       };
 
-      // Open mobile audio relay WebSocket
-      const mobileAudioUrl = getWsUrl(`/realtime/audio-relay/${conversationId}/desktop`);
-      const mobileAudioWs = new WebSocket(mobileAudioUrl);
-      mobileAudioWs.binaryType = 'arraybuffer'; // Receive binary data as ArrayBuffer
-      mobileAudioWsRef.current = mobileAudioWs;
+      // Open WebRTC signaling WebSocket for mobile-desktop audio
+      const mobileSignalingUrl = getWsUrl(`/realtime/webrtc-signal/${conversationId}/desktop`);
+      const mobileSignalingWs = new WebSocket(mobileSignalingUrl);
+      mobileAudioWsRef.current = mobileSignalingWs;
 
-      let mobileAudioChunkCount = 0;
-      let mobileAudioLastVoiceLog = 0;
-      let nextMobileAudioTime = 0; // Track next scheduled audio time for sequential playback
-
-      mobileAudioWs.onopen = () => {
-        void recordEvent('controller', 'mobile_audio_relay', { message: 'Mobile audio relay connected' });
-
-        // Initialize audio timeline to current time when connection opens
-        if (audioContextRef.current) {
-          nextMobileAudioTime = audioContextRef.current.currentTime;
-          console.log('[MobileAudio] Audio timeline initialized at', nextMobileAudioTime.toFixed(3), 's');
-        }
-
-        // Set up OpenAI response audio relay to mobile
-        if (responseStreamRef.current) {
-          try {
-            // IMPORTANT: Clean up any existing relay first to prevent duplicates!
-            if (responseRelayRef.current) {
-              console.warn('[MobileAudio] Cleaning up existing relay before creating new one (delayed setup)');
-              if (responseRelayRef.current.processor) {
-                responseRelayRef.current.processor.disconnect();
-              }
-              if (responseRelayRef.current.context) {
-                responseRelayRef.current.context.close();
-              }
-              responseRelayRef.current = null;
-            }
-
-            const relayContext = new (window.AudioContext || window.webkitAudioContext)();
-            const relaySource = relayContext.createMediaStreamSource(responseStreamRef.current);
-            // Use 4096 samples = ~85ms at 48kHz for continuous voice relay
-            // Smaller buffers = smoother audio, less latency, prevents false pauses
-            const relayProcessor = relayContext.createScriptProcessor(4096, 1, 1);
-
-            // IMPORTANT: ScriptProcessor must be connected to destination to fire onaudioprocess
-            // Use a silent gain node to prevent audio output (avoid feedback)
-            const silentGain = relayContext.createGain();
-            silentGain.gain.value = 0; // Mute output (no feedback)
-
-            relaySource.connect(relayProcessor);
-            relayProcessor.connect(silentGain);
-            silentGain.connect(relayContext.destination);
-
-            let delayedRelayChunkCount = 0;
-            relayProcessor.onaudioprocess = (audioEvent) => {
-              delayedRelayChunkCount++;
-
-              // Debug: Log every 50 chunks regardless of sending
-              if (delayedRelayChunkCount % 50 === 0) {
-                const wsState = mobileAudioWsRef.current?.readyState;
-                console.log(`[OpenAI→Mobile] Relay processor running, chunk #${delayedRelayChunkCount}, WS state: ${wsState}`);
-              }
-
-              if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
-                const inputData = audioEvent.inputBuffer.getChannelData(0);
-
-                // Convert Float32Array to Int16Array PCM
-                const pcmData = new Int16Array(inputData.length);
-                for (let i = 0; i < inputData.length; i++) {
-                  const s = Math.max(-1, Math.min(1, inputData[i]));
-                  pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                }
-
-                // Send to mobile
-                mobileAudioWsRef.current.send(pcmData.buffer);
-
-                // Log every 50th chunk when actually sending
-                if (delayedRelayChunkCount % 50 === 0) {
-                  console.log(`[OpenAI→Mobile] Sent chunk #${delayedRelayChunkCount} to mobile`);
-                }
-              }
-            };
-
-            responseRelayRef.current = { processor: relayProcessor, context: relayContext };
-            console.log('[MobileAudio] Started relaying OpenAI response to mobile');
-          } catch (err) {
-            console.error('[MobileAudio] Failed to set up response relay:', err);
-          }
-        } else {
-          console.log('[MobileAudio] OpenAI response stream not yet available, will relay when it arrives');
-        }
+      // Use signaling over WS to establish WebRTC with mobile
+      mobileSignalingWs.onopen = () => {
+        console.log('[MobileWebRTC] Desktop signaling connected');
+        console.log('[MobileWebRTC] Waiting for mobile peer to join before creating offer...');
+        void recordEvent('controller', 'mobile_signaling_connected', { message: 'Desktop WebRTC signaling connected' });
+        // Don't call setupMobileWebRTC() yet - wait for peer_joined message
       };
 
-      mobileAudioWs.onmessage = async (event) => {
+      mobileSignalingWs.onmessage = (event) => {
         try {
-          mobileAudioChunkCount++;
-          const now = Date.now();
+          const msg = JSON.parse(event.data);
 
-          // Receive raw PCM audio data from mobile
-          const rawData = event.data;
-
-          if (!(rawData instanceof ArrayBuffer)) {
-            console.warn('[MobileAudio] Received non-ArrayBuffer data:', typeof rawData);
+          // Handle peer_joined notification
+          if (msg.type === 'peer_joined') {
+            console.log('[MobileWebRTC] Mobile peer joined! Creating offer now...');
+            setupMobileWebRTC();
             return;
           }
 
-          // Log every 200 chunks to show connection is alive (4x more chunks due to smaller buffer)
-          if (mobileAudioChunkCount % 200 === 0) {
-            console.log(`[Desktop←MobileMic] Received chunk #${mobileAudioChunkCount}, size: ${rawData.byteLength} bytes`);
-          }
-
-          const audioContext = audioContextRef.current;
-          if (!audioContext || !mobileGainNodeRef.current) {
-            console.error('[MobileAudio] Audio context not initialized');
+          const mpc = mobileWebRTCPeerRef.current;
+          if (!mpc) {
+            console.warn('[MobileWebRTC] Received signaling message but peer not ready', msg.type);
             return;
           }
 
-          // Convert Int16Array PCM to Float32Array
-          const pcmData = new Int16Array(rawData);
-          const sampleRate = audioContext.sampleRate; // Use desktop's sample rate
-          const audioBuffer = audioContext.createBuffer(1, pcmData.length, sampleRate);
-          const channelData = audioBuffer.getChannelData(0);
-
-          // Convert 16-bit PCM to Float32 and calculate RMS
-          let sumSquares = 0;
-          for (let i = 0; i < pcmData.length; i++) {
-            const floatVal = pcmData[i] / (pcmData[i] < 0 ? 0x8000 : 0x7FFF);
-            channelData[i] = floatVal;
-            sumSquares += floatVal * floatVal;
+          if (msg.type === 'answer' && msg.sdp) {
+            console.log('[MobileWebRTC] Received answer from mobile, setting remote description');
+            mpc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }))
+              .then(() => console.log('[MobileWebRTC] Remote description set successfully'))
+              .catch(err => console.error('[MobileWebRTC] Failed to set remote description:', err));
+          } else if (msg.type === 'candidate' && msg.candidate) {
+            console.log('[MobileWebRTC] Received ICE candidate from mobile');
+            mpc.addIceCandidate(new RTCIceCandidate(msg.candidate))
+              .catch(err => console.error('[MobileWebRTC] Failed to add ICE candidate:', err));
+          } else {
+            console.warn('[MobileWebRTC] Unknown signaling message type:', msg.type);
           }
-
-          const rms = Math.sqrt(sumSquares / pcmData.length);
-          const dbLevel = 20 * Math.log10(rms + 1e-10);
-
-          // Schedule audio to play sequentially (prevent overlap/crackling)
-          const currentTime = audioContext.currentTime;
-          const bufferDuration = audioBuffer.duration;
-
-          // If we're behind, catch up to current time
-          if (nextMobileAudioTime < currentTime) {
-            nextMobileAudioTime = currentTime;
-          }
-
-          // Create a buffer source and schedule it
-          const source = audioContext.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(mobileGainNodeRef.current); // Mix with desktop mic
-          source.start(nextMobileAudioTime); // Scheduled playback (not immediate!)
-
-          // Update next audio time for sequential playback
-          nextMobileAudioTime += bufferDuration;
-
-          // Check if mixer is connected to anything
-          const mixerStream = mixerDestinationRef.current?.stream;
-          const mixerTracks = mixerStream?.getTracks().length || 0;
-
-          // Log with timestamp when voice detected
-          if (dbLevel > -40 && (now - mobileAudioLastVoiceLog) > 500) {
-            console.log(`[Desktop←MobileMic] VOICE! Scheduled at ${nextMobileAudioTime.toFixed(3)}s - ${dbLevel.toFixed(1)} dB, ${pcmData.length} samples, gain: ${mobileGainNodeRef.current.gain.value}, mixer tracks: ${mixerTracks}`);
-            mobileAudioLastVoiceLog = now;
-          }
-
-          mobileAudioSourceRef.current = source;
         } catch (err) {
-          console.error('[MobileAudio] Failed to process mobile audio:', err);
+          console.error('[MobileWebRTC] Failed to parse signaling message:', err);
         }
       };
 
-      mobileAudioWs.onerror = (errEvent) => {
-        console.error('[MobileAudio] WebSocket error:', errEvent);
-        void recordEvent('controller', 'mobile_audio_relay_error', { message: 'Mobile audio relay error' });
+      mobileSignalingWs.onerror = (errEvent) => {
+        console.error('[MobileWebRTC] Signaling error:', errEvent);
+        void recordEvent('controller', 'mobile_signaling_error', { message: 'Desktop WebRTC signaling error' });
       };
 
-      mobileAudioWs.onclose = () => {
-        void recordEvent('controller', 'mobile_audio_relay', { message: 'Mobile audio relay closed' });
+      mobileSignalingWs.onclose = () => {
+        console.log('[MobileWebRTC] Signaling closed');
+        void recordEvent('controller', 'mobile_signaling_closed', { message: 'Desktop WebRTC signaling closed' });
       };
 
       // Do NOT auto-start a run; wait for explicit user_message or Run action
-      setupNestedWebSocketHandlers(ws);
-
+  setupNestedWebSocketHandlers(ws);
     } catch (err) {
       // Surface first 200 chars of SDP if available
       try {
@@ -1426,6 +1253,73 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     });
   };
 
+  // Establish a WebRTC peer connection to the mobile client using the signaling WS
+  const setupMobileWebRTC = () => {
+    console.log('[MobileWebRTC Setup] Starting, ws exists:', !!mobileAudioWsRef.current, ', peer exists:', !!mobileWebRTCPeerRef.current);
+    if (!mobileAudioWsRef.current) {
+      console.warn('[MobileWebRTC Setup] Aborted - no signaling WebSocket');
+      return;
+    }
+    if (mobileWebRTCPeerRef.current) {
+      console.warn('[MobileWebRTC Setup] Aborted - peer connection already exists');
+      return;
+    }
+    console.log('[MobileWebRTC Setup] Creating new RTCPeerConnection...');
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    mobileWebRTCPeerRef.current = pc;
+
+    // Forward ICE candidates via signaling WS
+    pc.onicecandidate = (e) => {
+      if (e.candidate && mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
+        mobileAudioWsRef.current.send(JSON.stringify({ type: 'candidate', candidate: e.candidate }));
+      }
+    };
+
+    // When mobile sends its microphone track, mix it into our desktop mixer
+    pc.ontrack = (evt) => {
+      const stream = evt.streams[0];
+      if (!audioContextRef.current || !mobileGainNodeRef.current) return;
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      source.connect(mobileGainNodeRef.current);
+      console.log('[MobileWebRTC] Received mobile audio track and mixed into desktop');
+    };
+
+    // Add our mixed desktop microphone to send to mobile
+    const mixedStream = mixerDestinationRef.current?.stream;
+    if (mixedStream) {
+      console.log('[MobileWebRTC Setup] Adding', mixedStream.getAudioTracks().length, 'desktop audio track(s)');
+      for (const track of mixedStream.getAudioTracks()) {
+        pc.addTrack(track, mixedStream);
+      }
+    } else {
+      console.warn('[MobileWebRTC Setup] No mixed stream available yet');
+    }
+
+    // Also send OpenAI response audio to mobile when available
+    if (responseStreamRef.current) {
+      for (const track of responseStreamRef.current.getAudioTracks()) {
+        pc.addTrack(track, responseStreamRef.current);
+      }
+    }
+
+    // Create and send offer to mobile
+    console.log('[MobileWebRTC Setup] Creating offer...');
+    pc.createOffer({ offerToReceiveAudio: true }).then((offer) => {
+      console.log('[MobileWebRTC Setup] Offer created, setting local description...');
+      return pc.setLocalDescription(offer).then(() => {
+        console.log('[MobileWebRTC Setup] Local description set, sending offer to mobile...');
+        if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
+          mobileAudioWsRef.current.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+          console.log('[MobileWebRTC Setup] Offer sent successfully!');
+        } else {
+          console.error('[MobileWebRTC Setup] Cannot send offer - signaling WS not open, state:', mobileAudioWsRef.current?.readyState);
+        }
+      });
+    }).catch((err) => {
+      console.error('[MobileWebRTC] Failed to create/send offer', err);
+    });
+  };
+
   const stopSession = () => {
     setIsRunning(false);
     setIsMuted(false);
@@ -1434,19 +1328,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     setSharedNestedWs(null);
     if (claudeCodeWsRef.current) { try { claudeCodeWsRef.current.close(); } catch {} claudeCodeWsRef.current = null; }
     setSharedClaudeCodeWs(null);
-    if (mobileAudioWsRef.current) { try { mobileAudioWsRef.current.close(); } catch {} mobileAudioWsRef.current = null; }
-
-    // Clean up relay processor to prevent duplicates on next session
-    if (responseRelayRef.current) {
-      console.log('[MobileAudio] Cleaning up relay processor on session stop');
-      if (responseRelayRef.current.processor) {
-        responseRelayRef.current.processor.disconnect();
-      }
-      if (responseRelayRef.current.context) {
-        responseRelayRef.current.context.close();
-      }
-      responseRelayRef.current = null;
-    }
+  if (mobileAudioWsRef.current) { try { mobileAudioWsRef.current.close(); } catch {} mobileAudioWsRef.current = null; }
+  if (mobileWebRTCPeerRef.current) { try { mobileWebRTCPeerRef.current.close(); } catch {} mobileWebRTCPeerRef.current = null; }
 
     hasSpokenMidRef.current = false;
     runCompletedRef.current = false;
@@ -1711,7 +1594,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
               <TextField
                 label="Message"
                 value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
+                               onChange={(e) => setTranscript(e.target.value)}
                 placeholder="Type a message to send to Voice or Nested"
                 multiline
                 minRows={2}

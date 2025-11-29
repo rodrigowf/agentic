@@ -52,8 +52,8 @@ function MobileVoice() {
   const audioRef = useRef(null);
   const micStreamRef = useRef(null);
   const streamRef = useRef(null);
-  const audioRelayWsRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
+  const signalingWsRef = useRef(null);
+  const mobilePeerRef = useRef(null);
   const eventsMapRef = useRef(new Map());
   const speakerGainNodeRef = useRef(null); // For speaker mute control
   const audioBufferQueueRef = useRef([]); // Buffer queue for smoother playback
@@ -65,6 +65,7 @@ function MobileVoice() {
   const audioContextRef = useRef(null);
   const analyzerRef = useRef(null);
   const dataArrayRef = useRef(null);
+  const mediaElementSourceRef = useRef(null); // Track if MediaElementSource already created
   const [micLevel, setMicLevel] = useState(0);
   const [speakerLevel, setSpeakerLevel] = useState(0);
   const animationFrameRef = useRef(null);
@@ -291,9 +292,14 @@ function MobileVoice() {
     const dataArray = new Uint8Array(bufferLength);
 
     try {
-      const source = audioContext.createMediaElementSource(audioRef.current);
-      source.connect(analyzer);
-      analyzer.connect(audioContext.destination);
+      // Only create MediaElementSource once per audio element lifetime
+      if (!mediaElementSourceRef.current) {
+        const source = audioContext.createMediaElementSource(audioRef.current);
+        source.connect(analyzer);
+        analyzer.connect(audioContext.destination);
+        mediaElementSourceRef.current = source;
+        console.log('[MobileVoice] Created MediaElementSource for speaker analysis');
+      }
 
       const updateSpeaker = () => {
         if (!analyzer) return;
@@ -307,13 +313,12 @@ function MobileVoice() {
       updateSpeaker();
 
       return () => {
-        if (audioContext) {
-          audioContext.close();
-        }
+        // Don't close the context or disconnect source - they may be reused
+        // Only clean up on component unmount
       };
     } catch (err) {
       // Fallback if MediaElementSource fails
-      console.warn('Could not create speaker analyzer', err);
+      console.warn('[MobileVoice] Could not create speaker analyzer', err);
       return undefined;
     }
   }, [isRunning]);
@@ -380,148 +385,117 @@ function MobileVoice() {
         console.log('[MobileVoice] AudioContext resumed - audio playback enabled');
       }
 
-      // Connect to audio relay WebSocket to send mic audio to desktop
-      const audioRelayUrl = getWsUrl(`/realtime/audio-relay/${selectedConversationId}/mobile`);
-      const audioRelayWs = new WebSocket(audioRelayUrl);
-      audioRelayWs.binaryType = 'arraybuffer';
-      audioRelayWsRef.current = audioRelayWs;
+      // Connect to WebRTC signaling WebSocket
+      const signalingUrl = getWsUrl(`/realtime/webrtc-signal/${selectedConversationId}/mobile`);
+      const signalingWs = new WebSocket(signalingUrl);
+      signalingWsRef.current = signalingWs;
+      console.log('[MobileVoice] Connecting to WebRTC signaling:', signalingUrl);
 
-      console.log('[MobileVoice] Connecting to audio relay:', audioRelayUrl);
-
-      // Track next scheduled audio time to prevent overlap
-      let nextAudioTime = 0;
-
-      audioRelayWs.onopen = () => {
-        console.log('[MobileVoice] Audio relay connected - ready to send microphone audio');
-        // Initialize audio timeline to current time when connection opens
-        nextAudioTime = window.mobilePlaybackContext.currentTime;
-        console.log('[MobileVoice] Audio timeline initialized at', nextAudioTime.toFixed(3), 's');
-        void recordEvent('controller', 'mobile_audio_relay_connected', { conversationId: selectedConversationId });
+      signalingWs.onopen = () => {
+        console.log('[MobileVoice] WebRTC signaling connected');
+        // Registration happens automatically via URL path (/webrtc-signal/{conversation_id}/mobile)
+        // No need to send explicit register message
+        void recordEvent('controller', 'mobile_signaling_connected', { conversationId: selectedConversationId });
       };
 
-      audioRelayWs.onmessage = (event) => {
+      signalingWs.onmessage = async (event) => {
         try {
-          // Receive desktop audio (OpenAI response) from desktop
-          const rawData = event.data;
+          const msg = JSON.parse(event.data);
+          console.log('[MobileVoice] Received signaling message:', msg.type);
 
-          if (!(rawData instanceof ArrayBuffer)) {
-            console.warn('[MobileVoice] Received non-ArrayBuffer data:', typeof rawData);
-            return;
+          if (msg.type === 'offer' && msg.sdp) {
+            console.log('[MobileVoice] Received offer from desktop, creating peer connection');
+            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            mobilePeerRef.current = pc;
+
+            // Add local microphone track(s)
+            for (const track of micStreamRef.current.getAudioTracks()) {
+              pc.addTrack(track, micStreamRef.current);
+              console.log('[MobileVoice] Added microphone track to peer connection');
+            }
+
+            // Play incoming audio from desktop/OpenAI
+            pc.ontrack = (evt) => {
+              console.log('[MobileVoice] Received remote audio track');
+              const stream = evt.streams[0];
+              try {
+                const source = window.mobilePlaybackContext.createMediaStreamSource(stream);
+                source.connect(speakerGainNodeRef.current);
+                console.log('[MobileVoice] Connected remote audio to speaker via Web Audio API');
+              } catch (e) {
+                console.warn('[MobileVoice] Web Audio API failed, falling back to audio element:', e);
+                if (audioRef.current) {
+                  audioRef.current.srcObject = stream;
+                  audioRef.current.play().catch((playErr) => {
+                    console.error('[MobileVoice] Failed to play audio:', playErr);
+                  });
+                }
+              }
+            };
+
+            // Send ICE candidates back via signaling
+            pc.onicecandidate = (e) => {
+              if (e.candidate && signalingWsRef.current?.readyState === WebSocket.OPEN) {
+                signalingWsRef.current.send(JSON.stringify({ type: 'candidate', candidate: e.candidate }));
+                console.log('[MobileVoice] Sent ICE candidate to desktop');
+              }
+            };
+
+            // Connection state monitoring
+            pc.onconnectionstatechange = () => {
+              console.log('[MobileVoice] Connection state:', pc.connectionState);
+              if (pc.connectionState === 'connected') {
+                console.log('[MobileVoice] WebRTC peer connected successfully!');
+              } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                console.error('[MobileVoice] WebRTC connection failed or disconnected');
+              }
+            };
+
+            // Set remote description and create answer
+            await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
+            console.log('[MobileVoice] Set remote description (offer)');
+
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            console.log('[MobileVoice] Created and set local description (answer)');
+
+            if (signalingWsRef.current?.readyState === WebSocket.OPEN) {
+              signalingWsRef.current.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
+              console.log('[MobileVoice] Sent answer to desktop');
+            } else {
+              console.error('[MobileVoice] Signaling WebSocket not open, cannot send answer');
+            }
+          } else if (msg.type === 'candidate' && msg.candidate) {
+            console.log('[MobileVoice] Received ICE candidate from desktop');
+            if (mobilePeerRef.current) {
+              mobilePeerRef.current.addIceCandidate(new RTCIceCandidate(msg.candidate))
+                .then(() => console.log('[MobileVoice] Added ICE candidate successfully'))
+                .catch(err => console.error('[MobileVoice] Failed to add ICE candidate:', err));
+            } else {
+              console.warn('[MobileVoice] Received ICE candidate but peer not ready');
+            }
+          } else {
+            console.warn('[MobileVoice] Unknown signaling message type:', msg.type);
           }
-
-          const audioContext = window.mobilePlaybackContext;
-          const gainNode = speakerGainNodeRef.current;
-
-          if (!audioContext || !gainNode) {
-            console.error('[MobileVoice] Audio context not initialized');
-            return;
-          }
-
-          // Convert Int16Array PCM to Float32Array
-          const pcmData = new Int16Array(rawData);
-          const floatData = new Float32Array(pcmData.length);
-          for (let i = 0; i < pcmData.length; i++) {
-            floatData[i] = pcmData[i] / 32768.0;
-          }
-
-          // Create audio buffer
-          const audioBuffer = audioContext.createBuffer(1, floatData.length, 48000);
-          audioBuffer.getChannelData(0).set(floatData);
-
-          // Schedule audio to play sequentially (prevent overlap)
-          const currentTime = audioContext.currentTime;
-          const bufferDuration = audioBuffer.duration;
-
-          // If we're behind, catch up to current time
-          if (nextAudioTime < currentTime) {
-            nextAudioTime = currentTime;
-          }
-
-          const source = audioContext.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(gainNode);
-          source.start(nextAudioTime);
-
-          // Update next audio time for sequential playback
-          nextAudioTime += bufferDuration;
-
-          console.log('[MobileVoice] Scheduled desktop audio chunk at', nextAudioTime.toFixed(3), 's');
         } catch (err) {
-          console.error('[MobileVoice] Failed to process desktop audio:', err);
+          console.error('[MobileVoice] Failed to handle signaling message:', err);
         }
       };
 
-      audioRelayWs.onerror = (err) => {
-        console.error('[MobileVoice] Audio relay error:', err);
-        void recordEvent('controller', 'mobile_audio_relay_error', { message: String(err) });
+      signalingWs.onerror = (err) => {
+        console.error('[MobileVoice] Signaling WebSocket error:', err);
+        void recordEvent('controller', 'mobile_signaling_error', { message: String(err) });
       };
 
-      audioRelayWs.onclose = () => {
-        console.log('[MobileVoice] Audio relay closed');
-        void recordEvent('controller', 'mobile_audio_relay_closed', {});
+      signalingWs.onclose = () => {
+        console.log('[MobileVoice] Signaling WebSocket closed');
+        void recordEvent('controller', 'mobile_signaling_closed', {});
       };
 
-      // Create audio processor to send microphone audio to desktop via WebSocket
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const micSource = audioContext.createMediaStreamSource(stream);
-      // Use 4096 samples = ~85ms at 48kHz for continuous voice (prevents interruptions)
-      // Smaller buffers = smoother audio stream, less perceived pauses
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-      micSource.connect(processor);
-      processor.connect(audioContext.destination);
-
-      let mobileMicChunkCount = 0;
-      let mobileMicLastLogTime = 0;
-
-      processor.onaudioprocess = (audioEvent) => {
-        mobileMicChunkCount++;
-        const now = Date.now();
-
-        // Log connection state every 200 chunks (~17s with 4096 buffer size)
-        if (mobileMicChunkCount % 200 === 0) {
-          console.log(`[MobileMic→Desktop] Chunk #${mobileMicChunkCount}, WS state: ${audioRelayWsRef.current?.readyState}, muted: ${isMutedRef.current}`);
-        }
-
-        // Only send if unmuted and WebSocket is open (use ref to avoid closure stale state)
-        if (audioRelayWsRef.current?.readyState === WebSocket.OPEN && !isMutedRef.current) {
-          const inputData = audioEvent.inputBuffer.getChannelData(0);
-
-          // Calculate RMS level to detect actual voice
-          let sumSquares = 0;
-          for (let i = 0; i < inputData.length; i++) {
-            sumSquares += inputData[i] * inputData[i];
-          }
-          const rms = Math.sqrt(sumSquares / inputData.length);
-          const dbLevel = 20 * Math.log10(rms + 1e-10);
-
-          // Convert Float32Array to Int16Array PCM
-          const pcmData = new Int16Array(inputData.length);
-          for (let i = 0; i < inputData.length; i++) {
-            const s = Math.max(-1, Math.min(1, inputData[i]));
-            pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-          }
-
-          // Send to desktop
-          audioRelayWsRef.current.send(pcmData.buffer);
-
-          // Log when voice detected (> -40 dB) but max once per 500ms
-          if (dbLevel > -40 && (now - mobileMicLastLogTime) > 500) {
-            console.log(`[MobileMic→Desktop] VOICE DETECTED! Level: ${dbLevel.toFixed(1)} dB, sending ${pcmData.length} samples`);
-            mobileMicLastLogTime = now;
-          }
-        } else if (mobileMicChunkCount % 200 === 0) {
-          // Log why we're NOT sending
-          const reason = audioRelayWsRef.current?.readyState !== WebSocket.OPEN ? 'WebSocket not open' : 'Muted';
-          console.warn(`[MobileMic→Desktop] NOT SENDING - Reason: ${reason}`);
-        }
-      };
-
-      // Store for cleanup
-      mediaRecorderRef.current = { processor, audioContext };
+      // WebRTC handles microphone sending; no manual processor required
 
       void recordEvent('controller', 'mobile_session_started', { conversationId: selectedConversationId });
-      console.log('[MobileVoice] Session started successfully with audio relay');
+  console.log('[MobileVoice] Session started successfully with WebRTC signaling');
     } catch (err) {
       void recordEvent('controller', 'mobile_session_error', { message: err.message || String(err) });
       setError(err.message || String(err));
@@ -547,25 +521,9 @@ function MobileVoice() {
       micStreamRef.current = null;
     }
 
-    // Close audio relay WebSocket
-    if (audioRelayWsRef.current) {
-      try {
-        audioRelayWsRef.current.close();
-      } catch {}
-      audioRelayWsRef.current = null;
-    }
-
-    // Stop audio processor
-    if (mediaRecorderRef.current) {
-      const { processor, audioContext } = mediaRecorderRef.current;
-      if (processor) {
-        processor.disconnect();
-      }
-      if (audioContext) {
-        audioContext.close();
-      }
-      mediaRecorderRef.current = null;
-    }
+    // Close signaling and WebRTC peer
+    if (signalingWsRef.current) { try { signalingWsRef.current.close(); } catch {} signalingWsRef.current = null; }
+    if (mobilePeerRef.current) { try { mobilePeerRef.current.close(); } catch {} mobilePeerRef.current = null; }
 
     setMicLevel(0);
     setSpeakerLevel(0);
@@ -680,7 +638,7 @@ function MobileVoice() {
       {/* Conversation Selector */}
       <FormControl fullWidth sx={{ mb: 3 }}>
         <Select
-          value={selectedConversationId}
+          value={selectedConversationId || ''}
           onChange={handleConversationChange}
           displayEmpty
           disabled={isRunning}
