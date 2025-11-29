@@ -1316,18 +1316,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       console.log('[MobileWebRTC] Received mobile audio track and mixed into desktop');
     };
 
-    // Add our mixed desktop microphone to send to mobile
-    const mixedStream = mixerDestinationRef.current?.stream;
-    if (mixedStream) {
-      console.log('[MobileWebRTC Setup] Adding', mixedStream.getAudioTracks().length, 'desktop audio track(s)');
-      for (const track of mixedStream.getAudioTracks()) {
-        pc.addTrack(track, mixedStream);
-      }
-    } else {
-      console.warn('[MobileWebRTC Setup] No mixed stream available yet');
-    }
-
-    // Also send OpenAI response audio to mobile when available
+    // ONLY send OpenAI response audio to mobile (NOT desktop mic - prevents echo)
     if (responseStreamRef.current) {
       const openAITracks = responseStreamRef.current.getAudioTracks();
       console.log('[MobileWebRTC Setup] Found OpenAI response stream with', openAITracks.length, 'audio track(s)');

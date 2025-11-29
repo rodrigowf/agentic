@@ -45,7 +45,7 @@ function MobileVoice() {
   // Session state
   const [isRunning, setIsRunning] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Start muted
-  const [isSpeakerMuted, setIsSpeakerMuted] = useState(false); // Speaker not muted by default
+  const [isSpeakerMuted, setIsSpeakerMuted] = useState(true); // Start with echo muted (desktop mic off)
   const [error, setError] = useState(null);
 
   // Audio streaming refs
@@ -60,6 +60,7 @@ function MobileVoice() {
   const isPlayingRef = useRef(false); // Track if currently playing audio
   const minBufferThreshold = 3; // Wait for 3 chunks before starting (adaptive buffering)
   const isMutedRef = useRef(true); // Ref for mute state (avoids closure issues)
+  const remoteAudioElementsRef = useRef([]); // Track all remote audio elements for echo control
 
   // Audio analysis for visualization
   const audioContextRef = useRef(null);
@@ -419,16 +420,15 @@ function MobileVoice() {
                 console.log('[MobileVoice] Added microphone track to peer connection');
               }
 
-              // Play incoming audio from desktop/OpenAI
+              // Play incoming audio from OpenAI (desktop no longer sends its mic - no echo!)
               pc.ontrack = async (evt) => {
                 console.log('[MobileVoice] Received remote audio track, stream ID:', evt.streams[0].id);
                 console.log('[MobileVoice] Track details - kind:', evt.track.kind, 'id:', evt.track.id, 'enabled:', evt.track.enabled, 'muted:', evt.track.muted, 'readyState:', evt.track.readyState);
 
                 const stream = evt.streams[0];
 
-                // CRITICAL FIX: Use HTMLAudioElement instead of Web Audio API
-                // Web Audio API has issues with multiple MediaStreamSource objects
-                // HTMLAudioElement handles multiple streams much better
+                // Use HTMLAudioElement for audio playback
+                // (Web Audio API has issues with multiple MediaStreamSource objects)
                 console.log('[MobileVoice] Using HTMLAudioElement for audio playback');
 
                 // Create a new audio element for this track
@@ -592,17 +592,26 @@ function MobileVoice() {
     });
   };
 
-  // Toggle speaker mute
+  // Toggle speaker mute (controls desktop mic echo only, not OpenAI)
   const toggleSpeakerMute = () => {
     setIsSpeakerMuted((prevMuted) => {
       const newMutedState = !prevMuted;
 
-      // Update gain node volume
-      if (speakerGainNodeRef.current) {
-        speakerGainNodeRef.current.gain.value = newMutedState ? 0 : 1;
-      }
+      // Mute/unmute ONLY desktop microphone audio elements (echo prevention)
+      // Keep OpenAI response audio always playing
+      console.log('[MobileVoice] Toggling speaker mute (desktop mic only):', newMutedState);
+      remoteAudioElementsRef.current.forEach(({ element, isDesktopMic, isOpenAI }) => {
+        if (isDesktopMic) {
+          element.muted = newMutedState;
+          console.log('[MobileVoice] Desktop mic audio muted:', newMutedState);
+        }
+        // Never mute OpenAI response
+        if (isOpenAI) {
+          console.log('[MobileVoice] OpenAI audio remains unmuted');
+        }
+      });
 
-      void recordEvent('controller', newMutedState ? 'mobile_speaker_muted' : 'mobile_speaker_unmuted', {});
+      void recordEvent('controller', newMutedState ? 'mobile_echo_muted' : 'mobile_echo_unmuted', {});
       return newMutedState;
     });
   };
@@ -859,8 +868,8 @@ function MobileVoice() {
                 {isSpeakerMuted ? <VolumeOffIcon sx={{ fontSize: 50 }} /> : <VolumeUpIcon sx={{ fontSize: 50 }} />}
               </IconButton>
               <Chip
-                label={isSpeakerMuted ? 'Speaker Off' : 'Speaker On'}
-                color={isSpeakerMuted ? 'warning' : 'info'}
+                label={isSpeakerMuted ? 'Echo Muted' : 'Echo On'}
+                color={isSpeakerMuted ? 'success' : 'warning'}
                 size="small"
                 sx={{ fontWeight: 500 }}
               />
