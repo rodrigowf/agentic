@@ -1554,6 +1554,79 @@ const toggleMute = () => {
    - Move closer to router
    - Reduce network congestion
 
+### HTTPS Access (Production/Remote Access)
+
+**For accessing mobile voice from smartphone via HTTPS:**
+
+**Requirements:**
+- Both desktop and mobile MUST use the same domain (HTTPS through nginx)
+- Desktop: `https://192.168.0.25/voice/{conversation_id}`
+- Mobile: `https://192.168.0.25/mobile-voice/{conversation_id}`
+
+**Why HTTPS consistency is critical:**
+- WebRTC signaling requires both peers on same origin
+- Mixed origins (localhost HTTP + HTTPS domain) will cause signaling to fail
+- Desktop won't appear as connected peer if using different protocol
+
+**Nginx Configuration:**
+
+The nginx proxy must include the WebRTC signaling endpoint:
+
+```nginx
+location /api/realtime/webrtc-signal/ {
+    proxy_pass http://backend/api/realtime/webrtc-signal/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_read_timeout 86400;
+}
+```
+
+**Reload nginx after changes:**
+```bash
+./reload-nginx.sh
+# OR
+sudo kill -HUP $(cat /home/rodrigo/agentic/nginx.pid)
+```
+
+**Debugging HTTPS connections:**
+
+```bash
+# Monitor WebRTC signaling
+tail -f logs/nginx-access.log | grep webrtc-signal
+
+# Expected: See BOTH desktop and mobile with HTTP 101
+# 192.168.0.25 - "GET /api/realtime/webrtc-signal/.../desktop" 101
+# 192.168.0.16 - "GET /api/realtime/webrtc-signal/.../mobile" 101
+
+# Check peer registration
+grep "registered for signaling" /tmp/backend.log | tail -5
+
+# Verify both desktop and mobile appear
+```
+
+**Using ADB for mobile debugging:**
+
+```bash
+# Connect device and forward DevTools
+adb devices
+adb forward tcp:9222 localabstract:chrome_devtools_remote
+
+# List open Chrome tabs on mobile
+curl -s http://localhost:9222/json | python3 -m json.tool | grep url
+
+# Check active backend connections
+ss -tn | grep ":8000" | grep ESTAB
+# 127.0.0.1 = localhost (wrong - desktop using HTTP)
+# 192.168.0.x = network (correct - using HTTPS nginx)
+```
+
+**See also:**
+- `debug/HTTPS_MOBILE_VOICE_FIX.md` - Nginx configuration fix
+- `debug/MOBILE_VOICE_HTTPS_DEBUGGING_GUIDE.md` - Complete debugging workflow
+- `debug/MOBILE_VOICE_FIXES.md` - Audio playback fixes (echo elimination)
+
 ### File Locations
 
 | Purpose | Location |
@@ -2050,6 +2123,53 @@ ls -la ~/.claude/
 
 ## Recent Changes
 
+### Mobile Voice HTTPS & Echo Fix (2025-11-29)
+
+Fixed mobile voice interface for HTTPS access and eliminated echo feedback.
+
+**Issues Resolved:**
+1. **Nginx WebRTC endpoint missing** - Added `/api/realtime/webrtc-signal/` configuration
+2. **Desktop/mobile origin mismatch** - Both must use `https://192.168.0.25` for WebRTC to work
+3. **Echo from desktop mic** - Desktop now only sends OpenAI response, not desktop microphone
+
+**Technical Changes:**
+
+**Echo Elimination:**
+- Desktop ([VoiceAssistant.js:1319](frontend/src/features/voice/pages/VoiceAssistant.js#L1319)): Removed desktop mic track from mobile peer connection
+- Mobile ([MobileVoice.js:423](frontend/src/features/voice/pages/MobileVoice.js#L423)): Switched from Web Audio API to HTMLAudioElement
+- **Why:** Web Audio API has issues with multiple MediaStreamSource objects connecting to same GainNode
+
+**HTTPS Configuration:**
+- Updated [nginx.conf](nginx.conf#L85-L96): Added WebRTC signaling location block
+- Created [reload-nginx.sh](reload-nginx.sh): Helper script to reload nginx
+- **Critical:** Both desktop and mobile must use same HTTPS domain for WebRTC signaling to work
+
+**Debugging Tools:**
+```bash
+# ADB remote debugging
+adb forward tcp:9222 localabstract:chrome_devtools_remote
+curl -s http://localhost:9222/json | python3 -m json.tool | grep url
+
+# Monitor nginx WebRTC connections
+tail -f logs/nginx-access.log | grep webrtc-signal
+
+# Check peer registration
+grep "registered for signaling" /tmp/backend.log | tail -5
+
+# Verify connection source (localhost vs network)
+ss -tn | grep ":8000" | grep ESTAB
+```
+
+**Documentation:**
+- `debug/HTTPS_MOBILE_VOICE_FIX.md` - Nginx fix details
+- `debug/MOBILE_VOICE_HTTPS_DEBUGGING_GUIDE.md` - Complete debugging workflow with ADB
+- `debug/MOBILE_VOICE_FIXES.md` - Audio playback fixes
+- Updated `CLAUDE.md` Mobile Voice section with HTTPS access instructions
+
+**Key Learning:** WebRTC requires both peers on same origin (protocol + domain). Mixed HTTP localhost and HTTPS domain will fail.
+
+**Status:** ✅ Fully working - tested with desktop HTTPS + mobile HTTPS
+
 ### Dynamic Initialization Agent (2025-11-08)
 
 A new agent type that allows custom initialization functions to be executed when an agent starts up. This replaces the hard-coded Memory agent initialization and provides a flexible, reusable system.
@@ -2197,8 +2317,9 @@ See [FRONTEND_REFACTORING.md](FRONTEND_REFACTORING.md) for complete details.
 
 This document should be updated whenever significant architectural changes are made.
 
-**Last updated:** 2025-11-28
+**Last updated:** 2025-11-29
 **Changes:**
+- 2025-11-29: Fixed mobile voice HTTPS access and echo issue - nginx WebRTC endpoint configuration, desktop/mobile origin consistency, echo elimination by removing desktop mic from mobile stream
 - 2025-11-28: Added mobile voice interface (`MobileVoice.js`) for wireless microphone access from smartphones - no backend changes required, leverages existing multi-client conversation architecture
 - 2025-11-08: Added dynamic initialization agent (`dynamic_init_looping`) for flexible agent startup logic
 - 2025-10-11: Added multimodal vision agent (`multimodal_tools_looping`) with automatic image detection and interpretation
