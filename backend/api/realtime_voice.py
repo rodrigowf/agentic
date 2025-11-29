@@ -35,6 +35,7 @@ proof‑of‑concept WebRTC client.
 """
 
 import asyncio
+import logging
 import os
 import json
 import time
@@ -48,6 +49,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from starlette.websockets import WebSocketDisconnect
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Environment configuration
@@ -144,6 +148,72 @@ class ConversationStreamManager:
 
 
 stream_manager = ConversationStreamManager()
+
+
+class AudioRelayManager:
+    """Manages audio relay connections between mobile and desktop clients."""
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        # conversation_id -> {"desktop": WebSocket, "mobile": WebSocket}
+        self._connections: Dict[str, Dict[str, WebSocket]] = {}
+
+    async def register_desktop(self, conversation_id: str, websocket: WebSocket) -> None:
+        async with self._lock:
+            if conversation_id not in self._connections:
+                self._connections[conversation_id] = {}
+            self._connections[conversation_id]["desktop"] = websocket
+
+    async def register_mobile(self, conversation_id: str, websocket: WebSocket) -> None:
+        async with self._lock:
+            if conversation_id not in self._connections:
+                self._connections[conversation_id] = {}
+            self._connections[conversation_id]["mobile"] = websocket
+
+    async def unregister(self, conversation_id: str, client_type: str) -> None:
+        async with self._lock:
+            if conversation_id in self._connections:
+                self._connections[conversation_id].pop(client_type, None)
+                if not self._connections[conversation_id]:
+                    self._connections.pop(conversation_id, None)
+
+    async def relay_to_desktop(self, conversation_id: str, data: bytes) -> bool:
+        """Relay audio from mobile to desktop. Returns True if sent successfully."""
+        async with self._lock:
+            conn = self._connections.get(conversation_id)
+            if not conn or "desktop" not in conn:
+                logger.warning(f"[AudioRelay] Desktop not connected for conversation {conversation_id}")
+                return False
+            desktop_ws = conn["desktop"]
+
+        try:
+            await desktop_ws.send_bytes(data)
+            logger.debug(f"[AudioRelay] Relayed {len(data)} bytes from mobile to desktop for conversation {conversation_id}")
+            return True
+        except Exception as e:
+            logger.error(f"[AudioRelay] Failed to relay to desktop: {e}")
+            return False
+
+    async def relay_to_mobile(self, conversation_id: str, data: bytes) -> bool:
+        """Relay audio from desktop to mobile. Returns True if sent successfully."""
+        async with self._lock:
+            conn = self._connections.get(conversation_id)
+            if not conn or "mobile" not in conn:
+                return False
+            mobile_ws = conn["mobile"]
+
+        try:
+            await mobile_ws.send_bytes(data)
+            return True
+        except Exception:
+            return False
+
+    def has_mobile(self, conversation_id: str) -> bool:
+        """Check if mobile client is connected."""
+        return conversation_id in self._connections and "mobile" in self._connections[conversation_id]
+
+
+audio_relay_manager = AudioRelayManager()
 
 
 def _json_headers() -> Dict[str, str]:
@@ -344,6 +414,57 @@ async def append_conversation_event(
     return payload
 
 
+@router.websocket("/audio-relay/{conversation_id}/desktop")
+async def desktop_audio_relay(websocket: WebSocket, conversation_id: str) -> None:
+    """Desktop client connects here to receive audio from mobile."""
+    conversation = conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        await websocket.close(code=4404, reason="Conversation not found")
+        return
+
+    await websocket.accept()
+    await audio_relay_manager.register_desktop(conversation_id, websocket)
+    logger.info(f"[AudioRelay] Desktop connected for conversation {conversation_id}")
+
+    try:
+        while True:
+            # Desktop can send audio back to mobile (optional)
+            data = await websocket.receive_bytes()
+            logger.debug(f"[AudioRelay] Desktop sending {len(data)} bytes to mobile for conversation {conversation_id}")
+            await audio_relay_manager.relay_to_mobile(conversation_id, data)
+    except WebSocketDisconnect:
+        logger.info(f"[AudioRelay] Desktop disconnected for conversation {conversation_id}")
+    finally:
+        await audio_relay_manager.unregister(conversation_id, "desktop")
+
+
+@router.websocket("/audio-relay/{conversation_id}/mobile")
+async def mobile_audio_relay(websocket: WebSocket, conversation_id: str) -> None:
+    """Mobile client connects here to send audio to desktop."""
+    conversation = conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        await websocket.close(code=4404, reason="Conversation not found")
+        return
+
+    await websocket.accept()
+    await audio_relay_manager.register_mobile(conversation_id, websocket)
+    logger.info(f"[AudioRelay] Mobile connected for conversation {conversation_id}")
+
+    try:
+        while True:
+            # Receive audio from mobile and relay to desktop
+            data = await websocket.receive_bytes()
+            logger.debug(f"[AudioRelay] Received {len(data)} bytes from mobile for conversation {conversation_id}")
+            success = await audio_relay_manager.relay_to_desktop(conversation_id, data)
+            if not success:
+                # Desktop not connected, optionally notify mobile
+                logger.warning(f"[AudioRelay] Failed to relay mobile audio - desktop not connected")
+    except WebSocketDisconnect:
+        logger.info(f"[AudioRelay] Mobile disconnected for conversation {conversation_id}")
+    finally:
+        await audio_relay_manager.unregister(conversation_id, "mobile")
+
+
 @router.websocket("/conversations/{conversation_id}/stream")
 async def conversation_stream(websocket: WebSocket, conversation_id: str) -> None:
     conversation = conversation_store.get_conversation(conversation_id)
@@ -388,11 +509,12 @@ async def conversation_stream(websocket: WebSocket, conversation_id: str) -> Non
 def get_openai_token(
     model: str = Query(..., description="Name of the realtime model, e.g. gpt-realtime"),
     voice: Optional[str] = Query("alloy", description="Voice to use (omit or set to 'none' to disable audio)"),
+    system_prompt: Optional[str] = Query(None, description="Custom system prompt (uses default if not provided)"),
 ) -> Any:
     """Create a realtime session and return the session id and client secret.
 
     The client uses the returned session id and secret to negotiate a
-    WebRTC connection with OpenAI’s realtime servers.  The session
+    WebRTC connection with OpenAI's realtime servers.  The session
     expires automatically; do not reuse it after expiry.
     """
     def create_session(payload: Dict[str, Any]) -> requests.Response:
@@ -403,7 +525,9 @@ def get_openai_token(
             timeout=15,
         )
 
-    payload: Dict[str, Any] = {"model": model, "instructions": VOICE_SYSTEM_PROMPT}
+    # Use provided system prompt or fall back to default
+    instructions = system_prompt if system_prompt else VOICE_SYSTEM_PROMPT
+    payload: Dict[str, Any] = {"model": model, "instructions": instructions}
     if voice and voice.lower() != "none":
         payload["voice"] = voice
 
@@ -421,7 +545,7 @@ def get_openai_token(
         except Exception:
             first_error_detail = resp.text
         try:
-            resp = create_session({"model": model, "instructions": VOICE_SYSTEM_PROMPT})
+            resp = create_session({"model": model, "instructions": instructions})
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed to contact OpenAI realtime API (retry): {exc}")
         if resp.status_code != 200:

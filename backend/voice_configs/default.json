@@ -1,0 +1,9 @@
+{
+  "name": "default",
+  "agent_name": "MainConversation",
+  "system_prompt_file": "default.txt",
+  "voice_model": "gpt-realtime",
+  "voice": "alloy",
+  "description": "Default voice assistant configuration with MainConversation agent",
+  "metadata": {}
+}

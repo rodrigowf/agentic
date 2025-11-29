@@ -60,6 +60,16 @@ AgentConfig.update_forward_refs()
 class GenerateToolRequest(BaseSchema):
     prompt: str = Field(..., description="The natural language prompt describing the tool to be generated.")
 
+class VoiceConfig(BaseSchema):
+    """Configuration for voice assistant."""
+    name: str = Field(..., description="Unique name for this voice configuration")
+    agent_name: str = Field(..., description="Name of the agent to use for voice assistant")
+    system_prompt_file: str = Field(..., description="Filename of the system prompt (in voice_prompts directory)")
+    voice_model: str = Field(default="gpt-realtime", description="Model to use for voice (e.g., gpt-realtime)")
+    voice: str = Field(default="alloy", description="Voice to use (e.g., alloy, echo, fable, onyx, nova, shimmer)")
+    description: Optional[str] = Field(default=None, description="Optional description of this voice configuration")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+
 class BaseChatMessage(BaseModel):
     content: str
     source: str
@@ -75,7 +85,7 @@ class BaseChatMessage(BaseModel):
         extra = "allow"  # Allow extra fields
         validate_assignment = True
         arbitrary_types_allowed = True
-        
+
     def model_dump(self, **kwargs):
         # Ensure consistent serialization
         return {

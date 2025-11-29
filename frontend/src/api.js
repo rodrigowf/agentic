@@ -1,7 +1,9 @@
 import axios from 'axios';
+import { getHttpBase, getWsUrl } from './utils/urlBuilder';
 
+// Create Axios instance with centralized URL builder
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api', // Add fallback
+  baseURL: `${getHttpBase()}/api`,
   withCredentials: true, // Important if backend needs cookies/session
 });
 
@@ -32,13 +34,8 @@ export const updateAgent = (name, agent) => API.put(`/agents/${name}`, agent);
 
 // Runs
 export const runAgent = (name) => {
-  // Construct WebSocket URL based on the API base URL, replacing http with ws
-  // Assumes API base URL is like 'http://localhost:8000/api'
-  const httpBase = API.defaults.baseURL.replace('/api', ''); // Get 'http://localhost:8000'
-  const wsBase = httpBase.replace(/^http/, 'ws'); // Replace 'http' with 'ws' -> 'ws://localhost:8000'
-  const wsUrl = `${wsBase}/api/runs/${name}`; // Construct the final URL
-
-  console.log("Connecting WebSocket to:", wsUrl); // Log the correct URL
+  const wsUrl = getWsUrl(`/runs/${name}`);
+  console.log("Connecting WebSocket to:", wsUrl);
   return new WebSocket(wsUrl);
 };
 
@@ -54,13 +51,28 @@ export const deleteVoiceConversation = (conversationId) => API.delete(`${VOICE_B
 export const appendVoiceConversationEvent = (conversationId, payload) => API.post(`${VOICE_BASE}/conversations/${conversationId}/events`, payload);
 export const getVoiceConversationEvents = (conversationId, params = {}) => API.get(`${VOICE_BASE}/conversations/${conversationId}/events`, { params });
 export const connectVoiceConversationStream = (conversationId, params = {}) => {
-  const httpBase = API.defaults.baseURL.replace('/api', '');
-  const wsBase = httpBase.replace(/^http/, 'ws');
   const searchParams = new URLSearchParams(params);
   const query = searchParams.toString();
-  const url = `${wsBase}/api${VOICE_BASE}/conversations/${conversationId}/stream${query ? `?${query}` : ''}`;
-  return new WebSocket(url);
+  const wsUrl = getWsUrl(`${VOICE_BASE}/conversations/${conversationId}/stream${query ? `?${query}` : ''}`);
+  return new WebSocket(wsUrl);
 };
+
+// Voice configurations
+export const listVoiceConfigs = () => API.get('/voice-configs');
+export const getVoiceConfig = (configName) => API.get(`/voice-configs/${configName}`);
+export const createVoiceConfig = (config) => API.post('/voice-configs', config);
+export const updateVoiceConfig = (configName, config) => API.put(`/voice-configs/${configName}`, config);
+export const deleteVoiceConfig = (configName) => API.delete(`/voice-configs/${configName}`);
+
+// Voice prompts
+export const listVoicePrompts = () => API.get('/voice-prompts');
+export const getVoicePrompt = (filename) => API.get(`/voice-prompts/${filename}`, {
+  transformResponse: [(data) => data] // Get raw text
+});
+export const saveVoicePrompt = (filename, content) => API.post(`/voice-prompts/${filename}`, content, {
+  headers: { 'Content-Type': 'text/plain' }
+});
+export const deleteVoicePrompt = (filename) => API.delete(`/voice-prompts/${filename}`);
 
 // Export API instance and individual functions
 export default {
@@ -83,4 +95,13 @@ export default {
   appendVoiceConversationEvent,
   getVoiceConversationEvents,
   connectVoiceConversationStream,
+  listVoiceConfigs,
+  getVoiceConfig,
+  createVoiceConfig,
+  updateVoiceConfig,
+  deleteVoiceConfig,
+  listVoicePrompts,
+  getVoicePrompt,
+  saveVoicePrompt,
+  deleteVoicePrompt,
 };

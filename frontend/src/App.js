@@ -21,6 +21,8 @@ import RunConsole from './features/agents/components/RunConsole';
 import AgentDashboard from './features/agents/pages/AgentDashboard';
 import ToolsDashboard from './features/tools/pages/ToolsDashboard';
 import VoiceDashboard from './features/voice/pages/VoiceDashboard';
+import MobileVoice from './features/voice/pages/MobileVoice';
+import DebugNetwork from './features/voice/pages/DebugNetwork';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -350,43 +352,60 @@ export default function App() {
           `}
         </style>
         <Router>
-          <AppBar position="static">
-            <Toolbar>
-              <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit', pt: 1 }}>
-                Agentic
-              </Typography>
-              <Button color="inherit" component={RouterLink} to="/">Agents</Button>
-              <Button color="inherit" component={RouterLink} to="/tools">Tools</Button>
-              <Button color="inherit" component={RouterLink} to="/voice">Voice</Button>
-              <IconButton sx={{ ml: 1 }} onClick={colorMode.toggleColorMode} color="inherit">
-                {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-              </IconButton>
-            </Toolbar>
-          </AppBar>
-          <Box
-            component="main"
-            sx={{
-              flexGrow: 1,
-              bgcolor: 'background.default',
-              minHeight: 'calc(100vh - 64px)',
-              p: { xs: 2, sm: 3 },
-            }}
-          >
-            <Container maxWidth="xl">
-              <Routes>
-                <Route path="/" element={<AgentDashboard />} />
-                <Route path="/agents/new" element={<AgentEditor />} />
-                <Route path="/agents/:name" element={<AgentDashboard />} />
-                <Route path="/agents/:name/edit" element={<AgentEditor nested={true} />} />
-                <Route path="/runs/:name" element={<RunConsole />} />
-                <Route path="/tools" element={<ToolsDashboard />} />
-                <Route path="/tools/:filename" element={<ToolsDashboard />} />
-                <Route path="/voice" element={<VoiceDashboard />} />
-                <Route path="/voice/:conversationId" element={<VoiceDashboard />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Container>
-          </Box>
+          <Routes>
+            {/* Debug route */}
+            <Route path="/debug-network" element={<DebugNetwork />} />
+
+            {/* Mobile Voice routes - full screen, no AppBar, no Container */}
+            <Route path="/mobile-voice" element={<MobileVoice />} />
+            <Route path="/mobile-voice/:conversationId" element={<MobileVoice />} />
+
+            {/* Regular routes with AppBar and Container */}
+            <Route
+              path="*"
+              element={
+                <>
+                  <AppBar position="static">
+                    <Toolbar>
+                      <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit', pt: 1 }}>
+                        Agentic
+                      </Typography>
+                      <Button color="inherit" component={RouterLink} to="/">Agents</Button>
+                      <Button color="inherit" component={RouterLink} to="/tools">Tools</Button>
+                      <Button color="inherit" component={RouterLink} to="/voice">Voice</Button>
+                      <IconButton sx={{ ml: 1 }} onClick={colorMode.toggleColorMode} color="inherit">
+                        {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+                      </IconButton>
+                    </Toolbar>
+                  </AppBar>
+                  <Box
+                    component="main"
+                    sx={{
+                      flexGrow: 1,
+                      bgcolor: 'background.default',
+                      minHeight: 'calc(100vh - 64px)',
+                      p: { xs: 2, sm: 3 },
+                    }}
+                  >
+                    <Container maxWidth="xl">
+                      <Routes>
+                        <Route path="/" element={<AgentDashboard />} />
+                        <Route path="/agents/new" element={<AgentEditor />} />
+                        <Route path="/agents/:name" element={<AgentDashboard />} />
+                        <Route path="/agents/:name/edit" element={<AgentEditor nested={true} />} />
+                        <Route path="/runs/:name" element={<RunConsole />} />
+                        <Route path="/tools" element={<ToolsDashboard />} />
+                        <Route path="/tools/:filename" element={<ToolsDashboard />} />
+                        <Route path="/voice" element={<VoiceDashboard />} />
+                        <Route path="/voice/:conversationId" element={<VoiceDashboard />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </Container>
+                  </Box>
+                </>
+              }
+            />
+          </Routes>
         </Router>
       </ThemeProvider>
     </ColorModeContext.Provider>

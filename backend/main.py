@@ -9,10 +9,14 @@ import asyncio  # Added asyncio
 import google.generativeai as genai
 from openai import OpenAI
 # Updated imports: Use ToolInfo for API, FunctionTool internally
-from config.schemas import AgentConfig, ToolInfo, GenerateToolRequest
+from config.schemas import AgentConfig, ToolInfo, GenerateToolRequest, VoiceConfig
 # Updated imports: load_tools now returns List[Tuple[FunctionTool, str]]
-# Add get_tool_infos helper
-from config.config_loader import load_tools, load_agents, save_agent, save_tool, get_tool_infos, _get_tool_schema
+# Add get_tool_infos helper and voice configuration functions
+from config.config_loader import (
+    load_tools, load_agents, save_agent, save_tool, get_tool_infos, _get_tool_schema,
+    load_voice_configs, load_voice_config, save_voice_config, delete_voice_config,
+    load_voice_prompts, load_voice_prompt, save_voice_prompt, delete_voice_prompt
+)
 from core.runner import run_agent_ws
 from autogen_core.tools import FunctionTool  # Import FunctionTool
 import logging  # Add logging import
@@ -35,9 +39,33 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+# Configure CORS to allow local development and mobile access
+# Dynamically allow network IP for mobile devices on same network
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+]
+
+# Allow any 192.168.x.x network addresses (common home networks)
+# This enables mobile devices on the same WiFi to connect
+import socket
+try:
+    # Get local network IP
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+    if local_ip and local_ip.startswith("192.168."):
+        cors_origins.append(f"http://{local_ip}:3000")
+        logger.info(f"Added CORS origin for network IP: http://{local_ip}:3000")
+except Exception as e:
+    logger.warning(f"Could not detect local IP for CORS: {e}")
+
+# Also allow pattern-based origins for flexibility
+# Support both HTTP and HTTPS (HTTPS required for mobile getUserMedia)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Support both common frontend ports
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}):300[0-9]",  # Allow HTTP/HTTPS, ports 3000-3009
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,10 +90,14 @@ if realtime_router is not None:
 # Startup cache
 TOOLS_DIR = "tools"
 AGENTS_DIR = "agents"
+VOICE_CONFIGS_DIR = "voice_configs"
+VOICE_PROMPTS_DIR = "voice_prompts"
 
 # Ensure directories exist at startup
 os.makedirs(TOOLS_DIR, exist_ok=True)
 os.makedirs(AGENTS_DIR, exist_ok=True)
+os.makedirs(VOICE_CONFIGS_DIR, exist_ok=True)
+os.makedirs(VOICE_PROMPTS_DIR, exist_ok=True)
 
 # Load tools returns (FunctionTool, filename) tuples
 LOADED_TOOLS_WITH_FILENAMES = load_tools(TOOLS_DIR)
@@ -303,6 +335,75 @@ def update_agent(agent_name: str, cfg: AgentConfig):
     if not found:
         raise HTTPException(404, "Agent not found")
     return cfg
+
+# --- Voice Configuration Endpoints ---
+
+@app.get("/api/voice-configs", response_model=list[VoiceConfig])
+def list_voice_configs():
+    """List all voice configurations."""
+    return load_voice_configs(VOICE_CONFIGS_DIR)
+
+@app.get("/api/voice-configs/{config_name}", response_model=VoiceConfig)
+def get_voice_config(config_name: str):
+    """Get a specific voice configuration."""
+    config = load_voice_config(VOICE_CONFIGS_DIR, config_name)
+    if not config:
+        raise HTTPException(404, f"Voice configuration '{config_name}' not found")
+    return config
+
+@app.post("/api/voice-configs", response_model=VoiceConfig)
+def create_voice_config(cfg: VoiceConfig):
+    """Create or update a voice configuration."""
+    save_voice_config(cfg, VOICE_CONFIGS_DIR)
+    return cfg
+
+@app.put("/api/voice-configs/{config_name}", response_model=VoiceConfig)
+def update_voice_config(config_name: str, cfg: VoiceConfig):
+    """Update a voice configuration."""
+    if cfg.name != config_name:
+        raise HTTPException(400, f"Config name in path ({config_name}) does not match name in body ({cfg.name})")
+    save_voice_config(cfg, VOICE_CONFIGS_DIR)
+    return cfg
+
+@app.delete("/api/voice-configs/{config_name}")
+def delete_voice_config_endpoint(config_name: str):
+    """Delete a voice configuration."""
+    if config_name == "default":
+        raise HTTPException(400, "Cannot delete the default configuration")
+    success = delete_voice_config(VOICE_CONFIGS_DIR, config_name)
+    if not success:
+        raise HTTPException(404, f"Voice configuration '{config_name}' not found")
+    return {"message": f"Voice configuration '{config_name}' deleted"}
+
+@app.get("/api/voice-prompts")
+def list_voice_prompt_files():
+    """List all available voice prompt files."""
+    files = load_voice_prompts(VOICE_PROMPTS_DIR)
+    return {"prompts": files}
+
+@app.get("/api/voice-prompts/{filename}", response_class=PlainTextResponse)
+def get_voice_prompt(filename: str):
+    """Get the content of a voice prompt file."""
+    content = load_voice_prompt(VOICE_PROMPTS_DIR, filename)
+    if content is None:
+        raise HTTPException(404, f"Voice prompt '{filename}' not found")
+    return content
+
+@app.post("/api/voice-prompts/{filename}")
+def save_voice_prompt_endpoint(filename: str, content: str = Body(..., media_type="text/plain")):
+    """Save a voice prompt file."""
+    save_voice_prompt(VOICE_PROMPTS_DIR, filename, content)
+    return {"message": f"Voice prompt '{filename}' saved"}
+
+@app.delete("/api/voice-prompts/{filename}")
+def delete_voice_prompt_endpoint(filename: str):
+    """Delete a voice prompt file."""
+    if filename == "default.txt":
+        raise HTTPException(400, "Cannot delete the default prompt")
+    success = delete_voice_prompt(VOICE_PROMPTS_DIR, filename)
+    if not success:
+        raise HTTPException(404, f"Voice prompt '{filename}' not found")
+    return {"message": f"Voice prompt '{filename}' deleted"}
 
 # --- WebSocket Helper Function ---
 async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: dict):

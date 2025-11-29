@@ -22,11 +22,13 @@ import ConversationHistory from '../components/ConversationHistory';
 import NestedAgentInsights from '../components/NestedAgentInsights';
 import ClaudeCodeInsights from '../components/ClaudeCodeInsights';
 import VoiceSessionControls from '../components/VoiceSessionControls';
+import VoiceConfigEditor from '../components/VoiceConfigEditor';
 import {
   appendVoiceConversationEvent,
   getVoiceConversation,
   connectVoiceConversationStream,
 } from '../../../api';
+import { getHttpBase, getWsUrl } from '../../../utils/urlBuilder';
 
 const MAX_REPLAY_ITEMS = 50;
 const MAX_NESTED_HIGHLIGHTS = 25;
@@ -67,6 +69,13 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState(null);
   const [nestedViewTab, setNestedViewTab] = useState(0); // 0 = Insights, 1 = Console
+  const [configEditorOpen, setConfigEditorOpen] = useState(false);
+  const [voiceConfig, setVoiceConfig] = useState({
+    agentName: 'MainConversation',
+    systemPromptFile: 'default.txt',
+    systemPromptContent: '',
+    voice: 'alloy',
+  });
   const peerRef = useRef(null);
   const dataChannelRef = useRef(null);
   const nestedWsRef = useRef(null);
@@ -76,7 +85,15 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const audioRef = useRef(null);
   const streamRef = useRef(null);
   const micStreamRef = useRef(null);
+  const mobileAudioWsRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const mobileAudioSourceRef = useRef(null);
+  const mixerDestinationRef = useRef(null);
+  const desktopSourceRef = useRef(null);
+  const mobileGainNodeRef = useRef(null);
   const eventsMapRef = useRef(new Map());
+  const responseStreamRef = useRef(null); // Store OpenAI response audio stream
+  const responseRelayRef = useRef(null); // Store relay processor for cleanup
   const replayQueueRef = useRef([]);
   const nestedScrollRef = useRef(null);
 
@@ -534,17 +551,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     };
   }, [conversationId, normalizeEvent, upsertEvents]);
 
-  // Resolve backend base URLs
-  const backendBase = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000');
-  const derivedWsBase = (() => {
-    try {
-      const u = new URL(backendBase);
-      const wsProto = u.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${wsProto}//${u.host}`;
-    } catch {
-      return 'ws://localhost:8000';
-    }
-  })();
+  // Use centralized URL builder
+  const backendBase = getHttpBase();
 
   // Tool definitions exposed to the Realtime model
   const realtimeTools = [
@@ -621,8 +629,9 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       const historyItems = buildReplayItems();
       replayQueueRef.current = (historyItems || []).slice(-MAX_REPLAY_ITEMS);
       // Request a new realtime session from our backend (mounted under /api/realtime)
-      const voice = (process.env.REACT_APP_VOICE || 'alloy');
-      const tokenUrl = `${backendBase}/api/realtime/token/openai?model=gpt-realtime&voice=${encodeURIComponent(voice)}`;
+      const voice = voiceConfig.voice || process.env.REACT_APP_VOICE || 'alloy';
+      const systemPrompt = voiceConfig.systemPromptContent || '';
+      const tokenUrl = `${backendBase}/api/realtime/token/openai?model=gpt-realtime&voice=${encodeURIComponent(voice)}${systemPrompt ? `&system_prompt=${encodeURIComponent(systemPrompt)}` : ''}`;
       const tokenResp = await fetch(tokenUrl);
       const tokenBody = await tokenResp.text();
       if (!tokenResp.ok) {
@@ -733,13 +742,85 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         }
       };
 
-      // Play remote audio
-      pc.ontrack = (evt) => { if (audioRef.current) audioRef.current.srcObject = evt.streams[0]; };
+      // Play remote audio and store stream for mobile relay
+      pc.ontrack = (evt) => {
+        if (audioRef.current) {
+          audioRef.current.srcObject = evt.streams[0];
+        }
+        // Store response stream for mobile relay
+        responseStreamRef.current = evt.streams[0];
+        console.log('[MobileAudio] OpenAI response stream received');
 
-      // Attach microphone audio
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream; // Store for mute/unmute control
-      for (const track of stream.getAudioTracks()) pc.addTrack(track, stream);
+        // If mobile is already connected, set up relay now
+        if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN && !responseRelayRef.current) {
+          try {
+            const relayContext = new (window.AudioContext || window.webkitAudioContext)();
+            const relaySource = relayContext.createMediaStreamSource(evt.streams[0]);
+            const relayProcessor = relayContext.createScriptProcessor(4096, 1, 1);
+
+            relaySource.connect(relayProcessor);
+            relayProcessor.connect(relayContext.destination);
+
+            relayProcessor.onaudioprocess = (audioEvent) => {
+              if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
+                const inputData = audioEvent.inputBuffer.getChannelData(0);
+                const pcmData = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) {
+                  const s = Math.max(-1, Math.min(1, inputData[i]));
+                  pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                mobileAudioWsRef.current.send(pcmData.buffer);
+              }
+            };
+
+            responseRelayRef.current = { processor: relayProcessor, context: relayContext };
+            console.log('[MobileAudio] Started relaying OpenAI response to mobile (from pc.ontrack)');
+          } catch (err) {
+            console.error('[MobileAudio] Failed to set up response relay:', err);
+          }
+        }
+      };
+
+      // Set up audio mixing for desktop + mobile audio
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = audioContext;
+
+      // Get desktop microphone
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = micStream;
+
+      // Create mixer: desktop mic + mobile audio → mixed output
+      const mixerDestination = audioContext.createMediaStreamDestination();
+      mixerDestinationRef.current = mixerDestination;
+
+      // Connect desktop mic to mixer
+      const desktopSource = audioContext.createMediaStreamSource(micStream);
+      desktopSourceRef.current = desktopSource;
+      desktopSource.connect(mixerDestination);
+
+      // Create gain nodes for desktop and mobile to control volumes independently
+      const desktopGain = audioContext.createGain();
+      const mobileGain = audioContext.createGain();
+
+      // Reconnect desktop source through gain node
+      desktopSource.disconnect();
+      desktopSource.connect(desktopGain);
+      desktopGain.connect(mixerDestination);
+      desktopGain.gain.value = 1.0; // Controlled by desktop mute button
+
+      // Mobile gain for incoming audio
+      mobileGainNodeRef.current = mobileGain;
+      mobileGain.connect(mixerDestination);
+      mobileGain.gain.value = 1.0; // Always on (mobile controls mute on their end)
+
+      // Store desktop gain for mute control
+      desktopSourceRef.current = { source: desktopSource, gain: desktopGain };
+
+      // Add the mixed stream to the peer connection
+      const mixedStream = mixerDestination.stream;
+      for (const track of mixedStream.getAudioTracks()) {
+        pc.addTrack(track, mixedStream);
+      }
 
       // Helper: wait for ICE gathering to complete before sending offer
       const waitForIceGathering = () => new Promise((resolve) => {
@@ -766,8 +847,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
 
       // Open nested team WebSocket in parallel and forward TextMessages to Realtime
-      const wsBase = (process.env.REACT_APP_WS_URL || derivedWsBase);
-      const nestedUrl = `${wsBase}/api/runs/MainConversation`;
+      const agentName = voiceConfig.agentName || 'MainConversation';
+      const nestedUrl = getWsUrl(`/runs/${agentName}`);
       const ws = new WebSocket(nestedUrl);
       nestedWsRef.current = ws;
       setSharedNestedWs(ws);
@@ -776,7 +857,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       void recordEvent('controller', 'session_started', { voice, sessionId });
 
       // Open Claude Code WebSocket for self-editing
-      const claudeCodeUrl = `${wsBase}/api/runs/ClaudeCode`;
+      const claudeCodeUrl = getWsUrl('/runs/ClaudeCode');
       const claudeCodeWs = new WebSocket(claudeCodeUrl);
       claudeCodeWsRef.current = claudeCodeWs;
       setSharedClaudeCodeWs(claudeCodeWs);
@@ -816,6 +897,101 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       };
       claudeCodeWs.onclose = (closeEvent) => {
         void recordEvent('claude_code', 'system', { message: 'Claude Code WebSocket closed', code: closeEvent?.code, reason: closeEvent?.reason });
+      };
+
+      // Open mobile audio relay WebSocket
+      const mobileAudioUrl = getWsUrl(`/realtime/audio-relay/${conversationId}/desktop`);
+      const mobileAudioWs = new WebSocket(mobileAudioUrl);
+      mobileAudioWs.binaryType = 'arraybuffer'; // Receive binary data as ArrayBuffer
+      mobileAudioWsRef.current = mobileAudioWs;
+
+      mobileAudioWs.onopen = () => {
+        void recordEvent('controller', 'mobile_audio_relay', { message: 'Mobile audio relay connected' });
+
+        // Set up OpenAI response audio relay to mobile
+        if (responseStreamRef.current) {
+          try {
+            const relayContext = new (window.AudioContext || window.webkitAudioContext)();
+            const relaySource = relayContext.createMediaStreamSource(responseStreamRef.current);
+            const relayProcessor = relayContext.createScriptProcessor(4096, 1, 1);
+
+            relaySource.connect(relayProcessor);
+            relayProcessor.connect(relayContext.destination);
+
+            relayProcessor.onaudioprocess = (audioEvent) => {
+              if (mobileAudioWsRef.current?.readyState === WebSocket.OPEN) {
+                const inputData = audioEvent.inputBuffer.getChannelData(0);
+
+                // Convert Float32Array to Int16Array PCM
+                const pcmData = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) {
+                  const s = Math.max(-1, Math.min(1, inputData[i]));
+                  pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+
+                // Send to mobile
+                mobileAudioWsRef.current.send(pcmData.buffer);
+              }
+            };
+
+            responseRelayRef.current = { processor: relayProcessor, context: relayContext };
+            console.log('[MobileAudio] Started relaying OpenAI response to mobile');
+          } catch (err) {
+            console.error('[MobileAudio] Failed to set up response relay:', err);
+          }
+        } else {
+          console.log('[MobileAudio] OpenAI response stream not yet available, will relay when it arrives');
+        }
+      };
+
+      mobileAudioWs.onmessage = async (event) => {
+        try {
+          // Receive raw PCM audio data from mobile
+          const rawData = event.data;
+
+          if (!(rawData instanceof ArrayBuffer)) {
+            console.warn('[MobileAudio] Received non-ArrayBuffer data:', typeof rawData);
+            return;
+          }
+
+          const audioContext = audioContextRef.current;
+          if (!audioContext || !mobileGainNodeRef.current) {
+            console.error('[MobileAudio] Audio context not initialized');
+            return;
+          }
+
+          // Convert Int16Array PCM to Float32Array
+          const pcmData = new Int16Array(rawData);
+          const sampleRate = audioContext.sampleRate; // Use desktop's sample rate
+          const audioBuffer = audioContext.createBuffer(1, pcmData.length, sampleRate);
+          const channelData = audioBuffer.getChannelData(0);
+
+          // Convert 16-bit PCM to Float32
+          for (let i = 0; i < pcmData.length; i++) {
+            channelData[i] = pcmData[i] / (pcmData[i] < 0 ? 0x8000 : 0x7FFF);
+          }
+
+          // Create a buffer source and play it through the mobile gain node
+          const source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(mobileGainNodeRef.current); // Mix with desktop mic
+          source.start(0);
+
+          console.log('[MobileAudio] Playing mobile PCM chunk:', pcmData.length, 'samples');
+
+          mobileAudioSourceRef.current = source;
+        } catch (err) {
+          console.error('[MobileAudio] Failed to process mobile audio:', err);
+        }
+      };
+
+      mobileAudioWs.onerror = (errEvent) => {
+        console.error('[MobileAudio] WebSocket error:', errEvent);
+        void recordEvent('controller', 'mobile_audio_relay_error', { message: 'Mobile audio relay error' });
+      };
+
+      mobileAudioWs.onclose = () => {
+        void recordEvent('controller', 'mobile_audio_relay', { message: 'Mobile audio relay closed' });
       };
 
       // Do NOT auto-start a run; wait for explicit user_message or Run action
@@ -1025,8 +1201,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         }
         // Best effort: close and reopen WS without auto-running
         try { if (nestedWsRef.current) nestedWsRef.current.close(); } catch {}
-        const wsBase = (process.env.REACT_APP_WS_URL || derivedWsBase);
-        const nestedUrl = `${wsBase}/api/runs/MainConversation`;
+        const agentName = voiceConfig.agentName || 'MainConversation';
+        const nestedUrl = getWsUrl(`/runs/${agentName}`);
         const ws = new WebSocket(nestedUrl);
         nestedWsRef.current = ws;
         setSharedNestedWs(ws);
@@ -1121,22 +1297,16 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   };
 
   const toggleMute = () => {
-    if (!micStreamRef.current) {
-      console.warn('No microphone stream available to mute');
-      return;
-    }
-
     setIsMuted((prevMuted) => {
       const newMutedState = !prevMuted;
 
-      // Toggle all audio tracks in the microphone stream
-      const audioTracks = micStreamRef.current.getAudioTracks();
-      audioTracks.forEach(track => {
-        track.enabled = !newMutedState; // enabled when NOT muted
-      });
+      // Control desktop audio via gain node (better than disabling tracks)
+      if (desktopSourceRef.current && desktopSourceRef.current.gain) {
+        desktopSourceRef.current.gain.gain.value = newMutedState ? 0.0 : 1.0;
+      }
 
       // Log the mute/unmute event
-      void recordEvent('controller', newMutedState ? 'microphone_muted' : 'microphone_unmuted', {});
+      void recordEvent('controller', newMutedState ? 'desktop_microphone_muted' : 'desktop_microphone_unmuted', {});
 
       return newMutedState;
     });
@@ -1150,11 +1320,16 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     setSharedNestedWs(null);
     if (claudeCodeWsRef.current) { try { claudeCodeWsRef.current.close(); } catch {} claudeCodeWsRef.current = null; }
     setSharedClaudeCodeWs(null);
+    if (mobileAudioWsRef.current) { try { mobileAudioWsRef.current.close(); } catch {} mobileAudioWsRef.current = null; }
     hasSpokenMidRef.current = false;
     runCompletedRef.current = false;
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(track => track.stop());
       micStreamRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close(); } catch {}
+      audioContextRef.current = null;
     }
     if (peerRef.current) {
       peerRef.current.getSenders().forEach((sender) => { if (sender.track) sender.track.stop(); });
@@ -1282,6 +1457,21 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           <Box sx={{ pt: 2, pb: 1, px: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
             <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
 
+            {/* Configuration Button */}
+            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Agent: {voiceConfig.agentName} | Voice: {voiceConfig.voice} | Prompt: {voiceConfig.systemPromptFile}
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setConfigEditorOpen(true)}
+                disabled={isRunning}
+              >
+                Configure
+              </Button>
+            </Box>
+
             {/* Modern Voice Session Controls */}
             <VoiceSessionControls
               isRunning={isRunning}
@@ -1374,6 +1564,13 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
             </Box>
           </Box>
         </Box>
+
+        {/* Voice Configuration Editor */}
+        <VoiceConfigEditor
+          open={configEditorOpen}
+          onClose={() => setConfigEditorOpen(false)}
+          onSave={(config) => setVoiceConfig(config)}
+        />
       </Box>
     );
   }
@@ -1406,6 +1603,21 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         </Box>
 
         <audio ref={audioRef} autoPlay />
+
+        {/* Configuration Button */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="subtitle2" color="text.secondary">
+            Agent: {voiceConfig.agentName} | Voice: {voiceConfig.voice} | Prompt: {voiceConfig.systemPromptFile}
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setConfigEditorOpen(true)}
+            disabled={isRunning}
+          >
+            Configure
+          </Button>
+        </Box>
 
         {/* Modern Voice Session Controls */}
         <VoiceSessionControls
@@ -1577,9 +1789,16 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       {sharedNestedWs && (
         <Box component={Paper} sx={{ p: 1 }}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>Nested Team Console</Typography>
-          <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
+          <RunConsole nested agentName={voiceConfig.agentName} sharedSocket={sharedNestedWs} readOnlyControls />
         </Box>
       )}
+
+      {/* Voice Configuration Editor */}
+      <VoiceConfigEditor
+        open={configEditorOpen}
+        onClose={() => setConfigEditorOpen(false)}
+        onSave={(config) => setVoiceConfig(config)}
+      />
     </Stack>
   );
 }
