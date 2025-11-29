@@ -35,6 +35,7 @@ proof‑of‑concept WebRTC client.
 """
 
 import asyncio
+import logging
 import os
 import json
 import time
@@ -48,6 +49,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from starlette.websockets import WebSocketDisconnect
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Environment configuration
@@ -144,6 +148,105 @@ class ConversationStreamManager:
 
 
 stream_manager = ConversationStreamManager()
+
+
+class AudioRelayManager:
+    """Manages audio relay connections between mobile and desktop clients."""
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        # conversation_id -> {"desktop": WebSocket, "mobile": WebSocket}
+        self._connections: Dict[str, Dict[str, WebSocket]] = {}
+        # WebRTC signaling connections: conversation_id -> {"desktop": WebSocket, "mobile": WebSocket}
+        self._signaling: Dict[str, Dict[str, WebSocket]] = {}
+
+    async def register_desktop(self, conversation_id: str, websocket: WebSocket) -> None:
+        async with self._lock:
+            if conversation_id not in self._connections:
+                self._connections[conversation_id] = {}
+            self._connections[conversation_id]["desktop"] = websocket
+
+    async def register_mobile(self, conversation_id: str, websocket: WebSocket) -> None:
+        async with self._lock:
+            if conversation_id not in self._connections:
+                self._connections[conversation_id] = {}
+            self._connections[conversation_id]["mobile"] = websocket
+
+    async def unregister(self, conversation_id: str, client_type: str) -> None:
+        async with self._lock:
+            if conversation_id in self._connections:
+                self._connections[conversation_id].pop(client_type, None)
+                if not self._connections[conversation_id]:
+                    self._connections.pop(conversation_id, None)
+
+    async def relay_to_desktop(self, conversation_id: str, data: bytes) -> bool:
+        """Relay audio from mobile to desktop. Returns True if sent successfully."""
+        async with self._lock:
+            conn = self._connections.get(conversation_id)
+            if not conn or "desktop" not in conn:
+                logger.warning(f"[AudioRelay] Desktop not connected for conversation {conversation_id}")
+                return False
+            desktop_ws = conn["desktop"]
+
+        try:
+            await desktop_ws.send_bytes(data)
+            logger.debug(f"[AudioRelay] Relayed {len(data)} bytes from mobile to desktop for conversation {conversation_id}")
+            return True
+        except Exception as e:
+            logger.error(f"[AudioRelay] Failed to relay to desktop: {e}")
+            return False
+
+    async def relay_to_mobile(self, conversation_id: str, data: bytes) -> bool:
+        """Relay audio from desktop to mobile. Returns True if sent successfully."""
+        async with self._lock:
+            conn = self._connections.get(conversation_id)
+            if not conn or "mobile" not in conn:
+                return False
+            mobile_ws = conn["mobile"]
+
+        try:
+            await mobile_ws.send_bytes(data)
+            return True
+        except Exception:
+            return False
+
+    def has_mobile(self, conversation_id: str) -> bool:
+        """Check if mobile client is connected."""
+        return conversation_id in self._connections and "mobile" in self._connections[conversation_id]
+
+    async def register_signaling_peer(self, conversation_id: str, peer_id: str, websocket: WebSocket) -> None:
+        """Register a WebRTC signaling peer (desktop or mobile)."""
+        async with self._lock:
+            if conversation_id not in self._signaling:
+                self._signaling[conversation_id] = {}
+            self._signaling[conversation_id][peer_id] = websocket
+
+    async def unregister_signaling_peer(self, conversation_id: str, peer_id: str) -> None:
+        """Unregister a WebRTC signaling peer."""
+        async with self._lock:
+            if conversation_id in self._signaling:
+                self._signaling[conversation_id].pop(peer_id, None)
+                if not self._signaling[conversation_id]:
+                    self._signaling.pop(conversation_id, None)
+
+    async def forward_signaling(self, conversation_id: str, target_peer: str, message: Dict[str, Any]) -> bool:
+        """Forward a WebRTC signaling message to the target peer."""
+        async with self._lock:
+            peers = self._signaling.get(conversation_id)
+            if not peers or target_peer not in peers:
+                logger.warning(f"[WebRTC] Target peer {target_peer} not connected for conversation {conversation_id}")
+                return False
+            target_ws = peers[target_peer]
+
+        try:
+            await target_ws.send_json(message)
+            return True
+        except Exception as e:
+            logger.error(f"[WebRTC] Failed to forward signaling to {target_peer}: {e}")
+            return False
+
+
+audio_relay_manager = AudioRelayManager()
 
 
 def _json_headers() -> Dict[str, str]:
@@ -248,6 +351,63 @@ class UpdateConversationRequest(BaseModel):
 router = APIRouter()
 
 
+@router.get("/connections/active")
+async def list_active_connections() -> Dict[str, Any]:
+    """List all active WebSocket connections for debugging."""
+    async with stream_manager._lock:
+        active_conversations = {
+            conv_id: len(sockets)
+            for conv_id, sockets in stream_manager._subscribers.items()
+        }
+    async with audio_relay_manager._lock:
+        audio_connections = {
+            conv_id: list(conn.keys())
+            for conv_id, conn in audio_relay_manager._connections.items()
+        }
+    return {
+        "stream_connections": active_conversations,
+        "audio_relay_connections": audio_connections,
+        "total_conversations": len(active_conversations)
+    }
+
+
+@router.post("/connections/cleanup")
+async def cleanup_all_connections() -> Dict[str, Any]:
+    """Force close all active WebSocket connections (useful for clearing zombie connections)."""
+    closed_streams = 0
+    closed_relays = 0
+
+    # Close all stream connections
+    async with stream_manager._lock:
+        for conv_id, sockets in list(stream_manager._subscribers.items()):
+            for ws in list(sockets):
+                try:
+                    await ws.close()
+                    closed_streams += 1
+                except Exception:
+                    pass
+            sockets.clear()
+        stream_manager._subscribers.clear()
+
+    # Close all audio relay connections
+    async with audio_relay_manager._lock:
+        for conv_id, connections in list(audio_relay_manager._connections.items()):
+            for client_type, ws in list(connections.items()):
+                try:
+                    await ws.close()
+                    closed_relays += 1
+                except Exception:
+                    pass
+            connections.clear()
+        audio_relay_manager._connections.clear()
+
+    return {
+        "closed_stream_connections": closed_streams,
+        "closed_relay_connections": closed_relays,
+        "total_closed": closed_streams + closed_relays
+    }
+
+
 @router.post("/conversations", response_model=ConversationSummary, status_code=201)
 def create_conversation(req: CreateConversationRequest = Body(...)) -> ConversationSummary:
     record = conversation_store.create_conversation(
@@ -306,6 +466,22 @@ def delete_conversation(conversation_id: str) -> None:
     return None
 
 
+@router.post("/conversations/cleanup")
+def cleanup_inactive_conversations(
+    inactive_minutes: int = Query(30, ge=1, le=1440, description="Delete conversations inactive for this many minutes")
+) -> Dict[str, Any]:
+    """
+    Delete conversations that haven't been updated in the specified time period.
+    Default is 30 minutes. This helps clean up stale/abandoned conversations.
+    """
+    deleted_ids = conversation_store.cleanup_inactive_conversations(inactive_minutes)
+    return {
+        "deleted_count": len(deleted_ids),
+        "deleted_ids": deleted_ids,
+        "inactive_minutes": inactive_minutes
+    }
+
+
 @router.get("/conversations/{conversation_id}/events", response_model=List[ConversationEvent])
 def list_conversation_events(
     conversation_id: str,
@@ -342,6 +518,118 @@ async def append_conversation_event(
         },
     )
     return payload
+
+
+@router.websocket("/audio-relay/{conversation_id}/desktop")
+async def desktop_audio_relay(websocket: WebSocket, conversation_id: str) -> None:
+    """Desktop client connects here to receive audio from mobile."""
+    conversation = conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        await websocket.close(code=4404, reason="Conversation not found")
+        return
+
+    await websocket.accept()
+    await audio_relay_manager.register_desktop(conversation_id, websocket)
+    logger.info(f"[AudioRelay] Desktop connected for conversation {conversation_id}")
+
+    try:
+        while True:
+            # Desktop can send audio back to mobile (optional)
+            data = await websocket.receive_bytes()
+            logger.debug(f"[AudioRelay] Desktop sending {len(data)} bytes to mobile for conversation {conversation_id}")
+            await audio_relay_manager.relay_to_mobile(conversation_id, data)
+    except WebSocketDisconnect:
+        logger.info(f"[AudioRelay] Desktop disconnected for conversation {conversation_id}")
+    finally:
+        await audio_relay_manager.unregister(conversation_id, "desktop")
+
+
+@router.websocket("/audio-relay/{conversation_id}/mobile")
+async def mobile_audio_relay(websocket: WebSocket, conversation_id: str) -> None:
+    """Mobile client connects here to send audio to desktop."""
+    conversation = conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        await websocket.close(code=4404, reason="Conversation not found")
+        return
+
+    await websocket.accept()
+    await audio_relay_manager.register_mobile(conversation_id, websocket)
+    logger.info(f"[AudioRelay] Mobile connected for conversation {conversation_id}")
+
+    try:
+        while True:
+            # Receive audio from mobile and relay to desktop
+            data = await websocket.receive_bytes()
+            logger.debug(f"[AudioRelay] Received {len(data)} bytes from mobile for conversation {conversation_id}")
+            success = await audio_relay_manager.relay_to_desktop(conversation_id, data)
+            if not success:
+                # Desktop not connected, optionally notify mobile
+                logger.warning(f"[AudioRelay] Failed to relay mobile audio - desktop not connected")
+    except WebSocketDisconnect:
+        logger.info(f"[AudioRelay] Mobile disconnected for conversation {conversation_id}")
+    finally:
+        await audio_relay_manager.unregister(conversation_id, "mobile")
+
+
+@router.websocket("/webrtc-signal/{conversation_id}/{peer_id}")
+async def webrtc_signaling(websocket: WebSocket, conversation_id: str, peer_id: str) -> None:
+    """
+    Unified WebRTC signaling endpoint for peer-to-peer audio between desktop and mobile.
+    Handles SDP exchange (offer/answer) and ICE candidates.
+
+    Args:
+        conversation_id: The voice conversation ID
+        peer_id: Either "desktop" or "mobile"
+
+    Message format:
+        - {"type": "offer", "sdp": "..."}
+        - {"type": "answer", "sdp": "..."}
+        - {"type": "candidate", "candidate": {...}}
+    """
+    conversation = conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        await websocket.close(code=4404, reason="Conversation not found")
+        return
+
+    if peer_id not in ["desktop", "mobile"]:
+        await websocket.close(code=4400, reason="peer_id must be 'desktop' or 'mobile'")
+        return
+
+    await websocket.accept()
+    await audio_relay_manager.register_signaling_peer(conversation_id, peer_id, websocket)
+    logger.info(f"[WebRTC] {peer_id} registered for signaling on conversation {conversation_id}")
+
+    # Notify the other peer that this peer has joined
+    other_peer = "mobile" if peer_id == "desktop" else "desktop"
+    await audio_relay_manager.forward_signaling(
+        conversation_id,
+        other_peer,
+        {"type": "peer_joined", "peerId": peer_id}
+    )
+
+    try:
+        async for message in websocket.iter_text():
+            data = json.loads(message)
+            msg_type = data.get("type")
+
+            if msg_type in ["offer", "answer", "candidate"]:
+                # Forward signaling messages to the other peer
+                target = "mobile" if peer_id == "desktop" else "desktop"
+                success = await audio_relay_manager.forward_signaling(conversation_id, target, data)
+                if success:
+                    logger.debug(f"[WebRTC] Forwarded {msg_type} from {peer_id} to {target}")
+                else:
+                    logger.warning(f"[WebRTC] Failed to forward {msg_type} - {target} not connected")
+            else:
+                logger.warning(f"[WebRTC] Unknown message type from {peer_id}: {msg_type}")
+
+    except WebSocketDisconnect:
+        logger.info(f"[WebRTC] {peer_id} disconnected from signaling")
+    except Exception as e:
+        logger.error(f"[WebRTC] Error in signaling for {peer_id}: {e}")
+    finally:
+        await audio_relay_manager.unregister_signaling_peer(conversation_id, peer_id)
+        logger.info(f"[WebRTC] {peer_id} unregistered from signaling")
 
 
 @router.websocket("/conversations/{conversation_id}/stream")
@@ -388,11 +676,12 @@ async def conversation_stream(websocket: WebSocket, conversation_id: str) -> Non
 def get_openai_token(
     model: str = Query(..., description="Name of the realtime model, e.g. gpt-realtime"),
     voice: Optional[str] = Query("alloy", description="Voice to use (omit or set to 'none' to disable audio)"),
+    system_prompt: Optional[str] = Query(None, description="Custom system prompt (uses default if not provided)"),
 ) -> Any:
     """Create a realtime session and return the session id and client secret.
 
     The client uses the returned session id and secret to negotiate a
-    WebRTC connection with OpenAI’s realtime servers.  The session
+    WebRTC connection with OpenAI's realtime servers.  The session
     expires automatically; do not reuse it after expiry.
     """
     def create_session(payload: Dict[str, Any]) -> requests.Response:
@@ -403,7 +692,9 @@ def get_openai_token(
             timeout=15,
         )
 
-    payload: Dict[str, Any] = {"model": model, "instructions": VOICE_SYSTEM_PROMPT}
+    # Use provided system prompt or fall back to default
+    instructions = system_prompt if system_prompt else VOICE_SYSTEM_PROMPT
+    payload: Dict[str, Any] = {"model": model, "instructions": instructions}
     if voice and voice.lower() != "none":
         payload["voice"] = voice
 
@@ -421,7 +712,7 @@ def get_openai_token(
         except Exception:
             first_error_detail = resp.text
         try:
-            resp = create_session({"model": model, "instructions": VOICE_SYSTEM_PROMPT})
+            resp = create_session({"model": model, "instructions": instructions})
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed to contact OpenAI realtime API (retry): {exc}")
         if resp.status_code != 200:

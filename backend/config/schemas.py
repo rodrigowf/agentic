@@ -30,7 +30,7 @@ class PromptConfig(BaseSchema):
 
 class AgentConfig(BaseSchema):
     name: str
-    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent, 'looping' for looping agent, 'looping_code_executor' for looping code executor agent")
+    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent, 'looping' for looping agent, 'looping_code_executor' for looping code executor agent, 'dynamic_init_looping' for looping agent with custom initialization")
     tools: List[str]
     llm: Optional[LLMConfig] = None
     prompt: Optional[PromptConfig] = None
@@ -44,6 +44,8 @@ class AgentConfig(BaseSchema):
     reflect_on_tool_use: bool = True
     terminate_on_text: bool = False  # Keep for potential future use or backward compat if needed, but default to False
     tool_call_loop: bool = False  # New field to control looping agent behavior
+    # Dynamic initialization configuration
+    initialization_function: Optional[str] = Field(default=None, description="Python function to call during agent initialization (format: 'module.function_name', e.g., 'memory.initialize_memory_agent'). The function will be called with no arguments after agent creation and can modify the agent's state, system prompt, or perform any setup logic.")
     # Nested team-specific configuration
     sub_agents: Optional[List["AgentConfig"]] = None
     mode: Optional[str] = None
@@ -57,6 +59,16 @@ AgentConfig.update_forward_refs()
 
 class GenerateToolRequest(BaseSchema):
     prompt: str = Field(..., description="The natural language prompt describing the tool to be generated.")
+
+class VoiceConfig(BaseSchema):
+    """Configuration for voice assistant."""
+    name: str = Field(..., description="Unique name for this voice configuration")
+    agent_name: str = Field(..., description="Name of the agent to use for voice assistant")
+    system_prompt_file: str = Field(..., description="Filename of the system prompt (in voice_prompts directory)")
+    voice_model: str = Field(default="gpt-realtime", description="Model to use for voice (e.g., gpt-realtime)")
+    voice: str = Field(default="alloy", description="Voice to use (e.g., alloy, echo, fable, onyx, nova, shimmer)")
+    description: Optional[str] = Field(default=None, description="Optional description of this voice configuration")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 class BaseChatMessage(BaseModel):
     content: str
@@ -73,7 +85,7 @@ class BaseChatMessage(BaseModel):
         extra = "allow"  # Allow extra fields
         validate_assignment = True
         arbitrary_types_allowed = True
-        
+
     def model_dump(self, **kwargs):
         # Ensure consistent serialization
         return {

@@ -1,0 +1,2 @@
+I want you to create for me a new agent (tools script and agent json) for an agent that is capable of answering any questions about anything that is contained in any of the files present in the given root folder, retrieve literal content from them or store textual content into files (md or txt) there.
+To accomplish this it will involve a two parts system: One script that will watch the choosen root folder for any changes, convert all new files to markdown using ###### library, store the whole contents of each file in a local database, the use the lib chunking method 

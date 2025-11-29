@@ -1,6 +1,6 @@
 # CLAUDE.md - Comprehensive Development Guide
 
-**Last Updated:** 2025-10-11
+**Last Updated:** 2025-11-28
 **For:** Future Claude instances working on this codebase
 
 ---
@@ -15,8 +15,9 @@
 6. [Creating New Agents](#creating-new-agents)
 7. [Creating New Tools](#creating-new-tools)
 8. [Voice Assistant System](#voice-assistant-system)
-9. [Claude Code Self-Editor](#claude-code-self-editor)
-10. [Best Practices](#best-practices)
+9. [Mobile Voice Interface](#mobile-voice-interface)
+10. [Claude Code Self-Editor](#claude-code-self-editor)
+11. [Best Practices](#best-practices)
 
 ---
 
@@ -27,6 +28,7 @@ This is an **agentic AI system** with a Python backend using AutoGen and a React
 - **Multi-agent coordination** using nested team agents
 - **Multimodal vision agents** that can interpret images from tool responses
 - **Voice assistant interface** using OpenAI Realtime API
+- **Mobile voice interface** for wireless microphone access from smartphones
 - **Claude Code self-editor integration** for live code modification
 - **Real-time WebSocket communication**
 - **Memory management** with ChromaDB and embeddings
@@ -935,6 +937,115 @@ python3 tests/integration/test_multimodal_api.py
 - See `backend/docs/MULTIMODAL_AGENT_GUIDE.md` for complete usage guide
 - See `backend/docs/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` for implementation details
 
+#### 4. Dynamic Initialization Looping Agent
+
+**Example:** `Memory.json`
+
+**Added:** 2025-11-08
+
+```json
+{
+  "name": "MyDynamicAgent",
+  "agent_type": "dynamic_init_looping",
+  "initialization_function": "my_module.initialize_my_agent",
+  "tools": ["tool1", "tool2"],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "You are an agent with custom initialization. {{PLACEHOLDER}}",
+    "user": "Your task here"
+  },
+  "code_executor": null,
+  "model_client_stream": false,
+  "sources": null,
+  "description": "Agent with custom initialization logic",
+  "system_message": null,
+  "max_consecutive_auto_reply": 20,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": true,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "include_inner_dialog": true
+}
+```
+
+**Key Features:**
+- `agent_type: "dynamic_init_looping"` - Looping agent with custom initialization
+- `initialization_function` - Python function to call on agent startup (format: `"module.function_name"`)
+- **Flexible initialization** - Can modify system prompts, load data, set up state, etc.
+- **Agent-agnostic** - Any agent can use custom initialization logic
+- **UI configurable** - Set initialization function through agent editor
+
+**How It Works:**
+
+1. Agent is created with `initialization_function: "memory.initialize_memory_agent"`
+2. Function is imported from `tools/memory.py`
+3. Function is called automatically after agent creation
+4. Function can access agent via `get_current_agent()` and modify it
+5. Common use: Replace placeholders in system prompt with dynamic content
+
+**Example Initialization Function:**
+
+```python
+# tools/my_module.py
+
+from utils.context import get_current_agent
+import logging
+
+logger = logging.getLogger(__name__)
+
+def initialize_my_agent():
+    """Initialize agent with custom logic"""
+    try:
+        agent = get_current_agent()
+
+        # Load data from file
+        data = load_my_data()
+
+        # Update agent's system message
+        if agent and agent._system_messages:
+            agent._system_messages[0].content = agent._system_messages[0].content.replace(
+                "{{PLACEHOLDER}}",
+                data
+            )
+
+        return "Agent initialized successfully"
+    except Exception as e:
+        logger.error(f"Initialization failed: {e}")
+        return f"Error: {e}"
+```
+
+**Use Cases:**
+- **Memory management** - Load memory from file and inject into prompt
+- **Database connections** - Connect to DB and load context
+- **API configuration** - Load credentials and test connections
+- **Workspace setup** - Verify directories and load project info
+- **Resource validation** - Check required files exist
+
+**Testing:**
+```bash
+# Run unit tests
+cd backend
+source venv/bin/activate
+pytest tests/unit/test_dynamic_init_agent.py -v
+
+# Run integration tests
+python3 tests/integration/test_dynamic_init_integration.py
+
+# Run end-to-end tests
+python3 tests/e2e_dynamic_init_test.py
+```
+
+**Documentation:**
+- See `docs/DYNAMIC_INIT_AGENT_IMPLEMENTATION.md` for complete implementation guide
+- Includes usage examples, troubleshooting, and migration guide
+
 ### Creating a New Agent
 
 **Step 1:** Create JSON configuration
@@ -981,7 +1092,7 @@ EOF
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | string | Agent name (must match filename) |
-| `agent_type` | string | "looping", "multimodal_tools_looping", or "nested_team" |
+| `agent_type` | string | "looping", "multimodal_tools_looping", "dynamic_init_looping", or "nested_team" |
 | `tools` | array | List of tool names to provide |
 | `llm.provider` | string | "openai", "anthropic", "google" |
 | `llm.model` | string | Model identifier (use gpt-4o for multimodal) |
@@ -989,6 +1100,7 @@ EOF
 | `prompt.system` | string | System prompt for agent |
 | `tool_call_loop` | bool | Continue calling tools in loop |
 | `reflect_on_tool_use` | bool | Reflect on tool results |
+| `initialization_function` | string | Python function for initialization (dynamic_init_looping only) |
 | `sub_agents` | array | Child agents (nested team only) |
 | `mode` | string | "selector" (nested team only) |
 | `orchestrator_prompt` | string | "__function__" for built-in orchestration |
@@ -1207,6 +1319,334 @@ VOICE_SYSTEM_PROMPT = (
 - Only speak after meaningful milestones
 - Wait for [RUN_FINISHED] before final summary
 - Use tools to delegate work, not execute directly
+
+---
+
+## Mobile Voice Interface
+
+### Purpose
+
+Enables using a smartphone as a **wireless microphone** for voice conversations running on desktop. This creates a seamless multi-device experience where you can move around while staying connected to your AI assistant.
+
+**Location:** [frontend/src/features/voice/pages/MobileVoice.js](frontend/src/features/voice/pages/MobileVoice.js)
+
+**Documentation:** [docs/MOBILE_VOICE_GUIDE.md](docs/MOBILE_VOICE_GUIDE.md)
+
+### Architecture
+
+The mobile interface leverages the existing multi-client conversation architecture:
+
+```
+┌─────────────────┐         ┌─────────────────┐
+│  Desktop Page   │         │  Mobile Page    │
+│   (localhost)   │         │ (192.168.x.x)   │
+└────────┬────────┘         └────────┬────────┘
+         │                           │
+         │ Each has own:            │ Each has own:
+         │ - WebRTC connection      │ - WebRTC connection
+         │ - Microphone stream      │ - Microphone stream
+         │ - Speaker output         │ - Speaker output
+         │                          │
+         ├──────────────┬───────────┤
+                        │
+            ┌───────────▼──────────┐
+            │   Backend Server     │
+            │  (realtime_voice.py) │
+            │                      │
+            │  ConversationStream  │
+            │  Manager (broadcasts │
+            │  to all clients)     │
+            └───────────┬──────────┘
+                        │
+            ┌───────────▼──────────┐
+            │  conversation_id:    │
+            │  "abc-123-def-456"   │
+            │                      │
+            │  Shared SQLite DB    │
+            │  - Events            │
+            │  - History           │
+            └──────────────────────┘
+```
+
+### Key Features
+
+**1. Conversation Selector**
+- Dropdown showing all available voice conversations
+- Auto-selects if only one active conversation exists
+- Refreshes every 10 seconds
+- Disabled during active session
+
+**2. Voice Controls**
+- **Large touch-optimized buttons** (100-120px)
+- **Start/Stop**: Green play / Red stop with pulse animation
+- **Mute/Unmute**: Orange muted / Green active (starts muted by default)
+- Visual feedback with color changes and animations
+
+**3. Dual Audio Visualization**
+- **Microphone level** (green/gray bar): Shows user voice input
+- **Speaker level** (blue bar): Shows AI assistant output
+- Real-time level meters with smooth transitions
+- Different colors for easy identification
+
+**4. Recent Activity**
+- Displays last 5 events from nested team or Claude Code
+- Shows tool usage, agent messages, system events
+- Auto-scrolls to most recent
+- Truncated for mobile readability
+
+**5. Session Detection**
+- Detects if desktop session is active
+- Shows info alert: "Desktop session is active on this conversation"
+- Synchronized state via WebSocket event broadcasting
+
+### Technical Implementation
+
+**Multiple WebRTC Sessions per Conversation:**
+- Each device creates independent WebRTC connection
+- Both connect to same OpenAI Realtime session
+- Audio streams are device-specific (no shared mic/speaker)
+- Events are broadcast to all connected clients
+
+**No Backend Changes Required:**
+- Uses existing `ConversationStreamManager` (lines 106-146 in `api/realtime_voice.py`)
+- Leverages existing WebSocket broadcasting
+- Reuses conversation persistence (SQLite)
+- Same SDP exchange endpoint
+
+**Mobile Optimizations:**
+- Full-screen layout (no AppBar, no Container padding)
+- Viewport meta tag prevents unwanted zoom
+- Touch-friendly 100px+ buttons
+- Minimal UI for battery efficiency
+- Efficient audio analysis using Web Audio API
+
+### Usage Flow
+
+**Desktop Setup:**
+```bash
+# 1. Start voice conversation on desktop
+http://localhost:3000/voice
+
+# 2. Create or select conversation
+# 3. Start voice session
+```
+
+**Mobile Connection:**
+```bash
+# 1. Get computer IP address
+hostname -I  # Linux/Mac
+ipconfig     # Windows
+
+# 2. On mobile browser (Android Chrome)
+http://192.168.1.100:3000/mobile-voice
+
+# 3. Select conversation from dropdown
+# 4. Tap green play button
+# 5. Tap microphone to unmute
+```
+
+### Code Structure
+
+**MobileVoice.js Key Functions:**
+
+```javascript
+// Load and auto-select conversations
+const fetchConversations = useCallback(async () => {
+  const convs = await listVoiceConversations();
+  if (!selectedConversationId && convs.length === 1) {
+    // Auto-select single conversation
+    setSelectedConversationId(convs[0].id);
+  }
+}, []);
+
+// Start WebRTC session
+const startSession = async () => {
+  // Get token from backend
+  const tokenResp = await fetch(`${backendBase}/api/realtime/token/openai?model=gpt-realtime&voice=alloy`);
+
+  // Create peer connection
+  const pc = new RTCPeerConnection({ iceServers: [...] });
+
+  // Get microphone (muted by default)
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  stream.getAudioTracks().forEach(track => track.enabled = false);
+
+  // SDP exchange
+  const answer = await postSdpOffer(mediaAddr, sessionId, clientSecret, offer.sdp);
+  await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+
+  // Record session start
+  recordEvent('controller', 'mobile_session_started', { sessionId });
+};
+
+// Toggle mute state
+const toggleMute = () => {
+  micStreamRef.current.getAudioTracks().forEach(track => {
+    track.enabled = !track.enabled;
+  });
+  setIsMuted(!isMuted);
+};
+```
+
+### Browser Compatibility
+
+**Tested and Optimized:**
+- ✅ Android Chrome (primary target)
+- ✅ Android Firefox
+- ⚠️ iOS Safari (WebRTC support varies)
+
+**Requirements:**
+- WebRTC support (getUserMedia, RTCPeerConnection)
+- Web Audio API (for visualizations)
+- WebSocket support
+- Modern ES6+ JavaScript
+
+### Network Requirements
+
+**Same WiFi Network:**
+- Mobile and desktop must be on same network
+- Backend exposed on local IP (not just localhost)
+- Ports 3000 (frontend) and 8000 (backend) accessible
+
+**Firewall Configuration:**
+- Allow incoming on port 3000 (React dev server)
+- Allow incoming on port 8000 (FastAPI)
+- WebRTC uses STUN (stun.l.google.com:19302)
+
+### Performance Characteristics
+
+**Battery Usage:**
+- ~10-15% per hour of active conversation
+- Efficient audio processing (Web Audio API)
+- Minimal UI rendering
+- Stop session when idle to save battery
+
+**Data Usage (WiFi):**
+- Bidirectional audio: ~40-60 KB/s
+- Event stream: ~1-5 KB/s
+- Total: ~50-70 KB/s (~200 MB/hour)
+
+**Latency:**
+- ~200-500ms (network dependent)
+- WebRTC handles echo cancellation
+- STUN for NAT traversal
+
+### Troubleshooting
+
+**Common Issues:**
+
+1. **"No conversations available"**
+   - Desktop must have created conversation first
+   - Check mobile can reach backend: `http://[IP]:8000/api/realtime/conversations`
+
+2. **Echo/Feedback**
+   - Mute mobile when near desktop speakers
+   - Use headphones on desktop
+   - Or use only one device's microphone
+
+3. **Disconnects frequently**
+   - Check WiFi signal strength
+   - Disable battery optimization for browser
+   - Keep mobile screen on
+
+4. **High latency**
+   - Use WiFi (not cellular)
+   - Move closer to router
+   - Reduce network congestion
+
+### HTTPS Access (Production/Remote Access)
+
+**For accessing mobile voice from smartphone via HTTPS:**
+
+**Requirements:**
+- Both desktop and mobile MUST use the same domain (HTTPS through nginx)
+- Desktop: `https://192.168.0.25/voice/{conversation_id}`
+- Mobile: `https://192.168.0.25/mobile-voice/{conversation_id}`
+
+**Why HTTPS consistency is critical:**
+- WebRTC signaling requires both peers on same origin
+- Mixed origins (localhost HTTP + HTTPS domain) will cause signaling to fail
+- Desktop won't appear as connected peer if using different protocol
+
+**Nginx Configuration:**
+
+The nginx proxy must include the WebRTC signaling endpoint:
+
+```nginx
+location /api/realtime/webrtc-signal/ {
+    proxy_pass http://backend/api/realtime/webrtc-signal/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_read_timeout 86400;
+}
+```
+
+**Reload nginx after changes:**
+```bash
+./reload-nginx.sh
+# OR
+sudo kill -HUP $(cat /home/rodrigo/agentic/nginx.pid)
+```
+
+**Debugging HTTPS connections:**
+
+```bash
+# Monitor WebRTC signaling
+tail -f logs/nginx-access.log | grep webrtc-signal
+
+# Expected: See BOTH desktop and mobile with HTTP 101
+# 192.168.0.25 - "GET /api/realtime/webrtc-signal/.../desktop" 101
+# 192.168.0.16 - "GET /api/realtime/webrtc-signal/.../mobile" 101
+
+# Check peer registration
+grep "registered for signaling" /tmp/backend.log | tail -5
+
+# Verify both desktop and mobile appear
+```
+
+**Using ADB for mobile debugging:**
+
+```bash
+# Connect device and forward DevTools
+adb devices
+adb forward tcp:9222 localabstract:chrome_devtools_remote
+
+# List open Chrome tabs on mobile
+curl -s http://localhost:9222/json | python3 -m json.tool | grep url
+
+# Check active backend connections
+ss -tn | grep ":8000" | grep ESTAB
+# 127.0.0.1 = localhost (wrong - desktop using HTTP)
+# 192.168.0.x = network (correct - using HTTPS nginx)
+```
+
+**See also:**
+- `debug/HTTPS_MOBILE_VOICE_FIX.md` - Nginx configuration fix
+- `debug/MOBILE_VOICE_HTTPS_DEBUGGING_GUIDE.md` - Complete debugging workflow
+- `debug/MOBILE_VOICE_FIXES.md` - Audio playback fixes (echo elimination)
+
+### File Locations
+
+| Purpose | Location |
+|---------|----------|
+| **Mobile page component** | `frontend/src/features/voice/pages/MobileVoice.js` |
+| **Route configuration** | `frontend/src/App.js` (lines 356-357, 387-388) |
+| **API client** | `frontend/src/api.js` (reuses existing functions) |
+| **Documentation** | `docs/MOBILE_VOICE_GUIDE.md` |
+| **Backend (no changes)** | `backend/api/realtime_voice.py` (existing code) |
+
+### Future Enhancements
+
+Potential improvements:
+
+- 🔮 **QR Code Join**: Desktop shows QR for instant mobile connection
+- 🔮 **Push-to-Talk**: Hold button to speak (battery saving)
+- 🔮 **Voice Activity Detection**: Auto-mute when silent
+- 🔮 **Connection Quality**: Show latency/packet loss indicators
+- 🔮 **Offline Buffering**: Queue during brief disconnects
+- 🔮 **Multi-language UI**: i18n support
 
 ---
 
@@ -1683,6 +2123,101 @@ ls -la ~/.claude/
 
 ## Recent Changes
 
+### Mobile Voice HTTPS & Echo Fix (2025-11-29)
+
+Fixed mobile voice interface for HTTPS access and eliminated echo feedback.
+
+**Issues Resolved:**
+1. **Nginx WebRTC endpoint missing** - Added `/api/realtime/webrtc-signal/` configuration
+2. **Desktop/mobile origin mismatch** - Both must use `https://192.168.0.25` for WebRTC to work
+3. **Echo from desktop mic** - Desktop now only sends OpenAI response, not desktop microphone
+
+**Technical Changes:**
+
+**Echo Elimination:**
+- Desktop ([VoiceAssistant.js:1319](frontend/src/features/voice/pages/VoiceAssistant.js#L1319)): Removed desktop mic track from mobile peer connection
+- Mobile ([MobileVoice.js:423](frontend/src/features/voice/pages/MobileVoice.js#L423)): Switched from Web Audio API to HTMLAudioElement
+- **Why:** Web Audio API has issues with multiple MediaStreamSource objects connecting to same GainNode
+
+**HTTPS Configuration:**
+- Updated [nginx.conf](nginx.conf#L85-L96): Added WebRTC signaling location block
+- Created [reload-nginx.sh](reload-nginx.sh): Helper script to reload nginx
+- **Critical:** Both desktop and mobile must use same HTTPS domain for WebRTC signaling to work
+
+**Debugging Tools:**
+```bash
+# ADB remote debugging
+adb forward tcp:9222 localabstract:chrome_devtools_remote
+curl -s http://localhost:9222/json | python3 -m json.tool | grep url
+
+# Monitor nginx WebRTC connections
+tail -f logs/nginx-access.log | grep webrtc-signal
+
+# Check peer registration
+grep "registered for signaling" /tmp/backend.log | tail -5
+
+# Verify connection source (localhost vs network)
+ss -tn | grep ":8000" | grep ESTAB
+```
+
+**Documentation:**
+- `debug/HTTPS_MOBILE_VOICE_FIX.md` - Nginx fix details
+- `debug/MOBILE_VOICE_HTTPS_DEBUGGING_GUIDE.md` - Complete debugging workflow with ADB
+- `debug/MOBILE_VOICE_FIXES.md` - Audio playback fixes
+- Updated `CLAUDE.md` Mobile Voice section with HTTPS access instructions
+
+**Key Learning:** WebRTC requires both peers on same origin (protocol + domain). Mixed HTTP localhost and HTTPS domain will fail.
+
+**Status:** ✅ Fully working - tested with desktop HTTPS + mobile HTTPS
+
+### Dynamic Initialization Agent (2025-11-08)
+
+A new agent type that allows custom initialization functions to be executed when an agent starts up. This replaces the hard-coded Memory agent initialization and provides a flexible, reusable system.
+
+**What's New:**
+- **New Agent Type:** `dynamic_init_looping` - Looping agent with custom initialization
+- **Agent-Agnostic:** Any agent can use custom initialization logic
+- **UI Configurable:** Set initialization function through agent editor
+- **Test Coverage:** 18/18 tests passing (11 unit + 4 integration + 3 e2e)
+
+**New Files:**
+- `backend/core/dynamic_init_looping_agent.py` - Core implementation
+- `backend/tests/unit/test_dynamic_init_agent.py` - Unit tests
+- `backend/tests/integration/test_dynamic_init_integration.py` - Integration tests
+- `backend/tests/e2e_dynamic_init_test.py` - End-to-end tests
+- `docs/DYNAMIC_INIT_AGENT_IMPLEMENTATION.md` - Complete documentation
+
+**Changes:**
+- Updated `backend/config/schemas.py` - Added `initialization_function` field
+- Updated `backend/core/agent_factory.py` - Factory support for new type
+- Updated `backend/core/runner.py` - Removed hard-coded Memory initialization
+- Updated `backend/agents/Memory.json` - Now uses dynamic initialization
+- Updated `frontend/src/features/agents/components/AgentEditor.js` - UI support
+
+**How It Works:**
+1. Agent config specifies: `"initialization_function": "memory.initialize_memory_agent"`
+2. Function is imported from `tools/memory.py`
+3. Function is called automatically after agent creation
+4. Function can access and modify agent via `get_current_agent()`
+5. Common use: Replace placeholders in system prompt with dynamic content
+
+**Example Use Cases:**
+- Memory management (load memory from file)
+- Database connections (connect and load context)
+- API configuration (load credentials)
+- Workspace setup (verify directories)
+- Resource validation (check files exist)
+
+**Testing:**
+```bash
+cd backend && source venv/bin/activate
+pytest tests/unit/test_dynamic_init_agent.py -v           # 11/11 passing
+python3 tests/integration/test_dynamic_init_integration.py # 4/4 passing
+python3 tests/e2e_dynamic_init_test.py                    # 3/3 passing
+```
+
+See [DYNAMIC_INIT_AGENT_IMPLEMENTATION.md](docs/DYNAMIC_INIT_AGENT_IMPLEMENTATION.md) for complete details.
+
 ### Multimodal Vision Agent (2025-10-11)
 
 A new agent type has been added that can automatically interpret images and visual content from tool responses.
@@ -1782,7 +2317,10 @@ See [FRONTEND_REFACTORING.md](FRONTEND_REFACTORING.md) for complete details.
 
 This document should be updated whenever significant architectural changes are made.
 
-**Last updated:** 2025-10-11
+**Last updated:** 2025-11-29
 **Changes:**
+- 2025-11-29: Fixed mobile voice HTTPS access and echo issue - nginx WebRTC endpoint configuration, desktop/mobile origin consistency, echo elimination by removing desktop mic from mobile stream
+- 2025-11-28: Added mobile voice interface (`MobileVoice.js`) for wireless microphone access from smartphones - no backend changes required, leverages existing multi-client conversation architecture
+- 2025-11-08: Added dynamic initialization agent (`dynamic_init_looping`) for flexible agent startup logic
 - 2025-10-11: Added multimodal vision agent (`multimodal_tools_looping`) with automatic image detection and interpretation
 - 2025-10-10: Refactored backend into modular structure (config, utils, core, api) + Refactored frontend into feature-based architecture (agents, tools, voice)

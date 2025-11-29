@@ -4,6 +4,7 @@
   "description": "Browser automation and debugging tools",
   "private": true,
   "dependencies": {
+    "playwright": "^1.57.0",
     "puppeteer": "^21.0.0"
   }
 }

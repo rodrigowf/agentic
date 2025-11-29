@@ -189,17 +189,6 @@ async def run_agent_ws(agent_cfg: AgentConfig, all_tools: list[FunctionTool], we
         assistant = create_agent_from_config(agent_cfg, all_tools, model_client)
         CURRENT_AGENT.set(assistant)
 
-        # Initialize Memory agent if this is the Memory agent
-        if agent_cfg.name == "Memory":
-            try:
-                # Import and call the initialization function
-                from tools.memory import initialize_memory_agent
-                initialize_memory_agent()
-                logger.info("Memory agent initialized with short-term memory injection")
-            except Exception as init_error:
-                logger.warning(f"Failed to initialize Memory agent: {init_error}")
-                # Don't fail the whole agent creation, just log the warning
-
     except Exception as e:
         await send_event_to_websocket(websocket, "error", {"message": f"Failed to create agent: {e}"})
         await websocket.close()

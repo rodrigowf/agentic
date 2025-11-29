@@ -46,6 +46,8 @@ const DEFAULT_AGENT_CONFIG = {
   model_client_stream: false,
   max_consecutive_auto_reply: null, // Renamed from max_turns
   reflect_on_tool_use: true,
+  // Dynamic initialization field
+  initialization_function: '',
   // Nested team orchestrator settings
   orchestrator_agent_name: 'Manager',
   orchestrator_pattern: 'NEXT AGENT: <Name>',
@@ -405,6 +407,7 @@ export default function AgentEditor({nested = false}) {
             <MenuItem value="assistant">Assistant</MenuItem>
             <MenuItem value="looping">Looping Assistant</MenuItem>
             <MenuItem value="multimodal_tools_looping">Multimodal Tools Looping Agent</MenuItem>
+            <MenuItem value="dynamic_init_looping">Dynamic Initialization Looping Agent</MenuItem>
             <MenuItem value="nested_team">Nested Team Agent</MenuItem>
             <MenuItem value="code_executor">Code Executor</MenuItem>
             <MenuItem value="looping_code_executor">Looping Code Executor</MenuItem>
@@ -423,10 +426,23 @@ export default function AgentEditor({nested = false}) {
           fullWidth
         />
 
+        {/* Initialization Function for dynamic_init_looping type */}
+        {cfg.agent_type === 'dynamic_init_looping' && (
+          <TextField
+            label="Initialization Function"
+            value={cfg.initialization_function || ''}
+            onChange={(e) => handleInputChange('initialization_function', e.target.value)}
+            disabled={loading}
+            helperText="Python function to call on agent startup (format: module.function_name, e.g., memory.initialize_memory_agent). The function will be imported from the tools/ directory."
+            fullWidth
+            placeholder="memory.initialize_memory_agent"
+          />
+        )}
+
         <Divider />
 
         {/* Prompts for assistant and looping types */}
-        {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping' || cfg.agent_type === 'multimodal_tools_looping') && (
+        {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping' || cfg.agent_type === 'multimodal_tools_looping' || cfg.agent_type === 'dynamic_init_looping') && (
           <React.Fragment>
             <Box>
               {/* <Typography variant="h6" sx={{ mb: 3 }}>Prompt</Typography> */}
