@@ -61,7 +61,8 @@ const darkPalette = {
 
 export default function App() {
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  const initialMode = localStorage.getItem('themeMode') || (prefersDarkMode ? 'dark' : 'light');
+  // FORCE dark mode for TV WebView (light mode breaks rendering)
+  const initialMode = localStorage.getItem('themeMode') || 'dark';
   const [mode, setMode] = useState(initialMode);
 
   // Debug logging for TV WebView
