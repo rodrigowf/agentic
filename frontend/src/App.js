@@ -103,16 +103,16 @@ export default function App() {
         shape: {
           borderRadius: 12,
         },
-        shadows: mode === 'dark'
-          ? [
-              'none',
-              '0px 2px 4px rgba(0,0,0,0.4)',
-              '0px 4px 8px rgba(0,0,0,0.4)',
-              '0px 8px 16px rgba(0,0,0,0.4)',
-              '0px 12px 24px rgba(0,0,0,0.4)',
-              ...Array(20).fill('0px 16px 32px rgba(0,0,0,0.4)')
-            ]
-          : undefined,
+        ...(mode === 'dark' && {
+          shadows: [
+            'none',
+            '0px 2px 4px rgba(0,0,0,0.4)',
+            '0px 4px 8px rgba(0,0,0,0.4)',
+            '0px 8px 16px rgba(0,0,0,0.4)',
+            '0px 12px 24px rgba(0,0,0,0.4)',
+            ...Array(20).fill('0px 16px 32px rgba(0,0,0,0.4)')
+          ]
+        }),
         components: {
           MuiAppBar: {
             styleOverrides: {
