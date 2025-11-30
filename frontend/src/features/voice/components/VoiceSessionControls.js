@@ -45,12 +45,13 @@ export default function VoiceSessionControls({
       {/* Primary Control Buttons */}
       <Box sx={{ display: 'flex', gap: 1 }}>
         {!isRunning ? (
-          <Tooltip title="Start voice session">
+          <Tooltip title="Start voice session (Ctrl+S)" arrow>
             <span>
               <IconButton
                 onClick={onStart}
                 disabled={disabled}
                 data-tv-focusable="true"
+                aria-label="Start voice session"
                 sx={{
                   width: 56,
                   height: 56,
@@ -83,12 +84,13 @@ export default function VoiceSessionControls({
             </span>
           </Tooltip>
         ) : (
-          <Tooltip title="Stop voice session">
+          <Tooltip title="Stop voice session (Ctrl+S)" arrow>
             <span>
               <IconButton
                 onClick={onStop}
                 disabled={disabled && !isRunning}
                 data-tv-focusable="true"
+                aria-label="Stop voice session"
                 sx={{
                   width: 56,
                   height: 56,
@@ -130,11 +132,12 @@ export default function VoiceSessionControls({
 
         {/* Mute/Unmute Microphone Button */}
         {isRunning && (
-          <Tooltip title={isMuted ? 'Unmute microphone' : 'Mute microphone'}>
+          <Tooltip title={isMuted ? 'Unmute microphone (Ctrl+M)' : 'Mute microphone (Ctrl+M)'} arrow>
             <span>
               <IconButton
                 onClick={onToggleMute}
                 data-tv-focusable="true"
+                aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
                 sx={{
                   width: 56,
                   height: 56,
@@ -171,11 +174,12 @@ export default function VoiceSessionControls({
 
         {/* Mute/Unmute Speaker Button */}
         {isRunning && onToggleSpeakerMute && (
-          <Tooltip title={isSpeakerMuted ? 'Unmute speaker' : 'Mute speaker'}>
+          <Tooltip title={isSpeakerMuted ? 'Unmute speaker (Ctrl+K)' : 'Mute speaker (Ctrl+K)'} arrow>
             <span>
               <IconButton
                 onClick={onToggleSpeakerMute}
                 data-tv-focusable="true"
+                aria-label={isSpeakerMuted ? 'Unmute speaker' : 'Mute speaker'}
                 sx={{
                   width: 56,
                   height: 56,

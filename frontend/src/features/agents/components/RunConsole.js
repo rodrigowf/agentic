@@ -12,12 +12,15 @@ import {
   IconButton,
   TextField,
   Stack,
+  Tooltip,
 } from '@mui/material';
 import ReplayIcon from '@mui/icons-material/Replay';
 import ClearIcon from '@mui/icons-material/Clear';
 import DownloadIcon from '@mui/icons-material/Download';
+import StopIcon from '@mui/icons-material/Stop';
 import api from '../../../api';
 import LogEntry from './LogMessageDisplay';
+import { KEYBOARD_SHORTCUTS } from '../../../hooks/useKeyboardNavigation';
 
 export default function RunConsole({ nested = false, agentName, sharedSocket, readOnlyControls }) {
   const params = useParams();
@@ -30,6 +33,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
   const [isConnecting, setIsConnecting] = useState(false);
   const [taskInput, setTaskInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
+  const containerRef = useRef(null);
 
   // Keep local refs to listeners so we can remove them on cleanup when sharing
   const listenersRef = useRef({ open: null, message: null, error: null, close: null });
@@ -221,6 +225,23 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
     connectWebSocket();
   };
 
+  const handleStopAgent = () => {
+    const socket = ws.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      try {
+        const cancelMessage = JSON.stringify({ type: 'cancel' });
+        socket.send(cancelMessage);
+        setIsRunning(false);
+        setLogs((prev) => [
+          ...prev,
+          { type: 'system', data: 'Stop signal sent to agent', timestamp: new Date().toISOString() },
+        ]);
+      } catch (e) {
+        setError('Failed to send stop command to backend.');
+      }
+    }
+  };
+
   const handleDownloadLogs = () => {
     const logText = logs
       .map((log) => {
@@ -239,6 +260,41 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  // Keyboard shortcuts handler
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+R to run
+      if (e.ctrlKey && e.key === 'r' && !e.shiftKey) {
+        e.preventDefault();
+        if (isConnected && !isRunning && taskInput.trim()) {
+          handleRunAgent();
+        }
+      }
+      // Ctrl+X to stop
+      if (e.ctrlKey && e.key === 'x') {
+        e.preventDefault();
+        if (isRunning) {
+          handleStopAgent();
+        }
+      }
+      // Ctrl+Shift+L to clear logs
+      if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+        e.preventDefault();
+        if (logs.length > 0) {
+          handleClearLogs();
+        }
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('keydown', handleKeyDown);
+      return () => {
+        container.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [isConnected, isRunning, taskInput, logs.length, handleRunAgent, handleStopAgent, handleClearLogs]);
 
   useEffect(() => {
     connectWebSocket();
@@ -268,7 +324,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
   const controlsReadOnly = readOnlyControls ?? Boolean(sharedSocket);
 
   return (
-    <Stack spacing={2} sx={{ height: '100%', overflowX: 'hidden' }}>
+    <Stack ref={containerRef} spacing={2} sx={{ height: '100%', overflowX: 'hidden' }} tabIndex={-1}>
       <Box component={nested ? Box : Paper} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, overflowX: 'hidden', ...(nested && { border: 'none' }) }}>
         <Typography variant="h5">
           Run {!nested ? <Link component={RouterLink} to={`/agents/${name}`} underline="hover">{name}</Link> : ''}
@@ -282,15 +338,41 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
           ) : (
             <Chip label="Disconnected" color="error" size="small" />
           )}
-          <IconButton onClick={connectWebSocket} size="small" title="Reconnect" disabled={controlsReadOnly || isConnecting || isConnected}>
-            <ReplayIcon />
-          </IconButton>
-          <IconButton onClick={handleClearLogs} size="small" title="Clear Logs" disabled={logs.length === 0}>
-            <ClearIcon />
-          </IconButton>
-          <IconButton onClick={handleDownloadLogs} size="small" title="Download Logs" disabled={logs.length === 0}>
-            <DownloadIcon />
-          </IconButton>
+          <Tooltip title="Reconnect" arrow>
+            <span>
+              <IconButton onClick={connectWebSocket} size="small" disabled={controlsReadOnly || isConnecting || isConnected} aria-label="Reconnect">
+                <ReplayIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Clear Logs (Ctrl+Shift+L)" arrow>
+            <span>
+              <IconButton onClick={handleClearLogs} size="small" disabled={logs.length === 0} aria-label="Clear logs">
+                <ClearIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Download Logs" arrow>
+            <span>
+              <IconButton onClick={handleDownloadLogs} size="small" disabled={logs.length === 0} aria-label="Download logs">
+                <DownloadIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+          {isRunning && (
+            <Tooltip title="Stop Agent (Ctrl+X)" arrow>
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                onClick={handleStopAgent}
+                startIcon={<StopIcon />}
+                aria-label="Stop agent"
+              >
+                Stop
+              </Button>
+            </Tooltip>
+          )}
           {!nested && (
             <Button variant="outlined" size="small" component={RouterLink} to="/">Back to Agents</Button>
           )}
@@ -311,15 +393,21 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
           maxRows={20}
           sx={{ flexGrow: 1 }}
           placeholder="Enter the task description here..."
+          aria-label="Task description for agent"
         />
-        <Button
-          variant="contained"
-          onClick={handleRunAgent}
-          disabled={!isConnected || isRunning || !taskInput.trim()}
-          sx={{ height: '86px', px: 4 }}
-        >
-          {isRunning ? <CircularProgress size={24} color="inherit" /> : 'Run'}
-        </Button>
+        <Tooltip title={isRunning ? "Agent is running" : !taskInput.trim() ? "Enter a task first" : "Run Agent (Ctrl+R)"} arrow>
+          <span>
+            <Button
+              variant="contained"
+              onClick={handleRunAgent}
+              disabled={!isConnected || isRunning || !taskInput.trim()}
+              sx={{ height: '86px', px: 4 }}
+              aria-label="Run agent"
+            >
+              {isRunning ? <CircularProgress size={24} color="inherit" /> : 'Run'}
+            </Button>
+          </span>
+        </Tooltip>
       </Box>
 
       {error && <Alert severity="error" sx={{ flexShrink: 0 }}>{error}</Alert>}

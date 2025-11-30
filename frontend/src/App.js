@@ -12,9 +12,11 @@ import {
   createTheme,
   CssBaseline,
   useMediaQuery,
+  Tooltip,
 } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
 
 import AgentEditor from './features/agents/components/AgentEditor';
 import RunConsole from './features/agents/components/RunConsole';
@@ -23,6 +25,10 @@ import ToolsDashboard from './features/tools/pages/ToolsDashboard';
 import VoiceDashboard from './features/voice/pages/VoiceDashboard';
 import MobileVoice from './features/voice/pages/MobileVoice';
 import DebugNetwork from './features/voice/pages/DebugNetwork';
+import KeyboardShortcutsHelp from './shared/components/KeyboardShortcutsHelp';
+import KeyboardNavigationProvider from './components/KeyboardNavigationProvider';
+import SpatialNavigationProvider from './components/SpatialNavigationProvider';
+import useKeyboardNavigation from './hooks/useKeyboardNavigation';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -38,6 +44,11 @@ const lightPalette = {
     paper: '#ffffff',
     subtile: '#e8ecf1',
   },
+  text: {
+    primary: '#1a1a1a',
+    secondary: '#616161',
+  },
+  divider: '#e0e0e0',
 };
 
 const darkPalette = {
@@ -64,6 +75,7 @@ export default function App() {
   // FORCE dark mode for TV WebView (light mode breaks rendering)
   const initialMode = localStorage.getItem('themeMode') || 'dark';
   const [mode, setMode] = useState(initialMode);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
   // Debug logging for TV WebView
   React.useEffect(() => {
@@ -76,6 +88,13 @@ export default function App() {
   React.useEffect(() => {
     localStorage.setItem('themeMode', mode);
   }, [mode]);
+
+  // Enable global keyboard help shortcut (Shift+?)
+  // Page navigation shortcuts (Alt+1/2/3) are handled by KeyboardNavigationProvider inside Router
+  useKeyboardNavigation({
+    enabled: true,
+    onHelp: () => setShowKeyboardHelp(true),
+  });
 
   const colorMode = useMemo(
     () => ({
@@ -331,8 +350,9 @@ export default function App() {
   return (
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <style>
+        <SpatialNavigationProvider>
+          <CssBaseline />
+          <style>
           {`
             /* Global scrollbar styling */
             * {
@@ -358,9 +378,62 @@ export default function App() {
             *::-webkit-scrollbar-thumb:hover {
               background-color: ${mode === 'dark' ? '#4a4a4a' : '#a0a0a0'};
             }
+
+            /* Global keyboard focus styling for accessibility */
+            *:focus-visible {
+              outline: 3px solid ${mode === 'dark' ? '#90caf9' : '#3f51b5'} !important;
+              outline-offset: 2px !important;
+            }
+
+            /* Skip to main content link */
+            .skip-to-main {
+              position: absolute;
+              top: -100px;
+              left: 0;
+              background: ${mode === 'dark' ? '#90caf9' : '#3f51b5'};
+              color: white;
+              padding: 8px 16px;
+              text-decoration: none;
+              z-index: 10000;
+              border-radius: 0 0 4px 0;
+              font-weight: 500;
+            }
+
+            .skip-to-main:focus {
+              top: 0;
+            }
+
+            /* Improve form control focus */
+            input:focus,
+            textarea:focus,
+            select:focus {
+              outline: 2px solid ${mode === 'dark' ? '#90caf9' : '#3f51b5'} !important;
+              outline-offset: 2px !important;
+            }
+
+            /* Focus styles for interactive elements */
+            button:focus-visible,
+            a:focus-visible {
+              outline: 3px solid ${mode === 'dark' ? '#90caf9' : '#3f51b5'} !important;
+              outline-offset: 3px !important;
+              transition: outline 0.2s ease;
+            }
+
+            /* Remove default focus outline for mouse users but keep for keyboard */
+            *:focus:not(:focus-visible) {
+              outline: none !important;
+            }
           `}
         </style>
         <Router basename={process.env.PUBLIC_URL || ''}>
+          {/* Skip to main content link for accessibility */}
+          <a href="#main-content" className="skip-to-main">
+            Skip to main content
+          </a>
+
+          {/* Enable keyboard navigation shortcuts (Alt+1/2/3) */}
+          <KeyboardNavigationProvider />
+
           <Routes>
             {/* Debug route */}
             <Route path="/debug-network" element={<DebugNetwork />} />
@@ -378,21 +451,68 @@ export default function App() {
               path="*"
               element={
                 <>
-                  <AppBar position="static">
+                  <AppBar position="static" role="banner">
                     <Toolbar>
                       <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit', pt: 1 }}>
                         Agentic
                       </Typography>
-                      <Button color="inherit" component={RouterLink} to="/">Agents</Button>
-                      <Button color="inherit" component={RouterLink} to="/tools">Tools</Button>
-                      <Button color="inherit" component={RouterLink} to="/voice">Voice</Button>
-                      <IconButton sx={{ ml: 1 }} onClick={colorMode.toggleColorMode} color="inherit">
-                        {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-                      </IconButton>
+                      <Tooltip title="Agents (Alt+1)" arrow>
+                        <Button
+                          color="inherit"
+                          component={RouterLink}
+                          to="/"
+                          aria-label="Go to Agents page (Alt+1)"
+                        >
+                          Agents
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Tools (Alt+2)" arrow>
+                        <Button
+                          color="inherit"
+                          component={RouterLink}
+                          to="/tools"
+                          aria-label="Go to Tools page (Alt+2)"
+                        >
+                          Tools
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Voice (Alt+3)" arrow>
+                        <Button
+                          color="inherit"
+                          component={RouterLink}
+                          to="/voice"
+                          aria-label="Go to Voice page (Alt+3)"
+                        >
+                          Voice
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Keyboard shortcuts (Shift+?)" arrow>
+                        <IconButton
+                          sx={{ ml: 1 }}
+                          onClick={() => setShowKeyboardHelp(true)}
+                          color="inherit"
+                          aria-label="Show keyboard shortcuts"
+                        >
+                          <KeyboardIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Toggle theme" arrow>
+                        <IconButton
+                          sx={{ ml: 1 }}
+                          onClick={colorMode.toggleColorMode}
+                          color="inherit"
+                          aria-label="Toggle light/dark theme"
+                        >
+                          {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+                        </IconButton>
+                      </Tooltip>
                     </Toolbar>
                   </AppBar>
                   <Box
+                    id="main-content"
                     component="main"
+                    role="main"
+                    aria-label="Main content"
                     sx={{
                       flexGrow: 1,
                       bgcolor: 'background.default',
@@ -422,6 +542,13 @@ export default function App() {
             />
           </Routes>
         </Router>
+
+        {/* Keyboard Shortcuts Help Dialog */}
+        <KeyboardShortcutsHelp
+          open={showKeyboardHelp}
+          onClose={() => setShowKeyboardHelp(false)}
+        />
+        </SpatialNavigationProvider>
       </ThemeProvider>
     </ColorModeContext.Provider>
   );

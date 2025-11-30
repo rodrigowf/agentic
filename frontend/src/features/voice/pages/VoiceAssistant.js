@@ -24,6 +24,7 @@ import ClaudeCodeInsights from '../components/ClaudeCodeInsights';
 import VoiceSessionControls from '../components/VoiceSessionControls';
 import VoiceConfigEditor from '../components/VoiceConfigEditor';
 import useTVNavigation from '../hooks/useTVNavigation';
+import useKeyboardNavigation, { KEYBOARD_SHORTCUTS } from '../../../hooks/useKeyboardNavigation';
 import {
   appendVoiceConversationEvent,
   getVoiceConversation,
@@ -111,6 +112,30 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   // TV remote navigation support
   const { containerRef: tvNavContainerRef } = useTVNavigation({
     enabled: false, // Only activates when TV-focusable elements are focused
+  });
+
+  // Keyboard shortcuts for voice controls
+  useKeyboardNavigation({
+    shortcuts: {
+      VOICE_START_STOP: () => {
+        if (isRunning) {
+          stopSession();
+        } else if (!sessionLocked && !conversationLoading && !conversationError) {
+          startSession();
+        }
+      },
+      VOICE_MUTE: () => {
+        if (isRunning) {
+          toggleMute();
+        }
+      },
+      VOICE_SPEAKER: () => {
+        if (isRunning) {
+          toggleSpeakerMute();
+        }
+      },
+    },
+    enabled: true,
   });
 
   const formatTimestamp = useCallback((value) => {
@@ -1537,7 +1562,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         {/* Right Panel - Conversation */}
         <Box
           sx={{
-            width: '700px',
+            width: '35%',
             height: '100%',
             bgcolor: (theme) =>
               theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
