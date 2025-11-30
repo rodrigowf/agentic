@@ -64,6 +64,14 @@ export default function App() {
   const initialMode = localStorage.getItem('themeMode') || (prefersDarkMode ? 'dark' : 'light');
   const [mode, setMode] = useState(initialMode);
 
+  // Debug logging for TV WebView
+  React.useEffect(() => {
+    console.log('[App] Mounted');
+    console.log('[App] PUBLIC_URL:', process.env.PUBLIC_URL);
+    console.log('[App] Location:', window.location.href);
+    console.log('[App] Pathname:', window.location.pathname);
+  }, []);
+
   React.useEffect(() => {
     localStorage.setItem('themeMode', mode);
   }, [mode]);
@@ -351,7 +359,7 @@ export default function App() {
             }
           `}
         </style>
-        <Router>
+        <Router basename={process.env.PUBLIC_URL || ''}>
           <Routes>
             {/* Debug route */}
             <Route path="/debug-network" element={<DebugNetwork />} />

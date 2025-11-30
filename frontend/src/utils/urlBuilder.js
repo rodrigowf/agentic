@@ -45,7 +45,22 @@ function detectEnvironment() {
     };
   }
 
-  // Scenarios 1 & 2: HTTP direct to backend (development)
+  // Check if we're accessing through nginx on HTTP (port 80 or no port in production build)
+  // Development uses port 3000, production build served by nginx uses port 80 or no port
+  const isNginxHttp = port === '80' || port === '' || !port;
+
+  if (isNginxHttp) {
+    // HTTP via nginx - backend is proxied
+    const host = window.location.host;
+    return {
+      type: 'nginx-http',
+      httpBase: `http://${host}`,
+      wsBase: `ws://${host}`,
+      apiPath: '/api'
+    };
+  }
+
+  // Scenarios 1 & 2: HTTP direct to backend (development on port 3000)
   // Frontend on port 3000, backend on port 8000
   return {
     type: 'direct-http',

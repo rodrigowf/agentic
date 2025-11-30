@@ -309,7 +309,7 @@ const ClaudeCodeInsights = ({
                       {entry.detail && entry.detail !== entry.preview && (
                         <Box
                           sx={{
-                            bgcolor: 'grey.50',
+                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
                             borderRadius: 1,
                             p: 1.5,
                             border: '1px solid',
@@ -324,6 +324,7 @@ const ClaudeCodeInsights = ({
                               fontSize: '0.8rem',
                               maxHeight: '300px',
                               overflowY: 'auto',
+                              color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary',
                             }}
                           >
                             {entry.detail}

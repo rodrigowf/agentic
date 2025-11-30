@@ -34,18 +34,48 @@ logger = logging.getLogger(__name__)
 class ClaudeCodeProcess:
     """Manages a Claude Code CLI subprocess with JSON streaming."""
 
-    # Claude CLI path - VSCode extension binary
-    CLAUDE_CLI_PATH = "/home/rodrigo/.vscode/extensions/anthropic.claude-code-2.0.14-linux-x64/resources/native-binary/claude"
+    @staticmethod
+    def _find_claude_cli() -> str:
+        """Auto-detect Claude CLI path from multiple possible locations."""
+        import shutil
+
+        # Try which command first (works if in PATH, e.g., conda env)
+        claude_path = shutil.which("claude")
+        if claude_path:
+            logger.info(f"Found Claude CLI in PATH: {claude_path}")
+            return claude_path
+
+        # Fallback: Check common VSCode extension locations
+        possible_paths = [
+            # VSCode extension (desktop)
+            "/home/rodrigo/.vscode/extensions/anthropic.claude-code-2.0.14-linux-x64/resources/native-binary/claude",
+            # Conda environment (Jetson)
+            "/home/rodrigo/miniconda3/envs/agentic/bin/claude",
+            # System-wide installation
+            "/usr/local/bin/claude",
+        ]
+
+        for path in possible_paths:
+            if os.path.exists(path):
+                logger.info(f"Found Claude CLI at: {path}")
+                return path
+
+        raise FileNotFoundError(
+            "Claude CLI not found. Please install Claude Code or ensure 'claude' is in your PATH. "
+            "Tried: which claude, " + ", ".join(possible_paths)
+        )
 
     def __init__(
         self,
         working_dir: str = "/home/rodrigo/agentic",
         model: str = "claude-sonnet-4-5-20250929",
         permission_mode: str = "bypassPermissions",
+        claude_cli_path: Optional[str] = None,
     ):
         self.working_dir = Path(working_dir)
         self.model = model
         self.permission_mode = permission_mode
+        self.claude_cli_path = claude_cli_path or self._find_claude_cli()
         self.process: Optional[asyncio.subprocess.Process] = None
         self._stdout_queue: asyncio.Queue = asyncio.Queue()
         self._running = False
@@ -57,7 +87,7 @@ class ClaudeCodeProcess:
 
         # Build command: claude --print --verbose --input-format=stream-json --output-format=stream-json
         cmd = [
-            self.CLAUDE_CLI_PATH,
+            self.claude_cli_path,
             "--print",
             "--verbose",
             "--input-format=stream-json",

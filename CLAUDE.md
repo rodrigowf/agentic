@@ -1,6 +1,6 @@
 # CLAUDE.md - Comprehensive Development Guide
 
-**Last Updated:** 2025-11-28
+**Last Updated:** 2025-11-29
 **For:** Future Claude instances working on this codebase
 
 ---
@@ -17,7 +17,8 @@
 8. [Voice Assistant System](#voice-assistant-system)
 9. [Mobile Voice Interface](#mobile-voice-interface)
 10. [Claude Code Self-Editor](#claude-code-self-editor)
-11. [Best Practices](#best-practices)
+11. [Jetson Nano Deployment](#jetson-nano-deployment)
+12. [Best Practices](#best-practices)
 
 ---
 
@@ -1821,6 +1822,60 @@ if type === "TaskResult":
 
 ---
 
+## Jetson Nano Deployment
+
+This project is deployed on a Jetson Nano home server for production use. The deployment includes:
+
+- **HTTPS access** via self-signed CA certificate
+- **Nginx reverse proxy** serving multiple applications
+- **Systemd service** for backend auto-start
+- **Static IP** configuration (192.168.0.200)
+- **TV WebView support** for living room access
+
+### Key Documentation
+
+- **[Jetson Deployment Guide](docs/JETSON_DEPLOYMENT_GUIDE.md)** - Complete deployment reference
+  - Server configuration and network setup
+  - SSL/TLS certificate management
+  - Nginx configuration and routing
+  - Systemd service management
+  - Troubleshooting and maintenance
+
+- **[TV WebView Fix Summary](docs/TV_WEBVIEW_FIX_SUMMARY.md)** - Technical details of TV compatibility fix
+  - Nginx `try_files` with `alias` directive
+  - React Router subpath configuration
+  - Static asset loading issues
+  - Error boundary and debugging setup
+
+### Quick Access
+
+**Server:** Jetson Nano (ARM64, Ubuntu 18.04.6 LTS)
+- **SSH:** `ssh rodrigo@192.168.0.200`
+- **HTTPS:** `https://192.168.0.200/agentic/`
+- **HTTP:** `http://192.168.0.200/agentic/`
+
+**Common Tasks:**
+```bash
+# Deploy frontend update
+ssh rodrigo@192.168.0.200
+cd ~/agentic/frontend
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate agentic
+npm run build
+sudo kill -HUP $(cat ~/nginx.pid)
+
+# Restart backend
+ssh rodrigo@192.168.0.200
+sudo systemctl restart agentic-backend
+
+# View logs
+sudo journalctl -u agentic-backend -f
+tail -f ~/logs/nginx-error.log
+```
+
+See [JETSON_DEPLOYMENT_GUIDE.md](docs/JETSON_DEPLOYMENT_GUIDE.md) for complete documentation.
+
+---
+
 ## Best Practices
 
 ### General Development
@@ -2122,6 +2177,43 @@ ls -la ~/.claude/
 ---
 
 ## Recent Changes
+
+### Jetson Nano Deployment & TV WebView Fix (2025-11-29)
+
+Deployed the agentic application to Jetson Nano home server with complete HTTPS support and fixed TV WebView compatibility.
+
+**New Features:**
+1. **Home Server Deployment** - Full production deployment on Jetson Nano (192.168.0.200)
+2. **HTTPS Support** - Self-signed CA certificate for trusted HTTPS access
+3. **TV WebView Support** - Fixed white screen issue in TV browser
+4. **Multi-Application Nginx** - Single nginx serving Server Hub, Agentic, and API
+
+**Technical Changes:**
+
+**Nginx Configuration Fix:**
+- Fixed `try_files` directive for React Router with `alias`
+- Changed from `try_files $uri $uri/ /index.html =404;` (incorrect)
+- To `try_files $uri $uri.html /agentic/index.html;` (correct)
+- **Why:** With `alias`, fallback paths must be absolute from server root, not relative to alias
+
+**Frontend Debugging:**
+- Added ErrorBoundary component ([index.js](frontend/src/index.js)) to catch rendering errors
+- Added mount logging ([App.js](frontend/src/App.js)) for debugging TV WebView
+- Logs PUBLIC_URL, location, pathname on app mount
+
+**Documentation:**
+- Created [JETSON_DEPLOYMENT_GUIDE.md](docs/JETSON_DEPLOYMENT_GUIDE.md) - Complete server setup reference
+- Created [TV_WEBVIEW_FIX_SUMMARY.md](docs/TV_WEBVIEW_FIX_SUMMARY.md) - Technical fix details
+- Updated CLAUDE.md with Jetson deployment section
+
+**Server Setup:**
+- Static IP: 192.168.0.200
+- SSL: CA-signed certificate (ca.crt + server.crt)
+- Backend: systemd service (agentic-backend.service)
+- Frontend: nginx serving from /agentic/ subpath
+- Environment: conda (Python 3.11.13, Node.js 20.17.0)
+
+**Status:** ✅ Deployed and verified on desktop, pending TV WebView verification
 
 ### Mobile Voice HTTPS & Echo Fix (2025-11-29)
 
