@@ -396,6 +396,8 @@ export default function App() {
                       flexGrow: 1,
                       bgcolor: 'background.default',
                       minHeight: 'calc(100vh - 64px)',
+                      height: 'calc(100vh - 64px)',  // Explicit height for WebView
+                      overflow: 'auto',              // Enable scrolling
                       p: { xs: 2, sm: 3 },
                     }}
                   >
