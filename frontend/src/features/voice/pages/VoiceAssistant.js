@@ -1535,7 +1535,6 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       <>
         {/* Header with controls */}
         <Box sx={{ pt: isMobile ? 2 : 2, pb: 1, px: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
-          <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
 
           {/* Configuration Button */}
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
@@ -1667,6 +1666,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           position: 'relative'
         }}
       >
+        {/* Audio element - must stay mounted at all times for continuous playback */}
+        <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
         {/* Desktop: Left panel (Team Insights/Console/Claude Code) */}
         {!isMobile && (
           <Box
