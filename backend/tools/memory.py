@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Configuration
-MEMORY_BASE_PATH = Path("backend/memories")
+MEMORY_BASE_PATH = Path("data/memory")
 MEMORY_BASE_PATH.mkdir(parents=True, exist_ok=True)
 SHORT_TERM_MEMORY_FILE = MEMORY_BASE_PATH / "short_term_memory.txt"
 MEMORY_INDEX_FILE = MEMORY_BASE_PATH / "memory_index.json"

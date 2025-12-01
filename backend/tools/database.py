@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Configuration
-DB_METADATA_PATH = Path("backend/database_metadata")
+DB_METADATA_PATH = Path("data/database")
 DB_METADATA_PATH.mkdir(parents=True, exist_ok=True)
 COLLECTIONS_SCHEMA_FILE = DB_METADATA_PATH / "collections_schema.json"
 

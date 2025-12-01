@@ -977,8 +977,8 @@ python3 tests/integration/test_multimodal_api.py
 ```
 
 **Documentation:**
-- See `backend/docs/MULTIMODAL_AGENT_GUIDE.md` for complete usage guide
-- See `backend/docs/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md` for implementation details
+- See [docs/guides/MULTIMODAL_AGENT_GUIDE.md](docs/guides/MULTIMODAL_AGENT_GUIDE.md) for complete usage guide
+- See [docs/architecture/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md](docs/architecture/MULTIMODAL_AGENT_IMPLEMENTATION_SUMMARY.md) for implementation details
 
 #### 4. Dynamic Initialization Looping Agent
 
@@ -2160,12 +2160,16 @@ curl http://localhost:8000/api/tools
 | GNOME screenshot fix | `/home/rodrigo/agentic/backend/scripts/fix_gnome_screenshot.sh` |
 | **Documentation** | |
 | Main guide (this file) | `/home/rodrigo/agentic/CLAUDE.md` |
-| Root documentation | `/home/rodrigo/agentic/docs/` |
-| Backend docs | `/home/rodrigo/agentic/backend/docs/` |
-| Screenshot guides | `/home/rodrigo/agentic/backend/docs/SCREENSHOT_*.md` |
-| Multimodal guides | `/home/rodrigo/agentic/backend/docs/MULTIMODAL_*.md` |
-| Backend refactoring | `/home/rodrigo/agentic/docs/REFACTORING_SUMMARY.md` |
-| Frontend refactoring | `/home/rodrigo/agentic/docs/FRONTEND_REFACTORING.md` |
+| Documentation index | `/home/rodrigo/agentic/docs/DOCUMENTATION_INDEX.md` |
+| Guides | `/home/rodrigo/agentic/docs/guides/` |
+| Architecture docs | `/home/rodrigo/agentic/docs/architecture/` |
+| Deployment docs | `/home/rodrigo/agentic/docs/deployment/` |
+| Troubleshooting docs | `/home/rodrigo/agentic/docs/troubleshooting/` |
+| Reference code | `/home/rodrigo/agentic/docs/references/` |
+| Screenshot guides | `/home/rodrigo/agentic/docs/guides/SCREENSHOT_*.md` |
+| Multimodal guides | `/home/rodrigo/agentic/docs/guides/MULTIMODAL_*.md` |
+| Backend refactoring | `/home/rodrigo/agentic/docs/architecture/REFACTORING_SUMMARY.md` |
+| Frontend refactoring | `/home/rodrigo/agentic/docs/architecture/FRONTEND_REFACTORING.md` |
 
 ---
 

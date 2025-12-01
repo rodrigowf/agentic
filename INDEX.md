@@ -1,6 +1,8 @@
 # Project Index
 
-Quick reference guide to navigate the project.
+**⚠️ This index has been replaced by a more comprehensive documentation system.**
+
+**Please see:** [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
 
 ---
 
@@ -10,8 +12,8 @@ Quick reference guide to navigate the project.
 |----------|---------|
 | [README.md](README.md) | Project overview and setup |
 | [CLAUDE.md](CLAUDE.md) | Comprehensive development guide |
+| [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) | Complete documentation catalog |
 | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | Complete file structure reference |
-| [ORGANIZATION_SUMMARY.md](ORGANIZATION_SUMMARY.md) | Recent organization changes |
 
 ---
 

@@ -44,8 +44,12 @@ Use this checklist when deploying to a fresh environment.
 
 ## Directory Structure
 
-- [ ] Create `backend/workspace/`
-- [ ] Create `backend/chroma_db/`
+- [ ] Create `backend/data/workspace/`
+- [ ] Create `backend/data/memory/`
+- [ ] Create `backend/data/api/`
+- [ ] Create `backend/data/database/`
+- [ ] Create `backend/voice/configs/`
+- [ ] Create `backend/voice/prompts/`
 - [ ] Create `logs/`
 - [ ] Create `debug/screenshots/`
 - [ ] Create `debug/db_exports/`
@@ -160,4 +164,4 @@ Use this checklist when deploying to a fresh environment.
 
 **Status:** Ready for use! 🎉
 
-**Last Updated:** 2025-11-29
+**Last Updated:** 2025-12-01

@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Configuration
-WORKSPACE_DIR = Path("/home/rodrigo/agentic/backend/workspace")
+WORKSPACE_DIR = Path("data/workspace")
 WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Security: Maximum file size (10MB)

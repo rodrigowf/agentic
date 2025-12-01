@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Configuration
-API_METADATA_PATH = Path("backend/api_metadata")
+API_METADATA_PATH = Path("data/api")
 API_METADATA_PATH.mkdir(parents=True, exist_ok=True)
 API_INDEX_FILE = API_METADATA_PATH / "api_index.json"
 API_DOCS_PATH = API_METADATA_PATH / "docs"

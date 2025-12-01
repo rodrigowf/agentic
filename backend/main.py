@@ -91,8 +91,8 @@ if realtime_router is not None:
 # Startup cache
 TOOLS_DIR = "tools"
 AGENTS_DIR = "agents"
-VOICE_CONFIGS_DIR = "voice_configs"
-VOICE_PROMPTS_DIR = "voice_prompts"
+VOICE_CONFIGS_DIR = "voice/configs"
+VOICE_PROMPTS_DIR = "voice/prompts"
 
 # Ensure directories exist at startup
 os.makedirs(TOOLS_DIR, exist_ok=True)
