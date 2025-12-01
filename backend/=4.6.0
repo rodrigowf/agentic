@@ -1,10 +1,10 @@
+Collecting chromadb
+  Using cached chromadb-1.3.5-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (7.2 kB)
 Collecting pymongo
-  Downloading pymongo-4.15.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (22 kB)
-Collecting dnspython<3.0.0,>=1.16.0 (from pymongo)
-  Downloading dnspython-2.8.0-py3-none-any.whl.metadata (5.7 kB)
-Downloading pymongo-4.15.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.7 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.7/1.7 MB 8.6 MB/s eta 0:00:00
-Downloading dnspython-2.8.0-py3-none-any.whl (331 kB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 331.1/331.1 kB 10.2 MB/s eta 0:00:00
-Installing collected packages: dnspython, pymongo
-Successfully installed dnspython-2.8.0 pymongo-4.15.4
+  WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'files.pythonhosted.org'. (_ssl.c:1016)"))': /packages/9f/e6/eac0b3ca4ea1cd437983f1409cb6260e606cce11ea3cb6f5ccd8629fa5c2/pymongo-4.15.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata
+  WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'files.pythonhosted.org'. (_ssl.c:1016)"))': /packages/9f/e6/eac0b3ca4ea1cd437983f1409cb6260e606cce11ea3cb6f5ccd8629fa5c2/pymongo-4.15.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata
+  WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'files.pythonhosted.org'. (_ssl.c:1016)"))': /packages/9f/e6/eac0b3ca4ea1cd437983f1409cb6260e606cce11ea3cb6f5ccd8629fa5c2/pymongo-4.15.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata
+  WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'files.pythonhosted.org'. (_ssl.c:1016)"))': /packages/9f/e6/eac0b3ca4ea1cd437983f1409cb6260e606cce11ea3cb6f5ccd8629fa5c2/pymongo-4.15.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata
+  WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'files.pythonhosted.org'. (_ssl.c:1016)"))': /packages/9f/e6/eac0b3ca4ea1cd437983f1409cb6260e606cce11ea3cb6f5ccd8629fa5c2/pymongo-4.15.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata
+ERROR: Could not install packages due to an OSError: HTTPSConnectionPool(host='files.pythonhosted.org', port=443): Max retries exceeded with url: /packages/9f/e6/eac0b3ca4ea1cd437983f1409cb6260e606cce11ea3cb6f5ccd8629fa5c2/pymongo-4.15.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (Caused by SSLError(SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'files.pythonhosted.org'. (_ssl.c:1016)")))
+
