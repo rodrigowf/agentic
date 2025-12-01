@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { Box, List, ListItem, ListItemButton, ListItemText, Typography, Divider, Drawer, IconButton, useTheme, useMediaQuery, Tabs, Tab } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import AddIcon from '@mui/icons-material/Add';
 import AgentEditor from '../components/AgentEditor';
 import RunConsole from '../components/RunConsole';
 import api from '../../../api';
@@ -74,14 +75,19 @@ export default function AgentDashboard() {
   const AgentListContent = (
     <>
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>
-          Agents
-        </Typography>
-        {!isMobile && (
-          <Typography variant="caption" color="text.secondary">
-            Use ↑↓ arrows to navigate, Enter to select
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6">
+            Agents
           </Typography>
-        )}
+          <IconButton
+            onClick={() => navigate('/agents/new')}
+            size="small"
+            aria-label="Create new agent"
+            
+          >
+            <AddIcon />
+          </IconButton>
+        </Box>
       </Box>
       <Divider />
       <List disablePadding>
