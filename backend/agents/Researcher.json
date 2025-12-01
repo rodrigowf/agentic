@@ -9,7 +9,7 @@
   ],
   "llm": {
     "provider": "openai",
-    "model": "gpt-4.1-mini",
+    "model": "gpt-5-mini",
     "temperature": 0.0,
     "max_tokens": null
   },
@@ -20,14 +20,17 @@
   "code_executor": null,
   "model_client_stream": false,
   "sources": null,
-  "description": "An agent that performs web research in a loop until it gathers enough information to answer the user's request.",
+  "description": "A professional web researcher and fact-checker that performs multi-step research using web search, Wikipedia, ArXiv, and content fetching. Validates information across multiple sources, fact-checks sensitive topics, and runs in a loop until complete information is gathered. Best for: current events, fact verification, academic research, general knowledge queries, and any task requiring up-to-date web information.",
   "system_message": null,
   "max_consecutive_auto_reply": 20,
   "reflect_on_tool_use": true,
   "terminate_on_text": false,
   "tool_call_loop": true,
+  "initialization_function": null,
   "sub_agents": null,
   "mode": null,
   "orchestrator_prompt": null,
+  "orchestrator_agent_name": "Manager",
+  "orchestrator_pattern": "NEXT AGENT: <Name>",
   "include_inner_dialog": true
 }

@@ -25,17 +25,13 @@ class DynamicInitLoopingAgent(LoopingAssistantAgent):
 
     The initialization function should:
     - Be defined in a module under the 'tools/' directory
-    - Take no arguments
-    - Use get_current_agent() from utils.context to access the agent instance
+    - Take one argument: the agent instance
     - Perform any initialization logic (modify system message, load data, etc.)
     - Return a string message (success/error) or None
 
     Example initialization function (in tools/memory.py):
         ```python
-        from utils.context import get_current_agent
-
-        def initialize_memory_agent():
-            agent = get_current_agent()
+        def initialize_memory_agent(agent):
             # Load memory content
             memory_content = load_memory_from_file()
             # Update agent's system message
@@ -78,8 +74,8 @@ class DynamicInitLoopingAgent(LoopingAssistantAgent):
         """
         Dynamically import and call the initialization function.
 
-        The function is imported from tools/{module}.py and called with no arguments.
-        The function should use get_current_agent() to access the agent instance.
+        The function is imported from tools/{module}.py and called with the agent instance.
+        The function receives the agent as its first argument.
 
         Raises:
             ValueError: If the function string is invalid or missing parts
@@ -120,9 +116,9 @@ class DynamicInitLoopingAgent(LoopingAssistantAgent):
                 f"Available functions: {[name for name in dir(module) if not name.startswith('_')]}"
             )
 
-        # Call the function
+        # Call the function with self (the agent instance) as argument
         try:
-            result = init_func()
+            result = init_func(self)
             if result:
                 logger.info(f"Initialization function returned: {result}")
         except Exception as e:

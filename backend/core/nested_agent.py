@@ -119,6 +119,40 @@ class NestedTeamAgent(BaseChatAgent):
         self.default_model_client = default_model_client
         self._init_team()
 
+    def _inject_agent_descriptions(self, sub_agents: List):
+        """
+        Inject agent names and descriptions into orchestrator's system prompt.
+        Replaces {{AVAILABLE_AGENTS}} placeholder with formatted list of agents.
+        """
+        # Find orchestrator agent
+        orchestrator_name = self.agent_cfg.orchestrator_agent_name or "Manager"
+        orchestrator_agent = None
+        for agent in sub_agents:
+            if agent.name == orchestrator_name:
+                orchestrator_agent = agent
+                break
+
+        if not orchestrator_agent:
+            return  # No orchestrator found, skip injection
+
+        # Build agent descriptions (exclude orchestrator itself)
+        agent_descriptions = []
+        for agent in sub_agents:
+            if agent.name != orchestrator_name:
+                description = agent.description or "No description available"
+                agent_descriptions.append(f"- {agent.name}: {description}")
+
+        if not agent_descriptions:
+            agents_text = "(No other agents available)"
+        else:
+            agents_text = "The agents involved in this conversation besides you are:\n" + "\n".join(agent_descriptions)
+
+        # Inject into orchestrator's system message
+        if orchestrator_agent._system_messages:
+            current_prompt = orchestrator_agent._system_messages[0].content
+            updated_prompt = current_prompt.replace("{{AVAILABLE_AGENTS}}", agents_text)
+            orchestrator_agent._system_messages[0].content = updated_prompt
+
     def _init_team(self):
         # Instantiate sub-agents via centralized factory
         sub_agents = [
@@ -130,6 +164,9 @@ class NestedTeamAgent(BaseChatAgent):
         _TEAM_AGENT_NAMES = {a.name for a in sub_agents}
         _ORCHESTRATOR_NAME = self.agent_cfg.orchestrator_agent_name or "Manager"
         _ORCHESTRATOR_PATTERN = self.agent_cfg.orchestrator_pattern or "NEXT AGENT: <Name>"
+
+        # Build agent descriptions for orchestrator (inject into {{AVAILABLE_AGENTS}} placeholder)
+        self._inject_agent_descriptions(sub_agents)
 
         sub_agents = [_wrap_agent_with_context(sa) for sa in sub_agents]
 

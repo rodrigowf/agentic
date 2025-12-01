@@ -685,7 +685,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       // Request a new realtime session from our backend (mounted under /api/realtime)
       const voice = voiceConfig.voice || process.env.REACT_APP_VOICE || 'alloy';
       const systemPrompt = voiceConfig.systemPromptContent || '';
-      const tokenUrl = `${backendBase}/api/realtime/token/openai?model=gpt-realtime&voice=${encodeURIComponent(voice)}${systemPrompt ? `&system_prompt=${encodeURIComponent(systemPrompt)}` : ''}`;
+      const agentName = voiceConfig.agentName || 'MainConversation';
+      const tokenUrl = `${backendBase}/api/realtime/token/openai?model=gpt-realtime&voice=${encodeURIComponent(voice)}&agent_name=${encodeURIComponent(agentName)}${systemPrompt ? `&system_prompt=${encodeURIComponent(systemPrompt)}` : ''}`;
       const tokenResp = await fetch(tokenUrl);
       const tokenBody = await tokenResp.text();
       if (!tokenResp.ok) {
@@ -945,7 +946,6 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
 
       // Open nested team WebSocket in parallel and forward TextMessages to Realtime
-      const agentName = voiceConfig.agentName || 'MainConversation';
       const nestedUrl = getWsUrl(`/runs/${agentName}`);
       const ws = new WebSocket(nestedUrl);
       nestedWsRef.current = ws;

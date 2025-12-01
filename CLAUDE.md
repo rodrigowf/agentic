@@ -1,6 +1,6 @@
 # CLAUDE.md - Comprehensive Development Guide
 
-**Last Updated:** 2025-11-29
+**Last Updated:** 2025-12-01
 **For:** Future Claude instances working on this codebase
 
 ---
@@ -846,7 +846,7 @@ import api from '../../api';     // 2 levels up from features/*/pages/
   "sub_agents": [
     "Manager",
     "Researcher",
-    "Developer"
+    "Engineer"
   ],
   "mode": "selector",
   "orchestrator_prompt": "__function__",
@@ -859,6 +859,43 @@ import api from '../../api';     // 2 levels up from features/*/pages/
 - `sub_agents: [...]` - List of agent names to coordinate
 - `mode: "selector"` - Orchestrator selects which agent responds
 - `orchestrator_prompt: "__function__"` - Uses built-in orchestration logic
+
+**Dynamic Agent Description Injection (Added 2025-12-01):**
+
+Nested team agents automatically inject agent descriptions into the orchestrator's system prompt using placeholder variables. This ensures the orchestrator always has up-to-date information about available agents.
+
+**How it works:**
+1. Add `{{AVAILABLE_AGENTS}}` placeholder to orchestrator's system prompt (e.g., Manager.json)
+2. Nested team agent automatically detects this placeholder during initialization
+3. Extracts names and descriptions from all sub-agents (excluding orchestrator itself)
+4. Replaces placeholder with formatted list of agents
+
+**Example - Manager.json with placeholder:**
+```json
+{
+  "name": "Manager",
+  "prompt": {
+    "system": "You are the Manager...\n\n{{AVAILABLE_AGENTS}}\n\nWhen task is complete..."
+  }
+}
+```
+
+**Result at runtime:**
+```
+The agents involved in this conversation besides you are:
+- Memory: An agent that manages short-term memory and persistent memory banks...
+- FileManager: An agent that manages files with automatic workspace hierarchy...
+- Researcher: A professional web researcher and fact-checker...
+- Engineer: A software engineer that writes and executes Python or Bash code...
+```
+
+**Benefits:**
+- ✅ **Fully Generic** - Works for any nested_team configuration
+- ✅ **Automatic** - No manual updates when adding/removing agents
+- ✅ **Single Source of Truth** - Descriptions come from agent configs
+- ✅ **Better Orchestration** - Manager knows exact capabilities of each agent
+
+**Implementation:** See `core/nested_agent.py:_inject_agent_descriptions()`
 
 #### 3. Multimodal Tools Looping Agent (Vision-Capable Agent)
 
@@ -1103,7 +1140,8 @@ EOF
 | `llm.provider` | string | "openai", "anthropic", "google" |
 | `llm.model` | string | Model identifier (use gpt-4o for multimodal) |
 | `llm.temperature` | float | 0.0-2.0, controls randomness |
-| `prompt.system` | string | System prompt for agent |
+| `prompt.system` | string | System prompt for agent (supports `{{AVAILABLE_AGENTS}}` placeholder) |
+| `description` | string | **IMPORTANT:** Comprehensive agent description used for orchestration |
 | `tool_call_loop` | bool | Continue calling tools in loop |
 | `reflect_on_tool_use` | bool | Reflect on tool results |
 | `initialization_function` | string | Python function for initialization (dynamic_init_looping only) |
@@ -1111,6 +1149,58 @@ EOF
 | `mode` | string | "selector" (nested team only) |
 | `orchestrator_prompt` | string | "__function__" for built-in orchestration |
 | `include_inner_dialog` | bool | Show agent-to-agent messages |
+
+### Best Practices for Agent Descriptions
+
+The `description` field is critical for nested team orchestration. When an orchestrator (like Manager) needs to delegate tasks, it relies entirely on agent descriptions to make intelligent routing decisions.
+
+**Good Description Structure:**
+```json
+{
+  "description": "[Role] that [key capability]. [Tool/approach details]. [Specific capabilities list]. Best for: [use cases]. Avoid: [anti-patterns]."
+}
+```
+
+**Examples:**
+
+✅ **Good - Comprehensive:**
+```json
+{
+  "name": "Researcher",
+  "description": "A professional web researcher and fact-checker that performs multi-step research using web search, Wikipedia, ArXiv, and content fetching. Validates information across multiple sources, fact-checks sensitive topics, and runs in a loop until complete information is gathered. Best for: current events, fact verification, academic research, general knowledge queries, and any task requiring up-to-date web information."
+}
+```
+
+✅ **Good - Clear capabilities:**
+```json
+{
+  "name": "Engineer",
+  "description": "A software engineer that writes and executes Python or Bash code in an isolated workspace (./workspace directory). Can provide code snippets, create executable scripts, run code iteratively to debug errors, and save outputs to workspace files. Capable of: data processing, file manipulation, system operations, calculations, API integrations, automation scripts, testing, and any task solvable through code. All executed code and generated files are saved in backend/workspace/. Avoid using for web research - use Researcher instead."
+}
+```
+
+❌ **Bad - Too vague:**
+```json
+{
+  "description": "An agent that does research"
+}
+```
+
+❌ **Bad - Missing use cases:**
+```json
+{
+  "description": "Writes and executes code"
+}
+```
+
+**Description Checklist:**
+- [ ] Defines the agent's role clearly
+- [ ] Lists specific tools or approaches used
+- [ ] Enumerates concrete capabilities
+- [ ] Provides use case examples ("Best for:")
+- [ ] Includes anti-patterns ("Avoid using for:")
+- [ ] Written from orchestrator's perspective
+- [ ] Concise but comprehensive (1-3 sentences)
 
 ---
 
@@ -2183,6 +2273,98 @@ ls -la ~/.claude/
 
 ## Recent Changes
 
+### Database Agent (2025-12-01)
+
+Created a MongoDB database administrator agent with automatic collection schema tracking.
+
+**New Features:**
+1. **Full MongoDB Integration** - Complete CRUD operations and advanced queries
+2. **Automatic Schema Tracking** - {{COLLECTIONS_SCHEMA}} placeholder with auto-update
+3. **10 Database Tools** - Insert, find, update, delete, aggregate, index, and more
+4. **Collection Documentation** - Maintains structure, usage, and examples for all collections
+
+**Technical Changes:**
+
+**Backend Implementation:**
+- Created [database.py](backend/tools/database.py) with 10 MongoDB tools
+- Implemented schema tracking in `backend/database_metadata/collections_schema.json`
+- Auto-refresh system prompt when schemas change
+- Dynamic initialization with `initialize_database_agent()`
+
+**Agent Configuration:**
+- Created [Database.json](backend/agents/Database.json) with comprehensive system prompt
+- Added to [MainConversation.json](backend/agents/MainConversation.json) sub-agents
+- Uses `{{COLLECTIONS_SCHEMA}}` placeholder for runtime schema injection
+
+**Tools:**
+- `register_collection_schema` - Document collections
+- `insert_document` / `insert_many_documents` - Create operations
+- `find_documents` - Read with filters and projections
+- `update_document` - Update with MongoDB operators
+- `delete_document` - Delete operations
+- `aggregate` - Complex aggregation pipelines
+- `create_index` - Performance optimization
+- `list_collections` / `drop_collection` - Collection management
+
+**Documentation:**
+- Created [DATABASE_AGENT_GUIDE.md](docs/DATABASE_AGENT_GUIDE.md) - Complete usage guide
+- Added MongoDB setup instructions
+- Documented best practices and common patterns
+
+**Dependencies:**
+- MongoDB server (localhost or remote)
+- pymongo>=4.6.0
+
+**Status:** ✅ Implemented and documented (requires MongoDB installation)
+
+### Dynamic Agent Description Injection (2025-12-01)
+
+Implemented automatic injection of agent descriptions into orchestrator system prompts for nested team agents.
+
+**New Features:**
+1. **Automatic Agent Description Injection** - Orchestrators receive comprehensive agent info at runtime
+2. **{{AVAILABLE_AGENTS}} Placeholder** - Single placeholder for dynamic agent list insertion
+3. **Enhanced Agent Descriptions** - Comprehensive descriptions for Researcher and Engineer
+4. **MainConversation Updates** - Integrated Memory and FileManager agents
+
+**Technical Changes:**
+
+**Backend Implementation:**
+- Added `_inject_agent_descriptions()` method to [nested_agent.py:122-154](backend/core/nested_agent.py#L122-L154)
+- Automatically extracts agent names and descriptions from sub-agent configs
+- Replaces `{{AVAILABLE_AGENTS}}` placeholder in orchestrator's system prompt
+- Generic solution - works for any nested_team agent configuration
+
+**Agent Configuration Updates:**
+- Updated [Manager.json](backend/agents/Manager.json) with `{{AVAILABLE_AGENTS}}` placeholder
+- Enhanced [Researcher.json](backend/agents/Researcher.json) description (tools, capabilities, use cases)
+- Enhanced [Engineer.json](backend/agents/Engineer.json) description (languages, capabilities, anti-patterns)
+- Updated [MainConversation.json](backend/agents/MainConversation.json) to include Memory and FileManager
+
+**Documentation:**
+- Created [DYNAMIC_AGENT_DESCRIPTION_INJECTION.md](docs/DYNAMIC_AGENT_DESCRIPTION_INJECTION.md) - Complete feature guide
+- Updated [CLAUDE.md](CLAUDE.md) with best practices for agent descriptions
+- Added test script [test_placeholder_injection.py](backend/test_placeholder_injection.py)
+
+**Example Result:**
+
+Manager now receives at runtime:
+```
+The agents involved in this conversation besides you are:
+- Memory: An agent that manages short-term memory and persistent memory banks...
+- FileManager: An agent that manages files with automatic workspace hierarchy...
+- Researcher: A professional web researcher and fact-checker...
+- Engineer: A software engineer that writes and executes Python or Bash code...
+```
+
+**Benefits:**
+- ✅ **Automatic Updates** - No manual prompt editing when agents change
+- ✅ **Single Source of Truth** - Descriptions from agent configs
+- ✅ **Better Orchestration** - Manager has complete capability information
+- ✅ **Fully Generic** - Works for any nested_team configuration
+
+**Status:** ✅ Implemented, tested, and documented
+
 ### Jetson Nano Deployment & TV WebView Fix (2025-11-29)
 
 Deployed the agentic application to Jetson Nano home server with complete HTTPS support and fixed TV WebView compatibility.
@@ -2414,8 +2596,9 @@ See [FRONTEND_REFACTORING.md](FRONTEND_REFACTORING.md) for complete details.
 
 This document should be updated whenever significant architectural changes are made.
 
-**Last updated:** 2025-11-29
+**Last updated:** 2025-12-01
 **Changes:**
+- 2025-12-01: Added dynamic agent description injection for nested_team agents - `{{AVAILABLE_AGENTS}}` placeholder automatically populated with sub-agent descriptions; enhanced Researcher and Engineer descriptions; integrated Memory and FileManager into MainConversation
 - 2025-11-29: Fixed mobile voice HTTPS access and echo issue - nginx WebRTC endpoint configuration, desktop/mobile origin consistency, echo elimination by removing desktop mic from mobile stream
 - 2025-11-28: Added mobile voice interface (`MobileVoice.js`) for wireless microphone access from smartphones - no backend changes required, leverages existing multi-client conversation architecture
 - 2025-11-08: Added dynamic initialization agent (`dynamic_init_looping`) for flexible agent startup logic

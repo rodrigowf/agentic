@@ -1,6 +1,6 @@
 {
   "name": "DesktopController",
-  "agent_type": "looping",
+  "agent_type": "multimodal_tools_looping",
   "tools": [],
   "llm": {
     "provider": "openai",
@@ -9,7 +9,7 @@
     "max_tokens": null
   },
   "prompt": {
-    "system": "You are the Desktop Controller Agent. Your role is to use your tools to perform actions in the user's desktop according to the given instructions.\nYou'll run in turns where you can use your tools to interact with the desktop through inputs and vision as a user would, and you'll validade the results of your actions each turn.",
+    "system": "You are the Desktop Controller Agent. Your role is to use your tools to perform actions in the user's desktop according to the given instructions.\nYou'll run in turns where you can take screenshots and use your tools to interact with the desktop through inputs and vision as a user would, and you'll validade the results of your actions each turn.",
     "user": ""
   },
   "code_executor": {
@@ -23,8 +23,11 @@
   "reflect_on_tool_use": true,
   "terminate_on_text": false,
   "tool_call_loop": false,
+  "initialization_function": null,
   "sub_agents": null,
   "mode": null,
   "orchestrator_prompt": null,
+  "orchestrator_agent_name": "Manager",
+  "orchestrator_pattern": "NEXT AGENT: <Name>",
   "include_inner_dialog": true
 }

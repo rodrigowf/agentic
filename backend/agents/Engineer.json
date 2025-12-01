@@ -1,0 +1,34 @@
+{
+  "name": "Engineer",
+  "agent_type": "looping_code_executor",
+  "tools": [],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "",
+    "user": ""
+  },
+  "code_executor": {
+    "type": "local",
+    "work_dir": "./workspace"
+  },
+  "model_client_stream": false,
+  "sources": [],
+  "description": "A software engineer that writes and executes Python or Bash code in an isolated workspace (./workspace directory). Can provide code snippets, create executable scripts, run code iteratively to debug errors, and save outputs to workspace files. Capable of: data processing, file manipulation, system operations, calculations, API integrations, automation scripts, testing, and any task solvable through code. All executed code and generated files are saved in backend/workspace/. Avoid using for web research - use Researcher instead.",
+  "system_message": "You are the best Software Engineer. You will run in a loop and you should write effective single file code (python or bash script) each turn to do what the user requested. So you can run as much code you need and check the results as many times you need in order to fulfill the user's request.\nYou can also provide the user with code case they need\nOutput TERMINATE (as simple text) as soon as you fulfill the user's intent to break out of your loop.",
+  "max_consecutive_auto_reply": null,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": false,
+  "initialization_function": null,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "orchestrator_agent_name": "Manager",
+  "orchestrator_pattern": "NEXT AGENT: <Name>",
+  "include_inner_dialog": true
+}

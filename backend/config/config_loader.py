@@ -87,6 +87,22 @@ def load_agents(agents_dir: str) -> List[AgentConfig]:
                         try:
                             with open(sub_path) as sf:
                                 sub_data = json.load(sf)
+                            # Recursively expand if this sub-agent is also a nested_team
+                            if sub_data.get('agent_type') == 'nested_team' and isinstance(sub_data.get('sub_agents'), list):
+                                sub_names = sub_data['sub_agents']
+                                sub_expanded: List[AgentConfig] = []
+                                for sub_item in sub_names:
+                                    if isinstance(sub_item, str):
+                                        sub_sub_path = os.path.join(agents_dir, f"{sub_item}.json")
+                                        try:
+                                            with open(sub_sub_path) as ssf:
+                                                sub_sub_data = json.load(ssf)
+                                            sub_expanded.append(AgentConfig(**sub_sub_data))
+                                        except Exception as e:
+                                            print(f"Warning: Could not load nested sub-agent '{sub_item}': {e}")
+                                    elif isinstance(sub_item, dict):
+                                        sub_expanded.append(AgentConfig(**sub_item))
+                                sub_data['sub_agents'] = sub_expanded
                             expanded.append(AgentConfig(**sub_data))
                         except Exception as e:
                             print(f"Warning: Could not load sub-agent '{item}': {e}")

@@ -1,3 +1,5 @@
+ALL DONE:
+
 - clarification on the system prompt, specially on claude usage
   - it should be aware of using it for self editing
 

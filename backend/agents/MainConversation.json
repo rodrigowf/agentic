@@ -25,8 +25,12 @@
   "tool_call_loop": false,
   "sub_agents": [
     "Manager",
+    "Memory",
+    "FileManager",
+    "Database",
+    "API",
     "Researcher",
-    "Developer"
+    "Engineer"
   ],
   "mode": "selector",
   "orchestrator_prompt": "__function__",

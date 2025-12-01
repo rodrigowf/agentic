@@ -24,14 +24,18 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 
 # --- Initialization Function for Dynamic System Prompt ---
 
-def initialize_filemanager_agent():
+def initialize_filemanager_agent(agent):
     """
     Initialize FileManager agent by scanning workspace and injecting hierarchy into system prompt.
     This function is called automatically when the agent starts.
+
+    Args:
+        agent: The agent instance to initialize.
+
+    Returns:
+        Success or error message.
     """
     try:
-        agent = get_current_agent()
-
         # Scan workspace directory
         hierarchy = scan_workspace_hierarchy(str(WORKSPACE_DIR))
 

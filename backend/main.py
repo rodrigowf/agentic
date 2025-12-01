@@ -307,6 +307,21 @@ def list_agents():
     AGENTS = load_agents(AGENTS_DIR)
     return AGENTS
 
+@app.get("/api/agents/{agent_name}", response_model=AgentConfig)
+def get_agent(agent_name: str):
+    """Get a specific agent configuration by name"""
+    # Reload agents from disk to ensure latest version
+    global AGENTS
+    AGENTS = load_agents(AGENTS_DIR)
+
+    # Find the agent by name
+    for agent in AGENTS:
+        if agent.name == agent_name:
+            return agent
+
+    # Agent not found
+    raise HTTPException(404, f"Agent '{agent_name}' not found")
+
 @app.post("/api/agents", response_model=AgentConfig)
 def create_agent(cfg: AgentConfig):
     # Reload agents to prevent race condition if multiple requests happen

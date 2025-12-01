@@ -67,6 +67,8 @@ OPENAI_REALTIME_SESSIONS = f"{OPENAI_API_BASE}/realtime/sessions"
 VOICE_SYSTEM_PROMPT = (
     "You are Archie, the realtime voice interface for a multi‑agent team and self-editing Claude Code instance. "
     "Act as a calm, concise narrator/controller; the team does the reasoning and actions, and Claude Code handles self-editing tasks.\n\n"
+    "**AVAILABLE AGENTS IN THE TEAM**:\n"
+    "{{AVAILABLE_AGENTS}}\n\n"
     "Reading controller messages:\n"
     "- [TEAM Agent] ... are team updates (incl. tool usage/completion). Treat them as situational awareness and keep them off-mic unless summarizing key results.\n"
     "- [CODE ClaudeCode] ... are self-editing updates from Claude Code editing the codebase. Mention when files are modified or significant changes are made.\n"
@@ -262,6 +264,85 @@ def _json_headers() -> Dict[str, str]:
     if org:
         headers["OpenAI-Organization"] = org
     return headers
+
+
+def _inject_available_agents(instructions: str, agent_name: str) -> str:
+    """
+    Inject available agents from the nested team into the voice system prompt.
+    Replaces {{AVAILABLE_AGENTS}} placeholder with formatted list of agents.
+
+    Args:
+        instructions: The system prompt with placeholder
+        agent_name: Name of the nested team agent (e.g., 'MainConversation')
+
+    Returns:
+        Updated instructions with agent list injected
+    """
+    try:
+        # Import here to avoid circular dependency
+        from config.config_loader import load_agents
+
+        # Load all agents
+        agents_dir = "agents"
+        all_agents = load_agents(agents_dir)
+
+        # Find the requested agent
+        agent_config = None
+        for agent in all_agents:
+            if agent.name == agent_name:
+                agent_config = agent
+                break
+
+        if not agent_config:
+            logger.warning(f"Agent '{agent_name}' not found, using default placeholder")
+            return instructions.replace("{{AVAILABLE_AGENTS}}", "(No agents information available)")
+
+        # Check if it's a nested_team agent with sub_agents
+        if agent_config.agent_type != "nested_team" or not agent_config.sub_agents:
+            logger.info(f"Agent '{agent_name}' is not a nested team, skipping agent list injection")
+            return instructions.replace("{{AVAILABLE_AGENTS}}", "(Not a nested team - no sub-agents available)")
+
+        # Extract sub-agent descriptions
+        agent_descriptions = []
+        for sub_agent in agent_config.sub_agents:
+            # Sub-agents can be either strings or AgentConfig objects
+            # Extract the name if it's an AgentConfig object
+            if hasattr(sub_agent, 'name'):
+                sub_agent_name = sub_agent.name
+                # Use the sub_agent object directly since it's already loaded
+                description = sub_agent.description or "No description available"
+                agent_descriptions.append(f"- **{sub_agent_name}**: {description}")
+            else:
+                # If it's a string, find the configuration
+                sub_agent_name = sub_agent
+                sub_agent_config = None
+                for agent in all_agents:
+                    if agent.name == sub_agent_name:
+                        sub_agent_config = agent
+                        break
+
+                if sub_agent_config:
+                    description = sub_agent_config.description or "No description available"
+                    agent_descriptions.append(f"- **{sub_agent_name}**: {description}")
+                else:
+                    agent_descriptions.append(f"- **{sub_agent_name}**: (Configuration not found)")
+
+        # Format the agents list
+        if agent_descriptions:
+            agents_text = "\n".join(agent_descriptions)
+        else:
+            agents_text = "(No sub-agents configured)"
+
+        # Replace placeholder
+        updated_instructions = instructions.replace("{{AVAILABLE_AGENTS}}", agents_text)
+        logger.info(f"Injected {len(agent_descriptions)} agent descriptions into voice prompt")
+
+        return updated_instructions
+
+    except Exception as e:
+        logger.error(f"Error injecting available agents: {e}")
+        # Return instructions with placeholder removed on error
+        return instructions.replace("{{AVAILABLE_AGENTS}}", "(Error loading agents information)")
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -677,6 +758,7 @@ def get_openai_token(
     model: str = Query(..., description="Name of the realtime model, e.g. gpt-realtime"),
     voice: Optional[str] = Query("alloy", description="Voice to use (omit or set to 'none' to disable audio)"),
     system_prompt: Optional[str] = Query(None, description="Custom system prompt (uses default if not provided)"),
+    agent_name: Optional[str] = Query("MainConversation", description="Name of the nested team agent to use"),
 ) -> Any:
     """Create a realtime session and return the session id and client secret.
 
@@ -694,6 +776,10 @@ def get_openai_token(
 
     # Use provided system prompt or fall back to default
     instructions = system_prompt if system_prompt else VOICE_SYSTEM_PROMPT
+
+    # Inject available agents if using default prompt and agent is nested_team
+    if not system_prompt and agent_name:
+        instructions = _inject_available_agents(instructions, agent_name)
     payload: Dict[str, Any] = {"model": model, "instructions": instructions}
     if voice and voice.lower() != "none":
         payload["voice"] = voice

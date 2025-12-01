@@ -1,0 +1,36 @@
+{
+  "name": "API",
+  "agent_type": "nested_team",
+  "tools": [],
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4-turbo-2024-04-09",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "prompt": {
+    "system": "",
+    "user": ""
+  },
+  "code_executor": {
+    "type": ""
+  },
+  "model_client_stream": false,
+  "sources": [],
+  "description": "A specialized team for interacting with any web API. Consists of APIManager (orchestrator), APIDocs (manages documentation storage), HTTPRequest (executes HTTP calls), Researcher (finds API documentation), and Engineer (retrieves credentials). Capable of: finding API documentation, storing docs in indexed markdown files, making REST API calls (GET/POST/PUT/DELETE/PATCH), handling authentication, managing API credentials, parsing responses, and executing multi-step API workflows. Best for: REST API integrations, web service interactions, API testing, third-party service integrations, webhook handling, API documentation management. The team automatically maintains an indexed catalog of API documentation for reuse.",
+  "system_message": "",
+  "max_consecutive_auto_reply": 30,
+  "reflect_on_tool_use": true,
+  "terminate_on_text": false,
+  "tool_call_loop": false,
+  "sub_agents": [
+    "APIManager",
+    "APIDocs",
+    "HTTPRequest",
+    "Researcher",
+    "Engineer"
+  ],
+  "mode": "selector",
+  "orchestrator_prompt": "__function__",
+  "include_inner_dialog": true
+}

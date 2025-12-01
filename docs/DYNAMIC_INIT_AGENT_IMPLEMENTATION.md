@@ -83,7 +83,7 @@ Dynamic initialization system with:
 │  def _run_initialization(self):                             │
 │      module = importlib.import_module(f'tools.{module_name}') │
 │      init_func = getattr(module, function_name)             │
-│      init_func()  # Execute initialization                  │
+│      init_func(self)  # Execute initialization with agent   │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
@@ -91,8 +91,8 @@ Dynamic initialization system with:
 │              Initialization Function                         │
 │  (tools/memory.py)                                          │
 │                                                              │
-│  def initialize_memory_agent():                             │
-│      agent = get_current_agent()                            │
+│  def initialize_memory_agent(agent):                        │
+│      # Agent is passed directly as parameter                │
 │      # Load memory from file                                │
 │      # Update agent's system message                        │
 │      # Return success message                               │
@@ -356,22 +356,24 @@ Create a function in any module under `backend/tools/`:
 ```python
 # tools/my_custom_tool.py
 
-from utils.context import get_current_agent
 import logging
 
 logger = logging.getLogger(__name__)
 
-def initialize_my_agent():
+def initialize_my_agent(agent):
     """
     Custom initialization logic for my agent.
 
     This function is called when the agent is created.
-    It can modify the agent's system message, load data, etc.
+    It receives the agent instance directly as a parameter.
+
+    Args:
+        agent: The agent instance to initialize.
+
+    Returns:
+        Success or error message.
     """
     try:
-        # Get current agent from context
-        agent = get_current_agent()
-
         # Load some data
         my_data = load_my_data_from_file()
 
@@ -435,8 +437,7 @@ The agent will automatically run the initialization function on startup!
 
 ### 2. Database Connection
 ```python
-def initialize_db_agent():
-    agent = get_current_agent()
+def initialize_db_agent(agent):
     # Connect to database
     # Load schema or connection info
     # Update agent with DB context
@@ -444,8 +445,7 @@ def initialize_db_agent():
 
 ### 3. API Configuration
 ```python
-def initialize_api_agent():
-    agent = get_current_agent()
+def initialize_api_agent(agent):
     # Load API credentials
     # Test connection
     # Update agent with API info
@@ -453,8 +453,7 @@ def initialize_api_agent():
 
 ### 4. Workspace Setup
 ```python
-def initialize_code_agent():
-    agent = get_current_agent()
+def initialize_code_agent(agent):
     # Verify workspace directory
     # Load project structure
     # Update agent with project info
@@ -462,8 +461,7 @@ def initialize_code_agent():
 
 ### 5. Resource Validation
 ```python
-def initialize_resource_agent():
-    agent = get_current_agent()
+def initialize_resource_agent(agent):
     # Check required files exist
     # Validate dependencies
     # Update agent with resource status

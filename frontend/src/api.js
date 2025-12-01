@@ -29,6 +29,7 @@ export const generateToolCode = (prompt) => API.post('/tools/generate', { prompt
 
 // Agents
 export const getAgents = () => API.get('/agents');
+export const getAgent = (name) => API.get(`/agents/${name}`);
 export const createAgent = (agent) => API.post('/agents', agent);
 export const updateAgent = (name, agent) => API.put(`/agents/${name}`, agent);
 
@@ -88,6 +89,7 @@ export default {
   uploadTool,
   generateToolCode,
   getAgents,
+  getAgent,
   createAgent,
   updateAgent,
   runAgent,

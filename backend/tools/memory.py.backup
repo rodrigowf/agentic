@@ -81,50 +81,16 @@ def _get_embedding(text: str) -> List[float]:
         logger.error(f"Error generating embedding: {e}")
         raise
 
-def _get_memory_banks_summary() -> str:
+def _refresh_agent_system_message():
     """
-    Get a formatted summary of all available memory banks.
-
-    Returns:
-        Formatted string listing all memory banks with descriptions and counts.
+    Refreshes the agent's system message with current short-term memory content.
+    This injects the short-term memory into the {{SHORT_TERM_MEMORY}} placeholder.
     """
     try:
-        index = _load_memory_index()
-
-        if not index:
-            return "(No memory banks created yet)"
-
-        result = []
-        client = _get_chroma_client()
-        for name, description in index.items():
-            try:
-                collection = client.get_collection(name=name)
-                count = collection.count()
-                result.append(f"- **{name}**: {description} ({count} entries)")
-            except Exception:
-                result.append(f"- **{name}**: {description} (collection not found)")
-
-        return "\n".join(result)
-    except Exception as e:
-        logger.error(f"Error getting memory banks summary: {e}")
-        return "(Error loading memory banks)"
-
-def _refresh_agent_system_message(agent=None):
-    """
-    Refreshes the agent's system message with current short-term memory content
-    and available memory banks list.
-    This injects content into the {{SHORT_TERM_MEMORY}} and {{MEMORY_BANKS}} placeholders.
-
-    Args:
-        agent: The agent instance. If None, tries to get from context (for backward compatibility).
-    """
-    try:
-        # If no agent provided, try to get from context (for backward compatibility)
+        agent = get_current_agent()
         if agent is None:
-            agent = get_current_agent()
-            if agent is None:
-                logger.warning("No current agent found in context. Cannot refresh system message.")
-                return
+            logger.warning("No current agent found in context. Cannot refresh system message.")
+            return
 
         # Get current short-term memory
         st_memory_content = ""
@@ -134,41 +100,29 @@ def _refresh_agent_system_message(agent=None):
         if not st_memory_content.strip():
             st_memory_content = "(Empty - no short-term memory stored yet)"
 
-        # Get memory banks summary
-        memory_banks_summary = _get_memory_banks_summary()
-
         # Get the original system message template
         original_system_message = agent._system_messages[0].content if agent._system_messages else ""
 
-        # Replace the placeholders with actual content
+        # Replace the placeholder with actual content
         updated_system_message = original_system_message.replace(
             "{{SHORT_TERM_MEMORY}}",
             st_memory_content
-        ).replace(
-            "{{MEMORY_BANKS}}",
-            memory_banks_summary
         )
 
         # Update the agent's system message
         if agent._system_messages:
             agent._system_messages[0].content = updated_system_message
-            logger.info("Agent system message refreshed with current short-term memory and memory banks")
+            logger.info("Agent system message refreshed with current short-term memory")
         else:
             logger.warning("Agent has no system messages to update")
 
     except Exception as e:
         logger.error(f"Error refreshing agent system message: {e}")
 
-def initialize_memory_agent(agent):
+def initialize_memory_agent():
     """
     Initializes the Memory agent by loading short-term memory and injecting it into the system prompt.
     This should be called once when the agent is first created.
-
-    Args:
-        agent: The agent instance to initialize.
-
-    Returns:
-        Success or error message.
     """
     try:
         logger.info("Initializing Memory agent with short-term memory")
@@ -179,7 +133,7 @@ def initialize_memory_agent(agent):
             logger.info("Created empty short-term memory file")
 
         # Refresh the agent's system message with current memory
-        _refresh_agent_system_message(agent)
+        _refresh_agent_system_message()
 
         return "Memory agent initialized successfully"
     except Exception as e:

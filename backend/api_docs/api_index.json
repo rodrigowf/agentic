@@ -1,0 +1,9 @@
+{
+  "apis": {
+    "jsonplaceholder": {
+      "file": "jsonplaceholder.md",
+      "description": "JSONPlaceholder - Free fake REST API for testing and prototyping",
+      "path": "/home/rodrigo/agentic/backend/api_docs/jsonplaceholder.md"
+    }
+  }
+}
