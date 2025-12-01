@@ -1,0 +1,23 @@
+# autogenstudio
+fastapi
+arxiv~=1.4.7
+uvicorn[standard]
+python-dotenv
+python-multipart
+openai
+anthropic
+google-generativeai
+# Added missing dependencies
+pydantic>=2.0
+requests~=2.31.0
+beautifulsoup4~=4.12.2
+autogen-agentchat>=0.5.7
+autogen-core>=0.5.7
+autogen-ext>=0.5.7
+tiktoken
+
+# For Tools:
+wikipedia
+Pillow
+mss
+pyautogui
