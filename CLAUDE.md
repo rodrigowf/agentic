@@ -50,11 +50,16 @@ This is an **agentic AI system** with a Python backend using AutoGen and a React
 - Material-UI (MUI)
 - WebSocket client
 - React Router
+- **Responsive design** with mobile-first approach
 
 **Debug Tools:**
 - Puppeteer (screenshots)
 - SQLite exports
 - Logging system
+
+**Important URLs:**
+- **Development:** `http://localhost:3000/agentic/` (note the `/agentic` namespace!)
+- **Production (Jetson):** `https://192.168.0.200/agentic/`
 
 ---
 

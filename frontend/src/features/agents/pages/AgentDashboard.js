@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
-import { Box, List, ListItem, ListItemButton, ListItemText, Typography, Divider } from '@mui/material';
+import { Box, List, ListItem, ListItemButton, ListItemText, Typography, Divider, Drawer, IconButton, useTheme, useMediaQuery } from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
 import AgentEditor from '../components/AgentEditor';
 import RunConsole from '../components/RunConsole';
 import api from '../../../api';
 
 export default function AgentDashboard() {
   const { name } = useParams();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [agents, setAgents] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const listRef = useRef(null);
   const navigate = useNavigate();
 
@@ -65,51 +69,21 @@ export default function AgentDashboard() {
     }
   }, [agents, selectedIndex, navigate]);
 
-  return (
-    <Box sx={{
-      display: 'flex',
-      height: 'calc(100vh - 64px)',
-      width: '100%',
-      position: 'fixed',
-      left: 0,
-      top: 64,
-      overflow: 'hidden',
-      bgcolor: 'background.default',
-    }}>
-      {/* Left Panel - Agents List */}
-      <Box
-        ref={listRef}
-        tabIndex={0}
-        role="navigation"
-        aria-label="Agents list"
-        sx={{
-          width: '20%',
-          minWidth: '280px',
-          maxWidth: '400px',
-          height: '100%',
-          bgcolor: theme => theme.palette.mode === 'dark'
-            ? 'rgba(255, 255, 255, 0.03)'
-            : 'rgba(0, 0, 0, 0.02)',
-          borderRight: 1,
-          borderColor: 'divider',
-          overflowY: 'auto',
-          flexShrink: 0,
-          outline: 'none',
-          '&:focus-within': {
-            boxShadow: theme => `inset 0 0 0 2px ${theme.palette.primary.main}`,
-          },
-        }}
-      >
-        <Box sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Agents
-          </Typography>
+  // Extract agent list content for reuse in drawer
+  const AgentListContent = (
+    <>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Agents
+        </Typography>
+        {!isMobile && (
           <Typography variant="caption" color="text.secondary">
             Use ↑↓ arrows to navigate, Enter to select
           </Typography>
-        </Box>
-        <Divider />
-        <List disablePadding>
+        )}
+      </Box>
+      <Divider />
+      <List disablePadding>
           {agents.map((agent, index) => (
             <ListItem key={agent.name} disablePadding>
               <ListItemButton
@@ -148,47 +122,184 @@ export default function AgentDashboard() {
             </ListItem>
           ))}
         </List>
-      </Box>
+      </>
+    );
 
-      {/* Center Panel - Agent Editor */}
+  return (
+    <Box sx={{
+      display: 'flex',
+      height: 'calc(100vh - 64px)',
+      width: '100%',
+      position: 'fixed',
+      left: 0,
+      top: 64,
+      overflow: 'hidden',
+      bgcolor: 'background.default',
+    }}>
+      {/* Mobile: Hamburger menu button - always show */}
+      {isMobile && (
+        <Box sx={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          zIndex: 1201
+        }}>
+          <IconButton
+            onClick={() => setDrawerOpen(true)}
+            sx={{
+              bgcolor: 'background.paper',
+              boxShadow: 2,
+              '&:hover': { bgcolor: 'action.hover' }
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+        </Box>
+      )}
+
+      {/* Mobile: Drawer for agent list */}
+      {isMobile && (
+        <Drawer
+          anchor="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: '85%',
+              maxWidth: 350,
+              bgcolor: theme => theme.palette.mode === 'dark'
+                ? 'rgba(255, 255, 255, 0.03)'
+                : 'rgba(0, 0, 0, 0.02)',
+            },
+          }}
+        >
+          {AgentListContent}
+        </Drawer>
+      )}
+
+      {/* Desktop: Left Panel - Agents List */}
+      {!isMobile && (
+        <Box
+          ref={listRef}
+          tabIndex={0}
+          role="navigation"
+          aria-label="Agents list"
+          sx={{
+            width: '20%',
+            minWidth: '280px',
+            maxWidth: '400px',
+            height: '100%',
+            bgcolor: theme => theme.palette.mode === 'dark'
+              ? 'rgba(255, 255, 255, 0.03)'
+              : 'rgba(0, 0, 0, 0.02)',
+            borderRight: 1,
+            borderColor: 'divider',
+            overflowY: 'auto',
+            flexShrink: 0,
+            outline: 'none',
+            '&:focus-within': {
+              boxShadow: theme => `inset 0 0 0 2px ${theme.palette.primary.main}`,
+            },
+          }}
+        >
+          {AgentListContent}
+        </Box>
+      )}
+
+      {/* Center/Main Panel */}
       <Box sx={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
         flexGrow: 1,
         height: '100%',
-        bgcolor: 'background.paper',
-        overflowY: 'auto',
-        borderRight: 1,
-        borderColor: 'divider',
-        '&::-webkit-scrollbar': {
-          width: '12px',
-        },
-        '&::-webkit-scrollbar-track': {
-          bgcolor: 'background.paper',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          bgcolor: theme => theme.palette.mode === 'dark' ? '#3a3a3a' : '#c0c0c0',
-          borderRadius: '6px',
-          border: theme => `2px solid ${theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff'}`,
-          '&:hover': {
-            bgcolor: theme => theme.palette.mode === 'dark' ? '#4a4a4a' : '#a0a0a0',
-          },
-        },
+        overflow: 'hidden',
       }}>
-        <AgentEditor nested/>
-      </Box>
+        {/* On mobile: Run Console first (top), on desktop: Agent Editor first (left) */}
+        {isMobile ? (
+          <>
+            {/* Run Console - Top on mobile */}
+            <Box sx={{
+              width: '100%',
+              height: '50%',
+              bgcolor: theme => theme.palette.mode === 'dark'
+                ? 'rgba(255, 255, 255, 0.03)'
+                : 'rgba(0, 0, 0, 0.02)',
+              overflowY: 'auto',
+              borderBottom: 1,
+              borderColor: 'divider',
+              flexShrink: 0,
+            }}>
+              <RunConsole nested/>
+            </Box>
 
-      {/* Right Panel - Run Console */}
-      <Box sx={{
-        width: '35%',
-        minWidth: '500px',
-        maxWidth: '800px',
-        height: '100%',
-        bgcolor: theme => theme.palette.mode === 'dark'
-          ? 'rgba(255, 255, 255, 0.03)'
-          : 'rgba(0, 0, 0, 0.02)',
-        overflowY: 'auto',
-        flexShrink: 0,
-      }}>
-        <RunConsole nested/>
+            {/* Agent Editor - Bottom on mobile */}
+            <Box sx={{
+              flexGrow: 1,
+              height: '50%',
+              bgcolor: 'background.paper',
+              overflowY: 'auto',
+              '&::-webkit-scrollbar': {
+                width: '12px',
+              },
+              '&::-webkit-scrollbar-track': {
+                bgcolor: 'background.paper',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                bgcolor: theme => theme.palette.mode === 'dark' ? '#3a3a3a' : '#c0c0c0',
+                borderRadius: '6px',
+                border: theme => `2px solid ${theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff'}`,
+                '&:hover': {
+                  bgcolor: theme => theme.palette.mode === 'dark' ? '#4a4a4a' : '#a0a0a0',
+                },
+              },
+            }}>
+              <AgentEditor nested/>
+            </Box>
+          </>
+        ) : (
+          <>
+            {/* Agent Editor - Left on desktop */}
+            <Box sx={{
+              flexGrow: 1,
+              height: '100%',
+              bgcolor: 'background.paper',
+              overflowY: 'auto',
+              borderRight: 1,
+              borderColor: 'divider',
+              '&::-webkit-scrollbar': {
+                width: '12px',
+              },
+              '&::-webkit-scrollbar-track': {
+                bgcolor: 'background.paper',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                bgcolor: theme => theme.palette.mode === 'dark' ? '#3a3a3a' : '#c0c0c0',
+                borderRadius: '6px',
+                border: theme => `2px solid ${theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff'}`,
+                '&:hover': {
+                  bgcolor: theme => theme.palette.mode === 'dark' ? '#4a4a4a' : '#a0a0a0',
+                },
+              },
+            }}>
+              <AgentEditor nested/>
+            </Box>
+
+            {/* Run Console - Right on desktop */}
+            <Box sx={{
+              width: '35%',
+              minWidth: '500px',
+              maxWidth: '800px',
+              height: '100%',
+              bgcolor: theme => theme.palette.mode === 'dark'
+                ? 'rgba(255, 255, 255, 0.03)'
+                : 'rgba(0, 0, 0, 0.02)',
+              overflowY: 'auto',
+              flexShrink: 0,
+            }}>
+              <RunConsole nested/>
+            </Box>
+          </>
+        )}
       </Box>
     </Box>
   );

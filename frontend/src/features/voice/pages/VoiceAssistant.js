@@ -15,8 +15,13 @@ import {
   Divider,
   Tabs,
   Tab,
+  Drawer,
+  IconButton,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MenuIcon from '@mui/icons-material/Menu';
 import RunConsole from '../../agents/components/RunConsole';
 import ConversationHistory from '../components/ConversationHistory';
 import NestedAgentInsights from '../components/NestedAgentInsights';
@@ -64,6 +69,8 @@ const safeStringify = (value) => {
  */
 function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const { conversationId } = useParams();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [conversation, setConversation] = useState(null);
   const [conversationLoading, setConversationLoading] = useState(true);
   const [conversationError, setConversationError] = useState(null);
@@ -75,12 +82,14 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const [error, setError] = useState(null);
   const [nestedViewTab, setNestedViewTab] = useState(0); // 0 = Insights, 1 = Console
   const [configEditorOpen, setConfigEditorOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [voiceConfig, setVoiceConfig] = useState({
     agentName: 'MainConversation',
     systemPromptFile: 'default.txt',
     systemPromptContent: '',
     voice: 'alloy',
   });
+  const [noMicrophoneMode, setNoMicrophoneMode] = useState(false);
   const peerRef = useRef(null);
   const dataChannelRef = useRef(null);
   const nestedWsRef = useRef(null);
@@ -853,28 +862,49 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       audioContextRef.current = audioContext;
 
-      // Get desktop microphone
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = micStream;
+      // Try to get desktop microphone, but allow failure (e.g., TV without mic)
+      let micStream = null;
+      let hasMicrophone = false;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micStreamRef.current = micStream;
+        hasMicrophone = true;
+        setNoMicrophoneMode(false);
+        console.log('[VoiceAssistant] Desktop microphone acquired successfully');
+      } catch (micError) {
+        console.warn('[VoiceAssistant] No microphone available, creating silent audio stream:', micError.message);
+        // Create a silent audio stream as fallback
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0; // Silent
+        oscillator.connect(gainNode);
+        const silentDestination = audioContext.createMediaStreamDestination();
+        gainNode.connect(silentDestination);
+        oscillator.start();
+        micStream = silentDestination.stream;
+        micStreamRef.current = micStream;
+        hasMicrophone = false;
+        setNoMicrophoneMode(true);
+        // Record the microphone-less mode
+        void recordEvent('controller', 'session_started_without_microphone', {
+          message: 'Session started without desktop microphone - mobile microphone required',
+          error: micError.message
+        });
+      }
 
       // Create mixer: desktop mic + mobile audio → mixed output
       const mixerDestination = audioContext.createMediaStreamDestination();
       mixerDestinationRef.current = mixerDestination;
 
-      // Connect desktop mic to mixer
-      const desktopSource = audioContext.createMediaStreamSource(micStream);
-      desktopSourceRef.current = desktopSource;
-      desktopSource.connect(mixerDestination);
-
       // Create gain nodes for desktop and mobile to control volumes independently
       const desktopGain = audioContext.createGain();
       const mobileGain = audioContext.createGain();
 
-      // Reconnect desktop source through gain node
-      desktopSource.disconnect();
+      // Connect desktop source (real or silent) to mixer through gain node
+      const desktopSource = audioContext.createMediaStreamSource(micStream);
       desktopSource.connect(desktopGain);
       desktopGain.connect(mixerDestination);
-      desktopGain.gain.value = 1.0; // Controlled by desktop mute button
+      desktopGain.gain.value = hasMicrophone ? 1.0 : 0.0; // Mute if no real mic
 
       // Mobile gain for incoming audio
       mobileGainNodeRef.current = mobileGain;
@@ -882,7 +912,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       mobileGain.gain.value = 1.0; // Always on (mobile controls mute on their end)
 
       // Store desktop gain for mute control
-      desktopSourceRef.current = { source: desktopSource, gain: desktopGain };
+      desktopSourceRef.current = { source: desktopSource, gain: desktopGain, hasMicrophone };
 
       // Add the mixed stream to the peer connection
       const mixedStream = mixerDestination.stream;
@@ -1271,10 +1301,14 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     setIsMuted((prevMuted) => {
       const newMutedState = !prevMuted;
 
-      // Control desktop audio via gain node (better than disabling tracks)
+      // Only control desktop audio if we have a real microphone
       if (desktopSourceRef.current && desktopSourceRef.current.gain) {
-        desktopSourceRef.current.gain.gain.value = newMutedState ? 0.0 : 1.0;
-        console.log('[DesktopMute] Desktop mic gain set to:', newMutedState ? 0.0 : 1.0);
+        if (desktopSourceRef.current.hasMicrophone) {
+          desktopSourceRef.current.gain.gain.value = newMutedState ? 0.0 : 1.0;
+          console.log('[DesktopMute] Desktop mic gain set to:', newMutedState ? 0.0 : 1.0);
+        } else {
+          console.log('[DesktopMute] No desktop microphone - mute button has no effect');
+        }
       }
 
       // Log mobile gain to verify it's not affected
@@ -1288,7 +1322,9 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       }
 
       // Log the mute/unmute event
-      void recordEvent('controller', newMutedState ? 'desktop_microphone_muted' : 'desktop_microphone_unmuted', {});
+      void recordEvent('controller', newMutedState ? 'desktop_microphone_muted' : 'desktop_microphone_unmuted', {
+        hasMicrophone: desktopSourceRef.current?.hasMicrophone || false
+      });
 
       return newMutedState;
     });
@@ -1374,6 +1410,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const stopSession = () => {
     setIsRunning(false);
     setIsMuted(false);
+    setNoMicrophoneMode(false);
     void recordEvent('controller', 'session_stopped', {});
     if (nestedWsRef.current) { try { nestedWsRef.current.close(); } catch {} nestedWsRef.current = null; }
     setSharedNestedWs(null);
@@ -1431,139 +1468,139 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   useEffect(() => () => stopSession(), []);
 
   if (nested) {
+    // Extract the left panel content (tabs and insights) for reuse in drawer
+    const LeftPanelContent = (
+      <>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={nestedViewTab} onChange={(_, newValue) => setNestedViewTab(newValue)} sx={{ px: 2, pt: 2 }}>
+            <Tab label="Team Insights" />
+            <Tab label="Team Console" />
+            <Tab label="Claude Code" />
+          </Tabs>
+        </Box>
+
+        {nestedViewTab === 0 ? (
+          <Box sx={{ height: isMobile ? 'calc(100vh - 200px)' : 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
+            {messages.length === 0 ? (
+              <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Start a voice session to see nested team insights
+                </Typography>
+              </Box>
+            ) : (
+              <NestedAgentInsights
+                messages={messages}
+                formatTimestamp={formatTimestamp}
+                truncateText={truncateText}
+                safeStringify={safeStringify}
+              />
+            )}
+          </Box>
+        ) : nestedViewTab === 1 ? (
+          sharedNestedWs ? (
+            <Box sx={{ height: isMobile ? 'calc(100vh - 200px)' : 'calc(100% - 128px)' }}>
+              <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
+            </Box>
+          ) : (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Start a voice session to see nested team console
+              </Typography>
+            </Box>
+          )
+        ) : (
+          <Box sx={{ height: isMobile ? 'calc(100vh - 200px)' : 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
+            {messages.length === 0 ? (
+              <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Start a voice session to see Claude Code activity
+                </Typography>
+              </Box>
+            ) : (
+              <ClaudeCodeInsights
+                messages={messages}
+                formatTimestamp={formatTimestamp}
+                truncateText={truncateText}
+                safeStringify={safeStringify}
+              />
+            )}
+          </Box>
+        )}
+      </>
+    );
+
     return (
       <Box
         ref={tvNavContainerRef}
         tabIndex={-1}
-        sx={{ display: 'flex', height: '100%', overflow: 'hidden', outline: 'none' }}
+        sx={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          height: '100%',
+          overflow: 'hidden',
+          outline: 'none',
+          position: 'relative'
+        }}
       >
-        {/* Center Panel - Nested Team Console */}
-        <Box
-          sx={{
-            flexGrow: 1,
-            height: '100%',
-            bgcolor: 'background.paper',
-            borderRight: 1,
-            borderColor: 'divider',
-            overflowY: 'auto',
-          }}
-        >
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={nestedViewTab} onChange={(_, newValue) => setNestedViewTab(newValue)} sx={{ px: 2, pt: 2 }}>
-              <Tab
-                label="Team Insights"
-                data-tv-focusable="true"
-                sx={{
-                  '&:focus': {
-                    outline: '3px solid',
-                    outlineColor: 'primary.main',
-                    outlineOffset: '4px',
-                  },
-                  '&[data-tv-focused="true"]': {
-                    outline: '4px solid',
-                    outlineColor: 'primary.light',
-                    outlineOffset: '4px',
-                    bgcolor: 'rgba(25, 118, 210, 0.08)',
-                    transform: 'scale(1.05)',
-                    boxShadow: '0 0 20px rgba(25, 118, 210, 0.4)',
-                  },
-                }}
-              />
-              <Tab
-                label="Team Console"
-                data-tv-focusable="true"
-                sx={{
-                  '&:focus': {
-                    outline: '3px solid',
-                    outlineColor: 'primary.main',
-                    outlineOffset: '4px',
-                  },
-                  '&[data-tv-focused="true"]': {
-                    outline: '4px solid',
-                    outlineColor: 'primary.light',
-                    outlineOffset: '4px',
-                    bgcolor: 'rgba(25, 118, 210, 0.08)',
-                    transform: 'scale(1.05)',
-                    boxShadow: '0 0 20px rgba(25, 118, 210, 0.4)',
-                  },
-                }}
-              />
-              <Tab
-                label="Claude Code"
-                data-tv-focusable="true"
-                sx={{
-                  '&:focus': {
-                    outline: '3px solid',
-                    outlineColor: 'primary.main',
-                    outlineOffset: '4px',
-                  },
-                  '&[data-tv-focused="true"]': {
-                    outline: '4px solid',
-                    outlineColor: 'primary.light',
-                    outlineOffset: '4px',
-                    bgcolor: 'rgba(25, 118, 210, 0.08)',
-                    transform: 'scale(1.05)',
-                    boxShadow: '0 0 20px rgba(25, 118, 210, 0.4)',
-                  },
-                }}
-              />
-            </Tabs>
+        {/* Mobile: Hamburger menu button */}
+        {isMobile && (
+          <Box sx={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            zIndex: 1201
+          }}>
+            <IconButton
+              onClick={() => setDrawerOpen(true)}
+              sx={{
+                bgcolor: 'background.paper',
+                boxShadow: 2,
+                '&:hover': { bgcolor: 'action.hover' }
+              }}
+            >
+              <MenuIcon />
+            </IconButton>
           </Box>
+        )}
 
-          {nestedViewTab === 0 ? (
-            <Box sx={{ height: 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
-              {messages.length === 0 ? (
-                <Box sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Start a voice session to see nested team insights
-                  </Typography>
-                </Box>
-              ) : (
-                <NestedAgentInsights
-                  messages={messages}
-                  formatTimestamp={formatTimestamp}
-                  truncateText={truncateText}
-                  safeStringify={safeStringify}
-                />
-              )}
-            </Box>
-          ) : nestedViewTab === 1 ? (
-            sharedNestedWs ? (
-              <Box sx={{ height: 'calc(100% - 128px)' }}>
-                <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
-              </Box>
-            ) : (
-              <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Start a voice session to see nested team console
-                </Typography>
-              </Box>
-            )
-          ) : (
-            <Box sx={{ height: 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
-              {messages.length === 0 ? (
-                <Box sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Start a voice session to see Claude Code activity
-                  </Typography>
-                </Box>
-              ) : (
-                <ClaudeCodeInsights
-                  messages={messages}
-                  formatTimestamp={formatTimestamp}
-                  truncateText={truncateText}
-                  safeStringify={safeStringify}
-                />
-              )}
-            </Box>
-          )}
-        </Box>
+        {/* Mobile: Drawer for left panel */}
+        {isMobile && (
+          <Drawer
+            anchor="left"
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            sx={{
+              '& .MuiDrawer-paper': {
+                width: '85%',
+                maxWidth: 400,
+              },
+            }}
+          >
+            {LeftPanelContent}
+          </Drawer>
+        )}
 
-        {/* Right Panel - Conversation */}
+        {/* Desktop: Left panel (fixed position) */}
+        {!isMobile && (
+          <Box
+            sx={{
+              flexGrow: 1,
+              height: '100%',
+              bgcolor: 'background.paper',
+              borderRight: 1,
+              borderColor: 'divider',
+              overflowY: 'auto',
+            }}
+          >
+            {LeftPanelContent}
+          </Box>
+        )}
+
+        {/* Right Panel - Conversation (top on mobile, right on desktop) */}
         <Box
           sx={{
-            width: '35%',
-            height: '100%',
+            width: isMobile ? '100%' : '35%',
+            height: isMobile ? 'auto' : '100%',
             bgcolor: (theme) =>
               theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
             display: 'flex',
@@ -1573,34 +1610,19 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           }}
         >
           {/* Header with controls */}
-          <Box sx={{ pt: 2, pb: 1, px: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
+          <Box sx={{ pt: isMobile ? 6 : 2, pb: 1, px: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
             <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
 
             {/* Configuration Button */}
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Agent: {voiceConfig.agentName} | Voice: {voiceConfig.voice} | Prompt: {voiceConfig.systemPromptFile}
+            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                Agent: {voiceConfig.agentName} | Voice: {voiceConfig.voice}
               </Typography>
               <Button
                 size="small"
                 variant="outlined"
                 onClick={() => setConfigEditorOpen(true)}
                 disabled={isRunning}
-                data-tv-focusable="true"
-                sx={{
-                  '&:focus': {
-                    outline: '3px solid',
-                    outlineColor: 'primary.main',
-                    outlineOffset: '4px',
-                  },
-                  '&[data-tv-focused="true"]': {
-                    outline: '4px solid',
-                    outlineColor: 'primary.light',
-                    outlineOffset: '4px',
-                    transform: 'scale(1.05)',
-                    boxShadow: '0 0 15px rgba(25, 118, 210, 0.5)',
-                  },
-                }}
               >
                 Configure
               </Button>
@@ -1624,7 +1646,13 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
             {!isRunning && remoteSessionActive && !conversationError && (
               <Alert severity="info" sx={{ mb: 2 }}>
-                Another tab is currently running this voice session. You can monitor live updates here.
+                Another tab is currently running this voice session.
+              </Alert>
+            )}
+
+            {isRunning && noMicrophoneMode && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                No microphone detected. Connect with mobile-voice page.
               </Alert>
             )}
 
@@ -1645,8 +1673,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
               <TextField
                 label="Message"
                 value={transcript}
-                               onChange={(e) => setTranscript(e.target.value)}
-                placeholder="Type a message to send to Voice or Nested"
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Type a message"
                 multiline
                 minRows={2}
                 maxRows={4}
@@ -1659,9 +1687,9 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                   }
                 }}
               />
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Chip
-                  label={isRunning ? 'Voice connected' : remoteSessionActive ? 'Voice active' : 'Voice idle'}
+                  label={isRunning ? 'Connected' : remoteSessionActive ? 'Active' : 'Idle'}
                   color={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
                   size="small"
                 />
@@ -1672,23 +1700,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                   onClick={sendText}
                   disabled={!isRunning || !transcript.trim()}
                   size="small"
-                  data-tv-focusable="true"
-                  sx={{
-                    '&:focus': {
-                      outline: '3px solid',
-                      outlineColor: 'success.light',
-                      outlineOffset: '4px',
-                    },
-                    '&[data-tv-focused="true"]': {
-                      outline: '4px solid',
-                      outlineColor: 'success.light',
-                      outlineOffset: '4px',
-                      transform: 'scale(1.08)',
-                      boxShadow: '0 0 20px rgba(46, 125, 50, 0.6)',
-                    },
-                  }}
                 >
-                  Send to Voice
+                  Voice
                 </Button>
                 <Button
                   variant="contained"
@@ -1696,23 +1709,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                   onClick={sendToNested}
                   disabled={!isRunning || !transcript.trim() || !nestedWsRef.current}
                   size="small"
-                  data-tv-focusable="true"
-                  sx={{
-                    '&:focus': {
-                      outline: '3px solid',
-                      outlineColor: 'secondary.light',
-                      outlineOffset: '4px',
-                    },
-                    '&[data-tv-focused="true"]': {
-                      outline: '4px solid',
-                      outlineColor: 'secondary.light',
-                      outlineOffset: '4px',
-                      transform: 'scale(1.08)',
-                      boxShadow: '0 0 20px rgba(156, 39, 176, 0.6)',
-                    },
-                  }}
                 >
-                  Send to Nested
+                  Nested
                 </Button>
               </Box>
             </Box>
@@ -1803,6 +1801,12 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
 
       {!isRunning && remoteSessionActive && !conversationError && (
         <Alert severity="info">Another tab is currently running this voice session. You can monitor live updates here.</Alert>
+      )}
+
+      {isRunning && noMicrophoneMode && (
+        <Alert severity="warning">
+          No microphone detected on this device. Connect with mobile-voice page on your phone to speak.
+        </Alert>
       )}
 
       {conversationError && (

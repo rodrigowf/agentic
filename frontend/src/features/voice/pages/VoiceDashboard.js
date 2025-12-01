@@ -16,10 +16,14 @@ import {
   DialogContentText,
   DialogActions,
   TextField,
+  Drawer,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import MenuIcon from '@mui/icons-material/Menu';
 import VoiceAssistant from './VoiceAssistant';
 import {
   listVoiceConversations,
@@ -46,6 +50,8 @@ const formatTimestamp = (value) => {
 export default function VoiceDashboard() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Conversations list state
   const [conversations, setConversations] = useState([]);
@@ -54,6 +60,7 @@ export default function VoiceDashboard() {
   const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Load conversations list
   const fetchConversations = useCallback(async () => {
@@ -133,42 +140,19 @@ export default function VoiceDashboard() {
     }
   };
 
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        height: 'calc(100vh - 64px)',
-        width: '100%',
-        position: 'fixed',
-        left: 0,
-        top: 64,
-        overflow: 'hidden',
-        bgcolor: 'background.default',
-      }}
-    >
-      {/* Left Panel - Conversations List */}
-      <Box
-        sx={{
-          width: '20%',
-          height: '100%',
-          bgcolor: (theme) =>
-            theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-          borderRight: 1,
-          borderColor: 'divider',
-          overflowY: 'auto',
-          flexShrink: 0,
-        }}
-      >
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Voice
-          </Typography>
-          <IconButton size="small" style={{ marginLeft: 'auto' }} onClick={handleCreate} disabled={isCreating} title="New conversation">
-            <AddIcon />
-          </IconButton>
-        </Box>
-        <Divider />
-        <List disablePadding>
+  // Extract conversation list content for reuse in drawer
+  const ConversationListContent = (
+    <>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Voice
+        </Typography>
+        <IconButton size="small" style={{ marginLeft: 'auto' }} onClick={handleCreate} disabled={isCreating} title="New conversation">
+          <AddIcon />
+        </IconButton>
+      </Box>
+      <Divider />
+      <List disablePadding>
           {conversations.map((conv) => (
             <ListItem
               key={conv.id}
@@ -243,7 +227,76 @@ export default function VoiceDashboard() {
             </Box>
           )}
         </List>
-      </Box>
+      </>
+    );
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        height: 'calc(100vh - 64px)',
+        width: '100%',
+        position: 'fixed',
+        left: 0,
+        top: 64,
+        overflow: 'hidden',
+        bgcolor: 'background.default',
+      }}
+    >
+      {/* Mobile: Hamburger menu button */}
+      {isMobile && (
+        <IconButton
+          onClick={() => setDrawerOpen(true)}
+          sx={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            zIndex: 1201,
+            bgcolor: 'background.paper',
+            boxShadow: 2,
+            '&:hover': { bgcolor: 'action.hover' }
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
+
+      {/* Mobile: Drawer for conversation list */}
+      {isMobile && (
+        <Drawer
+          anchor="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: '85%',
+              maxWidth: 350,
+              bgcolor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+            },
+          }}
+        >
+          {ConversationListContent}
+        </Drawer>
+      )}
+
+      {/* Desktop: Left Panel - Conversations List */}
+      {!isMobile && (
+        <Box
+          sx={{
+            width: '20%',
+            height: '100%',
+            bgcolor: (theme) =>
+              theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+            borderRight: 1,
+            borderColor: 'divider',
+            overflowY: 'auto',
+            flexShrink: 0,
+          }}
+        >
+          {ConversationListContent}
+        </Box>
+      )}
 
       {/* Main Content - Voice Assistant */}
       <Box
