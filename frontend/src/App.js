@@ -30,6 +30,7 @@ import ServerManagementButtons from './shared/components/ServerManagementButtons
 import KeyboardNavigationProvider from './components/KeyboardNavigationProvider';
 import SpatialNavigationProvider from './components/SpatialNavigationProvider';
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
+import DynamicManifest from './components/DynamicManifest';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -427,6 +428,9 @@ export default function App() {
           `}
         </style>
         <Router basename={process.env.PUBLIC_URL || ''}>
+          {/* Dynamically switch PWA manifest based on current route */}
+          <DynamicManifest />
+
           {/* Skip to main content link for accessibility */}
           <a href="#main-content" className="skip-to-main">
             Skip to main content

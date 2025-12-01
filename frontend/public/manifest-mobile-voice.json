@@ -1,0 +1,25 @@
+{
+  "name": "Agentic Mobile Voice",
+  "short_name": "Mobile Voice",
+  "start_url": "/agentic/mobile-voice",
+  "scope": "/agentic/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#ff9800",
+  "description": "Wireless microphone for AI voice assistant",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/agentic/icon-mobile-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/agentic/icon-mobile-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

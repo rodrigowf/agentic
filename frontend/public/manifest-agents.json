@@ -1,22 +1,22 @@
 {
-  "name": "Agentic Dashboard",
-  "short_name": "Agentic",
-  "start_url": "/agentic/",
+  "name": "Agentic Agents",
+  "short_name": "Agents",
+  "start_url": "/agentic/agents",
   "scope": "/agentic/",
   "display": "standalone",
   "background_color": "#1a1a1a",
-  "theme_color": "#3f51b5",
-  "description": "Multi-agent AI system with voice assistant",
+  "theme_color": "#2196f3",
+  "description": "AI Agent Management Dashboard",
   "orientation": "any",
   "icons": [
     {
-      "src": "/agentic/icon-192.png",
+      "src": "/agentic/icon-agents-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/agentic/icon-512.png",
+      "src": "/agentic/icon-agents-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

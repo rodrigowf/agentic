@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import CssBaseline from '@mui/material/CssBaseline';
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 // Error boundary for debugging TV WebView issues
 class ErrorBoundary extends React.Component {
@@ -46,3 +47,6 @@ root.render(
     <App />
   </ErrorBoundary>
 );
+
+// Register service worker for PWA functionality
+serviceWorkerRegistration.register();
