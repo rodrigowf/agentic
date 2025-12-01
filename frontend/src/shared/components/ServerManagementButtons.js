@@ -171,7 +171,7 @@ function RefreshDialog({ open, result, onClose }) {
                   component="pre"
                   sx={{
                     fontSize: '0.75rem',
-                    backgroundColor: 'background.subtile',
+                    backgroundColor: 'grey.100',
                     p: 1,
                     borderRadius: 1,
                     overflow: 'auto',
@@ -188,7 +188,7 @@ function RefreshDialog({ open, result, onClose }) {
                   component="pre"
                   sx={{
                     fontSize: '0.75rem',
-                    backgroundColor: 'background.subtile',
+                    backgroundColor: 'grey.100',
                     p: 1,
                     borderRadius: 1,
                     overflow: 'auto',
@@ -245,7 +245,7 @@ function PushDialog({ open, result, onClose }) {
                     <DialogContentText
                       sx={{
                         fontSize: '0.875rem',
-                        backgroundColor: 'background.subtile',
+                        backgroundColor: 'grey.100',
                         p: 1,
                         borderRadius: 1,
                         mb: 2,
@@ -260,7 +260,7 @@ function PushDialog({ open, result, onClose }) {
                       component="pre"
                       sx={{
                         fontSize: '0.75rem',
-                        backgroundColor: 'background.subtile',
+                        backgroundColor: 'grey.100',
                         p: 1,
                         borderRadius: 1,
                         overflow: 'auto',
