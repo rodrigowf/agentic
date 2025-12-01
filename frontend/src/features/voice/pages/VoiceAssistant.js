@@ -80,7 +80,8 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   const [transcript, setTranscript] = useState('');
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState(null);
-  const [nestedViewTab, setNestedViewTab] = useState(0); // 0 = Insights, 1 = Console
+  const [nestedViewTab, setNestedViewTab] = useState(0); // 0 = Insights, 1 = Console, 2 = Claude Code
+  const [mobileMainTab, setMobileMainTab] = useState(3); // 0 = Team Insights, 1 = Team Console, 2 = Claude Code, 3 = Chat
   const [configEditorOpen, setConfigEditorOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [voiceConfig, setVoiceConfig] = useState({
@@ -1468,7 +1469,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
   useEffect(() => () => stopSession(), []);
 
   if (nested) {
-    // Extract the left panel content (tabs and insights) for reuse in drawer
+    // For DESKTOP: Left panel content (tabs and insights)
     const LeftPanelContent = (
       <>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -1480,7 +1481,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         </Box>
 
         {nestedViewTab === 0 ? (
-          <Box sx={{ height: isMobile ? 'calc(100vh - 200px)' : 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
+          <Box sx={{ height: 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
             {messages.length === 0 ? (
               <Box sx={{ p: 3, textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
@@ -1498,7 +1499,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           </Box>
         ) : nestedViewTab === 1 ? (
           sharedNestedWs ? (
-            <Box sx={{ height: isMobile ? 'calc(100vh - 200px)' : 'calc(100% - 128px)' }}>
+            <Box sx={{ height: 'calc(100% - 128px)' }}>
               <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
             </Box>
           ) : (
@@ -1509,7 +1510,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
             </Box>
           )
         ) : (
-          <Box sx={{ height: isMobile ? 'calc(100vh - 200px)' : 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
+          <Box sx={{ height: 'calc(100% - 128px)', overflowY: 'auto', p: 2 }}>
             {messages.length === 0 ? (
               <Box sx={{ p: 3, textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
@@ -1529,6 +1530,130 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       </>
     );
 
+    // For MOBILE: Chat panel content (right panel on desktop)
+    const ChatPanelContent = (
+      <>
+        {/* Header with controls */}
+        <Box sx={{ pt: isMobile ? 2 : 2, pb: 1, px: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
+          <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
+
+          {/* Configuration Button */}
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+              Agent: {voiceConfig.agentName} | Voice: {voiceConfig.voice}
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setConfigEditorOpen(true)}
+              disabled={isRunning}
+            >
+              Configure
+            </Button>
+          </Box>
+
+          {/* Modern Voice Session Controls */}
+          <VoiceSessionControls
+            isRunning={isRunning}
+            isMuted={isMuted}
+            isSpeakerMuted={isSpeakerMuted}
+            onStart={startSession}
+            onStop={stopSession}
+            onToggleMute={toggleMute}
+            onToggleSpeakerMute={toggleSpeakerMute}
+            disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
+            stream={micStreamRef.current}
+            statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active elsewhere' : 'Idle'}
+            statusColor={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
+            style={{ mb: 3 }}
+          />
+
+          {!isRunning && remoteSessionActive && !conversationError && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Another tab is currently running this voice session.
+            </Alert>
+          )}
+
+          {isRunning && noMicrophoneMode && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              No microphone detected. Connect with mobile-voice page.
+            </Alert>
+          )}
+
+          {conversationError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {conversationError}
+            </Alert>
+          )}
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          {/* Message input */}
+          <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+            <TextField
+              label="Message"
+              value={transcript}
+              onChange={(e) => setTranscript(e.target.value)}
+              placeholder="Type a message"
+              multiline
+              minRows={2}
+              maxRows={4}
+              fullWidth
+              disabled={!isRunning}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && transcript.trim()) {
+                  e.preventDefault();
+                  sendText();
+                }
+              }}
+            />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Chip
+                label={isRunning ? 'Connected' : remoteSessionActive ? 'Active' : 'Idle'}
+                color={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
+                size="small"
+              />
+              <Box sx={{ flexGrow: 1 }} />
+              <Button
+                variant="contained"
+                color="success"
+                onClick={sendText}
+                disabled={!isRunning || !transcript.trim()}
+                size="small"
+              >
+                Voice
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={sendToNested}
+                disabled={!isRunning || !transcript.trim() || !nestedWsRef.current}
+                size="small"
+              >
+                Nested
+              </Button>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Conversation History */}
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 0 }}>
+          <Box sx={{ flexGrow: 1, overflowY: 'auto', height: "100%"  }}>
+            <ConversationHistory
+              messages={messages}
+              conversationLoading={conversationLoading}
+              isRunning={isRunning}
+              formatTimestamp={formatTimestamp}
+            />
+          </Box>
+        </Box>
+      </>
+    );
+
     return (
       <Box
         ref={tvNavContainerRef}
@@ -1542,45 +1667,7 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           position: 'relative'
         }}
       >
-        {/* Mobile: Hamburger menu button */}
-        {isMobile && (
-          <Box sx={{
-            position: 'absolute',
-            top: 8,
-            left: 8,
-            zIndex: 1201
-          }}>
-            <IconButton
-              onClick={() => setDrawerOpen(true)}
-              sx={{
-                bgcolor: 'background.paper',
-                boxShadow: 2,
-                '&:hover': { bgcolor: 'action.hover' }
-              }}
-            >
-              <MenuIcon />
-            </IconButton>
-          </Box>
-        )}
-
-        {/* Mobile: Drawer for left panel */}
-        {isMobile && (
-          <Drawer
-            anchor="left"
-            open={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
-            sx={{
-              '& .MuiDrawer-paper': {
-                width: '85%',
-                maxWidth: 400,
-              },
-            }}
-          >
-            {LeftPanelContent}
-          </Drawer>
-        )}
-
-        {/* Desktop: Left panel (fixed position) */}
+        {/* Desktop: Left panel (Team Insights/Console/Claude Code) */}
         {!isMobile && (
           <Box
             sx={{
@@ -1596,138 +1683,112 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           </Box>
         )}
 
-        {/* Right Panel - Conversation (top on mobile, right on desktop) */}
-        <Box
-          sx={{
-            width: isMobile ? '100%' : '35%',
-            height: isMobile ? 'auto' : '100%',
-            bgcolor: (theme) =>
-              theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-            display: 'flex',
-            flexDirection: 'column',
-            flexShrink: 0,
-            overflow: 'hidden',
-          }}
-        >
-          {/* Header with controls */}
-          <Box sx={{ pt: isMobile ? 6 : 2, pb: 1, px: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
-            <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
+        {/* Desktop: Right Panel - Chat */}
+        {!isMobile && (
+          <Box
+            sx={{
+              width: '35%',
+              height: '100%',
+              bgcolor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              flexShrink: 0,
+              overflow: 'hidden',
+            }}
+          >
+            {ChatPanelContent}
+          </Box>
+        )}
 
-            {/* Configuration Button */}
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
-                Agent: {voiceConfig.agentName} | Voice: {voiceConfig.voice}
-              </Typography>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => setConfigEditorOpen(true)}
-                disabled={isRunning}
+        {/* Mobile: Main tabs area (Team Insights, Team Console, Claude Code, Chat) */}
+        {isMobile && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              flexGrow: 1,
+              height: '100%',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Tabs */}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs
+                value={mobileMainTab}
+                onChange={(_, newValue) => setMobileMainTab(newValue)}
+                variant="scrollable"
+                scrollButtons="auto"
               >
-                Configure
-              </Button>
+                <Tab label="Team Insights" />
+                <Tab label="Team Console" />
+                <Tab label="Claude Code" />
+                <Tab label="Chat" />
+              </Tabs>
             </Box>
 
-            {/* Modern Voice Session Controls */}
-            <VoiceSessionControls
-              isRunning={isRunning}
-              isMuted={isMuted}
-              isSpeakerMuted={isSpeakerMuted}
-              onStart={startSession}
-              onStop={stopSession}
-              onToggleMute={toggleMute}
-              onToggleSpeakerMute={toggleSpeakerMute}
-              disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
-              stream={micStreamRef.current}
-              statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active elsewhere' : 'Idle'}
-              statusColor={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
-              style={{ mb: 3 }}
-            />
+            {/* Tab Content */}
+            <Box sx={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {mobileMainTab === 0 && (
+                <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2 }}>
+                  {messages.length === 0 ? (
+                    <Box sx={{ p: 3, textAlign: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Start a voice session to see nested team insights
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <NestedAgentInsights
+                      messages={messages}
+                      formatTimestamp={formatTimestamp}
+                      truncateText={truncateText}
+                      safeStringify={safeStringify}
+                    />
+                  )}
+                </Box>
+              )}
 
-            {!isRunning && remoteSessionActive && !conversationError && (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Another tab is currently running this voice session.
-              </Alert>
-            )}
+              {mobileMainTab === 1 && (
+                sharedNestedWs ? (
+                  <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+                    <RunConsole nested agentName="MainConversation" sharedSocket={sharedNestedWs} readOnlyControls />
+                  </Box>
+                ) : (
+                  <Box sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Start a voice session to see nested team console
+                    </Typography>
+                  </Box>
+                )
+              )}
 
-            {isRunning && noMicrophoneMode && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                No microphone detected. Connect with mobile-voice page.
-              </Alert>
-            )}
+              {mobileMainTab === 2 && (
+                <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2 }}>
+                  {messages.length === 0 ? (
+                    <Box sx={{ p: 3, textAlign: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Start a voice session to see Claude Code activity
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <ClaudeCodeInsights
+                      messages={messages}
+                      formatTimestamp={formatTimestamp}
+                      truncateText={truncateText}
+                      safeStringify={safeStringify}
+                    />
+                  )}
+                </Box>
+              )}
 
-            {conversationError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {conversationError}
-              </Alert>
-            )}
-
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-
-            {/* Message input */}
-            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-              <TextField
-                label="Message"
-                value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
-                placeholder="Type a message"
-                multiline
-                minRows={2}
-                maxRows={4}
-                fullWidth
-                disabled={!isRunning}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && transcript.trim()) {
-                    e.preventDefault();
-                    sendText();
-                  }
-                }}
-              />
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Chip
-                  label={isRunning ? 'Connected' : remoteSessionActive ? 'Active' : 'Idle'}
-                  color={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
-                  size="small"
-                />
-                <Box sx={{ flexGrow: 1 }} />
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={sendText}
-                  disabled={!isRunning || !transcript.trim()}
-                  size="small"
-                >
-                  Voice
-                </Button>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={sendToNested}
-                  disabled={!isRunning || !transcript.trim() || !nestedWsRef.current}
-                  size="small"
-                >
-                  Nested
-                </Button>
-              </Box>
+              {mobileMainTab === 3 && (
+                <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  {ChatPanelContent}
+                </Box>
+              )}
             </Box>
           </Box>
-
-          {/* Conversation History */}
-          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 0 }}>
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', height: "100%"  }}>
-              <ConversationHistory
-                messages={messages}
-                conversationLoading={conversationLoading}
-                isRunning={isRunning}
-                formatTimestamp={formatTimestamp}
-              />
-            </Box>
-          </Box>
-        </Box>
+        )}
 
         {/* Voice Configuration Editor */}
         <VoiceConfigEditor

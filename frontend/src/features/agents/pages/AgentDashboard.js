@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
-import { Box, List, ListItem, ListItemButton, ListItemText, Typography, Divider, Drawer, IconButton, useTheme, useMediaQuery } from '@mui/material';
+import { Box, List, ListItem, ListItemButton, ListItemText, Typography, Divider, Drawer, IconButton, useTheme, useMediaQuery, Tabs, Tab } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AgentEditor from '../components/AgentEditor';
 import RunConsole from '../components/RunConsole';
@@ -13,6 +13,7 @@ export default function AgentDashboard() {
   const [agents, setAgents] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState(0); // 0 = Agent Editor, 1 = Run Console
   const listRef = useRef(null);
   const navigate = useNavigate();
 
@@ -214,51 +215,61 @@ export default function AgentDashboard() {
         height: '100%',
         overflow: 'hidden',
       }}>
-        {/* On mobile: Run Console first (top), on desktop: Agent Editor first (left) */}
+        {/* Mobile: Tabs with Agent Editor and Run Console */}
         {isMobile ? (
-          <>
-            {/* Run Console - Top on mobile */}
-            <Box sx={{
-              width: '100%',
-              height: '50%',
-              bgcolor: theme => theme.palette.mode === 'dark'
-                ? 'rgba(255, 255, 255, 0.03)'
-                : 'rgba(0, 0, 0, 0.02)',
-              overflowY: 'auto',
-              borderBottom: 1,
-              borderColor: 'divider',
-              flexShrink: 0,
-            }}>
-              <RunConsole nested/>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            flexGrow: 1,
+            height: '100%',
+            overflow: 'hidden',
+          }}>
+            {/* Tabs */}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', pt: 6 }}>
+              <Tabs value={mobileTab} onChange={(_, newValue) => setMobileTab(newValue)}>
+                <Tab label="Agent Editor" />
+                <Tab label="Run Console" />
+              </Tabs>
             </Box>
 
-            {/* Agent Editor - Bottom on mobile */}
-            <Box sx={{
-              flexGrow: 1,
-              height: '50%',
-              bgcolor: 'background.paper',
-              overflowY: 'auto',
-              '&::-webkit-scrollbar': {
-                width: '12px',
-              },
-              '&::-webkit-scrollbar-track': {
+            {/* Tab Content */}
+            {mobileTab === 0 ? (
+              <Box sx={{
+                flexGrow: 1,
                 bgcolor: 'background.paper',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                bgcolor: theme => theme.palette.mode === 'dark' ? '#3a3a3a' : '#c0c0c0',
-                borderRadius: '6px',
-                border: theme => `2px solid ${theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff'}`,
-                '&:hover': {
-                  bgcolor: theme => theme.palette.mode === 'dark' ? '#4a4a4a' : '#a0a0a0',
+                overflowY: 'auto',
+                '&::-webkit-scrollbar': {
+                  width: '12px',
                 },
-              },
-            }}>
-              <AgentEditor nested/>
-            </Box>
-          </>
+                '&::-webkit-scrollbar-track': {
+                  bgcolor: 'background.paper',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  bgcolor: theme => theme.palette.mode === 'dark' ? '#3a3a3a' : '#c0c0c0',
+                  borderRadius: '6px',
+                  border: theme => `2px solid ${theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff'}`,
+                  '&:hover': {
+                    bgcolor: theme => theme.palette.mode === 'dark' ? '#4a4a4a' : '#a0a0a0',
+                  },
+                },
+              }}>
+                <AgentEditor nested/>
+              </Box>
+            ) : (
+              <Box sx={{
+                flexGrow: 1,
+                bgcolor: theme => theme.palette.mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.03)'
+                  : 'rgba(0, 0, 0, 0.02)',
+                overflowY: 'auto',
+              }}>
+                <RunConsole nested/>
+              </Box>
+            )}
+          </Box>
         ) : (
           <>
-            {/* Agent Editor - Left on desktop */}
+            {/* Desktop: Agent Editor - Left */}
             <Box sx={{
               flexGrow: 1,
               height: '100%',
@@ -284,7 +295,7 @@ export default function AgentDashboard() {
               <AgentEditor nested/>
             </Box>
 
-            {/* Run Console - Right on desktop */}
+            {/* Desktop: Run Console - Right */}
             <Box sx={{
               width: '35%',
               minWidth: '500px',
