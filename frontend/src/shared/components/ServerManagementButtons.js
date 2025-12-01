@@ -164,14 +164,16 @@ function RefreshDialog({ open, result, onClose }) {
                 <Alert severity="success" sx={{ mb: 2 }}>
                   {result.message}
                 </Alert>
-                <DialogContentText sx={{ mb: 1 }}>
+                <DialogContentText sx={{ mb: 1, color: 'text.primary' }}>
                   <strong>Git Output:</strong>
                 </DialogContentText>
                 <DialogContentText
                   component="pre"
                   sx={{
                     fontSize: '0.75rem',
-                    backgroundColor: 'grey.100',
+                    backgroundColor: (theme) =>
+                      theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                    color: 'text.primary',
                     p: 1,
                     borderRadius: 1,
                     overflow: 'auto',
@@ -181,14 +183,16 @@ function RefreshDialog({ open, result, onClose }) {
                 >
                   {result.git_output || 'Already up to date.'}
                 </DialogContentText>
-                <DialogContentText sx={{ mb: 1 }}>
+                <DialogContentText sx={{ mb: 1, color: 'text.primary' }}>
                   <strong>Build Output:</strong>
                 </DialogContentText>
                 <DialogContentText
                   component="pre"
                   sx={{
                     fontSize: '0.75rem',
-                    backgroundColor: 'grey.100',
+                    backgroundColor: (theme) =>
+                      theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                    color: 'text.primary',
                     p: 1,
                     borderRadius: 1,
                     overflow: 'auto',
@@ -200,13 +204,15 @@ function RefreshDialog({ open, result, onClose }) {
                 </DialogContentText>
                 {result.nginx_output && (
                   <>
-                    <DialogContentText sx={{ mb: 1 }}>
+                    <DialogContentText sx={{ mb: 1, color: 'text.primary' }}>
                       <strong>Nginx Reload:</strong>
                     </DialogContentText>
                     <DialogContentText
                       sx={{
                         fontSize: '0.875rem',
-                        backgroundColor: 'grey.100',
+                        backgroundColor: (theme) =>
+                          theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                        color: 'text.primary',
                         p: 1,
                         borderRadius: 1,
                         mb: 2,
@@ -226,7 +232,7 @@ function RefreshDialog({ open, result, onClose }) {
                   {result.error || 'Unknown error occurred'}
                 </Alert>
                 {result.step && (
-                  <DialogContentText>
+                  <DialogContentText sx={{ color: 'text.primary' }}>
                     Failed at step: <strong>{result.step}</strong>
                   </DialogContentText>
                 )}
@@ -258,13 +264,15 @@ function PushDialog({ open, result, onClose }) {
                 </Alert>
                 {result.pushed && (
                   <>
-                    <DialogContentText sx={{ mb: 1 }}>
+                    <DialogContentText sx={{ mb: 1, color: 'text.primary' }}>
                       <strong>Commit Message:</strong>
                     </DialogContentText>
                     <DialogContentText
                       sx={{
                         fontSize: '0.875rem',
-                        backgroundColor: 'grey.100',
+                        backgroundColor: (theme) =>
+                          theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                        color: 'text.primary',
                         p: 1,
                         borderRadius: 1,
                         mb: 2,
@@ -272,14 +280,16 @@ function PushDialog({ open, result, onClose }) {
                     >
                       {result.commit_message}
                     </DialogContentText>
-                    <DialogContentText sx={{ mb: 1 }}>
+                    <DialogContentText sx={{ mb: 1, color: 'text.primary' }}>
                       <strong>Push Output:</strong>
                     </DialogContentText>
                     <DialogContentText
                       component="pre"
                       sx={{
                         fontSize: '0.75rem',
-                        backgroundColor: 'grey.100',
+                        backgroundColor: (theme) =>
+                          theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                        color: 'text.primary',
                         p: 1,
                         borderRadius: 1,
                         overflow: 'auto',
@@ -297,7 +307,7 @@ function PushDialog({ open, result, onClose }) {
                   {result.error || 'Unknown error occurred'}
                 </Alert>
                 {result.step && (
-                  <DialogContentText>
+                  <DialogContentText sx={{ color: 'text.primary' }}>
                     Failed at step: <strong>{result.step}</strong>
                   </DialogContentText>
                 )}

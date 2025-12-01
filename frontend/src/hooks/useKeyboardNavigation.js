@@ -8,7 +8,7 @@ export const KEYBOARD_SHORTCUTS = {
   AGENTS: { key: '1', alt: true, description: 'Go to Agents page' },
   TOOLS: { key: '2', alt: true, description: 'Go to Tools page' },
   VOICE: { key: '3', alt: true, description: 'Go to Voice page' },
-  HELP: { key: '?', shift: true, description: 'Show keyboard shortcuts help' },
+  HELP: { key: '?', ctrl: true, description: 'Show keyboard shortcuts help' },
 
   // Voice controls
   VOICE_START_STOP: { key: 's', ctrl: true, description: 'Start/Stop voice session' },
@@ -54,7 +54,7 @@ export default function useKeyboardNavigation({
     const { key, altKey, ctrlKey, shiftKey, metaKey } = event;
 
     // Check for help shortcut
-    if (key === '?' && shiftKey && !ctrlKey && !altKey && !metaKey) {
+    if (key === '?' && ctrlKey && !shiftKey && !altKey && !metaKey) {
       event.preventDefault();
       if (onHelp) onHelp();
       return;
