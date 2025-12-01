@@ -583,3 +583,204 @@ async def webrtc_signaling_ws(websocket: WebSocket, conversation_id: str):
     - ICE candidate exchange
     """
     await handle_webrtc_signaling(websocket, conversation_id)
+
+# --- Server Management Endpoints ---
+
+@app.post("/api/server/refresh")
+async def refresh_service():
+    """
+    Refresh the agentic service by:
+    1. Pulling latest changes from git
+    2. Building the frontend
+    3. Restarting the systemd service
+    """
+    try:
+        import subprocess
+
+        # Get the project root directory
+        project_root = os.path.abspath(os.path.dirname(__file__) + "/..")
+
+        logger.info("Starting service refresh...")
+
+        # Step 1: Pull latest changes
+        logger.info("Pulling latest git changes...")
+        pull_result = subprocess.run(
+            ["git", "pull"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if pull_result.returncode != 0:
+            logger.error(f"Git pull failed: {pull_result.stderr}")
+            return {
+                "success": False,
+                "error": f"Git pull failed: {pull_result.stderr}",
+                "step": "git_pull"
+            }
+
+        # Step 2: Build frontend
+        logger.info("Building frontend...")
+        frontend_dir = os.path.join(project_root, "frontend")
+        build_result = subprocess.run(
+            ["npm", "run", "build"],
+            cwd=frontend_dir,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutes timeout for build
+        )
+
+        if build_result.returncode != 0:
+            logger.error(f"Frontend build failed: {build_result.stderr}")
+            return {
+                "success": False,
+                "error": f"Frontend build failed: {build_result.stderr}",
+                "step": "frontend_build"
+            }
+
+        # Step 3: Restart systemd service (if running as service)
+        logger.info("Restarting agentic-backend service...")
+        restart_result = subprocess.run(
+            ["sudo", "systemctl", "restart", "agentic-backend"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if restart_result.returncode != 0:
+            logger.warning(f"Service restart failed (may not be running as systemd service): {restart_result.stderr}")
+            # Don't fail the whole operation if service restart fails
+            # The service might not be running via systemd
+
+        logger.info("Service refresh completed successfully")
+        return {
+            "success": True,
+            "message": "Service refreshed successfully",
+            "git_output": pull_result.stdout,
+            "build_output": build_result.stdout[:500] + "..." if len(build_result.stdout) > 500 else build_result.stdout
+        }
+
+    except subprocess.TimeoutExpired as e:
+        logger.error(f"Operation timed out: {e}")
+        return {
+            "success": False,
+            "error": f"Operation timed out: {str(e)}"
+        }
+    except Exception as e:
+        logger.exception(f"Error refreshing service: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/server/push")
+async def push_changes():
+    """
+    Push local changes to git repository:
+    1. Stage all changes
+    2. Commit with timestamp
+    3. Push to remote
+    """
+    try:
+        import subprocess
+        from datetime import datetime
+
+        # Get the project root directory
+        project_root = os.path.abspath(os.path.dirname(__file__) + "/..")
+
+        logger.info("Starting git push operation...")
+
+        # Step 1: Stage all changes
+        logger.info("Staging all changes...")
+        add_result = subprocess.run(
+            ["git", "add", "-A"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if add_result.returncode != 0:
+            logger.error(f"Git add failed: {add_result.stderr}")
+            return {
+                "success": False,
+                "error": f"Git add failed: {add_result.stderr}",
+                "step": "git_add"
+            }
+
+        # Step 2: Check if there are changes to commit
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if not status_result.stdout.strip():
+            logger.info("No changes to commit")
+            return {
+                "success": True,
+                "message": "No changes to commit",
+                "pushed": False
+            }
+
+        # Step 3: Commit changes with timestamp
+        commit_message = f"Auto-commit from server: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        logger.info(f"Committing changes: {commit_message}")
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", commit_message],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if commit_result.returncode != 0:
+            logger.error(f"Git commit failed: {commit_result.stderr}")
+            return {
+                "success": False,
+                "error": f"Git commit failed: {commit_result.stderr}",
+                "step": "git_commit"
+            }
+
+        # Step 4: Push to remote
+        logger.info("Pushing to remote...")
+        push_result = subprocess.run(
+            ["git", "push"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if push_result.returncode != 0:
+            logger.error(f"Git push failed: {push_result.stderr}")
+            return {
+                "success": False,
+                "error": f"Git push failed: {push_result.stderr}",
+                "step": "git_push"
+            }
+
+        logger.info("Git push completed successfully")
+        return {
+            "success": True,
+            "message": "Changes pushed successfully",
+            "pushed": True,
+            "commit_message": commit_message,
+            "push_output": push_result.stdout
+        }
+
+    except subprocess.TimeoutExpired as e:
+        logger.error(f"Operation timed out: {e}")
+        return {
+            "success": False,
+            "error": f"Operation timed out: {str(e)}"
+        }
+    except Exception as e:
+        logger.exception(f"Error pushing changes: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }

@@ -26,6 +26,7 @@ import VoiceDashboard from './features/voice/pages/VoiceDashboard';
 import MobileVoice from './features/voice/pages/MobileVoice';
 import DebugNetwork from './features/voice/pages/DebugNetwork';
 import KeyboardShortcutsHelp from './shared/components/KeyboardShortcutsHelp';
+import ServerManagementButtons from './shared/components/ServerManagementButtons';
 import KeyboardNavigationProvider from './components/KeyboardNavigationProvider';
 import SpatialNavigationProvider from './components/SpatialNavigationProvider';
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
@@ -486,6 +487,8 @@ export default function App() {
                           Voice
                         </Button>
                       </Tooltip>
+                      <Box sx={{ flexGrow: 1 }} />
+                      <ServerManagementButtons iconOnly />
                       <Tooltip title="Keyboard shortcuts (Shift+?)" arrow>
                         <IconButton
                           sx={{ ml: 1 }}
