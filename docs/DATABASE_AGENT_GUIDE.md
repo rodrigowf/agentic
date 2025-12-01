@@ -40,9 +40,29 @@ The Database agent is a MongoDB database administrator that manages a full datab
 ```bash
 sudo apt-get update
 sudo apt-get install -y mongodb
+```
+
+**Start MongoDB service (when needed):**
+```bash
+# Start temporarily (until next reboot)
+sudo systemctl start mongodb
+
+# OR start permanently (auto-start on boot)
 sudo systemctl start mongodb
 sudo systemctl enable mongodb
 ```
+
+**Check MongoDB status:**
+```bash
+sudo systemctl status mongodb
+```
+
+**Stop MongoDB (to save memory):**
+```bash
+sudo systemctl stop mongodb
+```
+
+**⚠️ Jetson Nano Note:** MongoDB is installed but disabled by default to conserve RAM (200-500MB). The Database agent tools will return helpful instructions if MongoDB isn't running. See [JETSON_DEPENDENCY_FIXES.md](JETSON_DEPENDENCY_FIXES.md) for details.
 
 **macOS:**
 ```bash
@@ -686,6 +706,108 @@ The Manager receives:
 
 ---
 
+## Troubleshooting
+
+### MongoDB Connection Refused
+
+**Error:**
+```
+MongoDB connection failed: localhost:27017: [Errno 111] Connection refused
+
+To enable MongoDB service:
+  sudo systemctl start mongodb
+  sudo systemctl enable mongodb  # (optional, to auto-start on boot)
+
+To check status:
+  sudo systemctl status mongodb
+```
+
+**Solution:**
+```bash
+# Start MongoDB service
+sudo systemctl start mongodb
+
+# Verify it's running
+sudo systemctl status mongodb
+
+# Try database operation again
+```
+
+### MongoDB Not Installed
+
+**Error:**
+```
+ImportError: No module named 'pymongo'
+```
+
+**Solution:**
+```bash
+# Install pymongo
+pip install pymongo>=4.6.0
+
+# Install MongoDB server (if not already installed)
+sudo apt-get install -y mongodb
+```
+
+### Memory Concerns on Jetson Nano
+
+**Issue:** MongoDB consumes 200-500MB RAM when running.
+
+**Solutions:**
+
+1. **Start/Stop as needed:**
+   ```bash
+   # Before using Database agent
+   sudo systemctl start mongodb
+
+   # After using Database agent
+   sudo systemctl stop mongodb
+   ```
+
+2. **Use on-demand only:**
+   - Keep MongoDB disabled by default
+   - Start it only when Database agent is actively needed
+   - Stop after completing database tasks
+
+3. **Monitor memory:**
+   ```bash
+   # Check MongoDB memory usage
+   ps aux | grep mongod
+
+   # Check total system memory
+   free -h
+   ```
+
+### Collection Schema Not Updating
+
+**Issue:** {{COLLECTIONS_SCHEMA}} placeholder not refreshing after schema changes.
+
+**Solution:**
+```bash
+# Restart backend to reload agent
+sudo systemctl restart agentic-backend
+
+# Or manually trigger initialization (in Python)
+from tools.database import initialize_database_agent
+initialize_database_agent()
+```
+
+### Permission Denied on Data Directory
+
+**Error:**
+```
+PermissionError: [Errno 13] Permission denied: '/var/lib/mongodb'
+```
+
+**Solution:**
+```bash
+# Fix MongoDB data directory permissions
+sudo chown -R mongodb:mongodb /var/lib/mongodb
+sudo systemctl restart mongodb
+```
+
+---
+
 ## Changelog
 
 ### 2025-12-01 - Initial Implementation
@@ -695,9 +817,12 @@ The Manager receives:
 - Added {{COLLECTIONS_SCHEMA}} placeholder support
 - Integrated into MainConversation
 - Created comprehensive test suite
+- Added helpful error messages with service enable instructions
+- Updated setup documentation for Jetson Nano deployment
 
 ---
 
 **Status:** Production Ready (requires MongoDB installation)
-**Dependencies:** MongoDB, pymongo>=4.6.0
+**Dependencies:** MongoDB 3.6+, pymongo>=4.6.0
 **Breaking Changes:** None
+**Jetson Note:** MongoDB installed but disabled by default to conserve RAM

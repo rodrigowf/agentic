@@ -2365,6 +2365,46 @@ The agents involved in this conversation besides you are:
 
 **Status:** ✅ Implemented, tested, and documented
 
+### Jetson Dependency Fixes - Memory & Database Agents (2025-12-01)
+
+Fixed missing dependencies for Memory and Database agents on Jetson Nano server.
+
+**Memory Agent - ChromaDB Dependencies:**
+1. **NumPy 2.0 incompatibility** - Downgraded NumPy 2.0.1 → 1.26.4
+2. **Tokenizers installation** - Installed via conda-forge (pre-built ARM64 binary)
+3. **chroma-hnswlib version** - Installed exact version 0.7.3
+
+**Database Agent - MongoDB Setup:**
+1. **MongoDB installed** - System-wide via apt (MongoDB 3.6.3)
+2. **Service disabled** - Kept disabled to save RAM (200-500MB)
+3. **Error messages enhanced** - Added instructions to enable MongoDB when needed
+
+**Technical Changes:**
+- **NumPy downgrade:** `pip install "numpy<2.0"` (ChromaDB 0.4.24 requires NumPy < 2.0)
+- **Tokenizers via conda:** `conda install -c conda-forge tokenizers` (avoids Rust 2024 compilation)
+- **MongoDB system install:** `sudo apt-get install -y mongodb` (avoids conda OpenSSL conflicts)
+- **Updated database.py:** Enhanced error messages with `systemctl` instructions
+- **Environment backup:** Created `agentic-env-backup-20251201-061443.yml`
+
+**Documentation:**
+- Created [JETSON_DEPENDENCY_FIXES.md](docs/JETSON_DEPENDENCY_FIXES.md) - Complete dependency guide
+- Updated [DATABASE_AGENT_GUIDE.md](docs/DATABASE_AGENT_GUIDE.md) - MongoDB setup and troubleshooting
+
+**Verification:**
+```bash
+# All 8 Memory tools loaded successfully
+curl -s http://localhost:8000/api/tools | grep memory
+
+# All 10 Database tools loaded successfully
+curl -s http://localhost:8000/api/tools | grep database
+```
+
+**Memory Usage:**
+- ChromaDB: ~50-100MB (lazy loading, only when in use)
+- MongoDB: ~200-500MB (disabled by default, enable when needed)
+
+**Status:** ✅ All dependencies installed and verified on Jetson Nano
+
 ### Jetson Nano Deployment & TV WebView Fix (2025-11-29)
 
 Deployed the agentic application to Jetson Nano home server with complete HTTPS support and fixed TV WebView compatibility.

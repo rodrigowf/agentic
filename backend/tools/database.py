@@ -41,7 +41,16 @@ def _get_mongo_client():
             logger.info(f"Connected to MongoDB: {MONGO_DB_NAME}")
         except ConnectionFailure as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
-            raise
+            error_msg = (
+                f"MongoDB connection failed: {e}\n\n"
+                "To enable MongoDB service:\n"
+                "  sudo systemctl start mongodb\n"
+                "  sudo systemctl enable mongodb  # (optional, to auto-start on boot)\n\n"
+                "To check status:\n"
+                "  sudo systemctl status mongodb\n\n"
+                "See docs/DATABASE_AGENT_GUIDE.md for complete setup instructions."
+            )
+            raise ConnectionFailure(error_msg)
     return _mongo_client, _mongo_db
 
 # --- Collection Schema Management ---
