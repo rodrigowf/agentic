@@ -654,26 +654,67 @@ async def refresh_service():
                 "step": "frontend_build"
             }
 
-        # Step 3: Restart systemd service (if running as service)
-        logger.info("Restarting agentic-backend service...")
-        restart_result = subprocess.run(
-            ["sudo", "systemctl", "restart", "agentic-backend"],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
+        # Step 3: Reload nginx to serve new frontend build
+        logger.info("Reloading nginx...")
+        nginx_pid_file = os.path.join(project_root, "nginx.pid")
+        nginx_reload_output = ""
 
-        if restart_result.returncode != 0:
-            logger.warning(f"Service restart failed (may not be running as systemd service): {restart_result.stderr}")
-            # Don't fail the whole operation if service restart fails
-            # The service might not be running via systemd
+        if os.path.exists(nginx_pid_file):
+            try:
+                with open(nginx_pid_file, 'r') as f:
+                    nginx_pid = f.read().strip()
 
-        logger.info("Service refresh completed successfully")
+                nginx_result = subprocess.run(
+                    ["kill", "-HUP", nginx_pid],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+
+                if nginx_result.returncode == 0:
+                    nginx_reload_output = "Nginx reloaded successfully"
+                    logger.info("Nginx reloaded successfully")
+                else:
+                    nginx_reload_output = f"Nginx reload warning: {nginx_result.stderr}"
+                    logger.warning(f"Nginx reload had issues: {nginx_result.stderr}")
+            except Exception as nginx_err:
+                nginx_reload_output = f"Nginx reload skipped: {str(nginx_err)}"
+                logger.warning(f"Could not reload nginx: {nginx_err}")
+        else:
+            nginx_reload_output = "Nginx reload skipped (not running via custom nginx)"
+            logger.info("Nginx PID file not found, skipping nginx reload")
+
+        # Step 4: Schedule backend restart after sending response
+        # We use a background task to restart AFTER the response is sent
+        import asyncio
+        async def delayed_restart():
+            await asyncio.sleep(2)  # Wait 2 seconds for response to be sent
+            logger.info("Performing delayed backend restart...")
+            try:
+                # Try to restart systemd service
+                restart_result = subprocess.run(
+                    ["sudo", "systemctl", "restart", "agentic-backend"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if restart_result.returncode == 0:
+                    logger.info("Backend service restarted successfully")
+                else:
+                    logger.warning(f"Backend restart failed (may not have sudo permissions): {restart_result.stderr}")
+            except Exception as e:
+                logger.warning(f"Backend restart failed: {e}")
+
+        # Start the delayed restart task
+        asyncio.create_task(delayed_restart())
+
+        logger.info("Service refresh completed successfully (backend will restart in 2 seconds)")
         return {
             "success": True,
-            "message": "Service refreshed successfully",
+            "message": "Service refreshed successfully. Backend will restart in 2 seconds.",
             "git_output": pull_result.stdout,
-            "build_output": build_result.stdout[:500] + "..." if len(build_result.stdout) > 500 else build_result.stdout
+            "build_output": build_result.stdout[:500] + "..." if len(build_result.stdout) > 500 else build_result.stdout,
+            "nginx_output": nginx_reload_output
         }
 
     except subprocess.TimeoutExpired as e:

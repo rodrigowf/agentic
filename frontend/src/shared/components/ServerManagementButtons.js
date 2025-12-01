@@ -31,10 +31,10 @@ export default function ServerManagementButtons({ iconOnly = false }) {
       setRefreshDialog({ open: true, result });
 
       if (result.success) {
-        // Wait 3 seconds then reload the page to see the changes
+        // Wait 5 seconds for backend to restart (2s delay + 3s startup) then reload
         setTimeout(() => {
           window.location.reload();
-        }, 3000);
+        }, 5000);
       }
     } catch (error) {
       setRefreshDialog({
@@ -193,12 +193,31 @@ function RefreshDialog({ open, result, onClose }) {
                     borderRadius: 1,
                     overflow: 'auto',
                     maxHeight: 200,
+                    mb: 2,
                   }}
                 >
                   {result.build_output || 'Build completed.'}
                 </DialogContentText>
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  Page will reload in 3 seconds to show the changes...
+                {result.nginx_output && (
+                  <>
+                    <DialogContentText sx={{ mb: 1 }}>
+                      <strong>Nginx Reload:</strong>
+                    </DialogContentText>
+                    <DialogContentText
+                      sx={{
+                        fontSize: '0.875rem',
+                        backgroundColor: 'grey.100',
+                        p: 1,
+                        borderRadius: 1,
+                        mb: 2,
+                      }}
+                    >
+                      {result.nginx_output}
+                    </DialogContentText>
+                  </>
+                )}
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  Backend will restart in 2 seconds. Page will reload in 5 seconds...
                 </Alert>
               </>
             ) : (
