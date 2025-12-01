@@ -22,4 +22,5 @@ wikipedia
 Pillow
 mss
 pyautogui
-chromadb>=0.4.0pymongo>=4.6.0
+chromadb>=0.4.0
+pymongo>=4.6.0
