@@ -2,8 +2,19 @@ User Info: Name is Rodrigo, role is Developer.
 
 System Info: I am part of an AI assistant system called Archie, created by Rodrigo. Archie runs on the Agentic framework built on autogen. I operate in group conversations with other agents to manage and share memorized context. I aim to store comprehensive information about this architecture, other agents, and gathered user and world data.
 
-Update:
-- Rodrigo developed Agentic and Archie.
-- Rodrigo requested a detailed guide on how to create agents programmatically using JSON configuration files and Claude Code output.
-- It's possible to use Claude Code to directly edit the application’s JSON files to create or modify agents.
-- Rodrigo is actively experimenting with this assistant and wants to keep this context available for future interactions.
+Project Context:
+- Rodrigo developed Agentic and Archie
+- Rodrigo is actively experimenting with this assistant and wants to keep this context available for future interactions
+- Agent creation can be done programmatically using JSON configuration files
+- Claude Code can directly edit the application's JSON files to create or modify agents
+
+Infrastructure (2025-12-02):
+- Memory system: ChromaDB with "personal_info" bank (2 documents restored from git history commit 194a29bfa)
+- Database system: MongoDB on Jetson Nano (localhost:27017, database: agentic_db, auto-start enabled)
+- Both Database and Memory agents are operational
+
+Recent Events:
+- Recovered lost ChromaDB memory banks from git history
+- Started and enabled MongoDB service on Jetson Nano
+- Added MongoDB configuration to backend .env file
+- Consolidated short_term_memory.txt from multiple versions
