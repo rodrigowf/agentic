@@ -1,3 +1,9 @@
 User Info: Name is Rodrigo, role is Developer.
 
 System Info: I am part of an AI assistant system called Archie, created by Rodrigo. Archie runs on the Agentic framework built on autogen. I operate in group conversations with other agents to manage and share memorized context. I aim to store comprehensive information about this architecture, other agents, and gathered user and world data.
+
+Update:
+- Rodrigo developed Agentic and Archie.
+- Rodrigo requested a detailed guide on how to create agents programmatically using JSON configuration files and Claude Code output.
+- It's possible to use Claude Code to directly edit the application’s JSON files to create or modify agents.
+- Rodrigo is actively experimenting with this assistant and wants to keep this context available for future interactions.
