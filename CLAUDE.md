@@ -1,6 +1,6 @@
 # CLAUDE.md - Comprehensive Development Guide
 
-**Last Updated:** 2025-12-01
+**Last Updated:** 2025-12-02
 **For:** Future Claude instances working on this codebase
 
 ---
@@ -9,16 +9,17 @@
 
 1. [Project Overview](#project-overview)
 2. [Architecture](#architecture)
-3. [Debugging Tools & Workflows](#debugging-tools--workflows)
-4. [Backend Development](#backend-development)
-5. [Frontend Development](#frontend-development)
-6. [Creating New Agents](#creating-new-agents)
-7. [Creating New Tools](#creating-new-tools)
-8. [Voice Assistant System](#voice-assistant-system)
-9. [Mobile Voice Interface](#mobile-voice-interface)
-10. [Claude Code Self-Editor](#claude-code-self-editor)
-11. [Jetson Nano Deployment](#jetson-nano-deployment)
-12. [Best Practices](#best-practices)
+3. [Database and Memory Systems](#database-and-memory-systems)
+4. [Debugging Tools & Workflows](#debugging-tools--workflows)
+5. [Backend Development](#backend-development)
+6. [Frontend Development](#frontend-development)
+7. [Creating New Agents](#creating-new-agents)
+8. [Creating New Tools](#creating-new-tools)
+9. [Voice Assistant System](#voice-assistant-system)
+10. [Mobile Voice Interface](#mobile-voice-interface)
+11. [Claude Code Self-Editor](#claude-code-self-editor)
+12. [Jetson Nano Deployment](#jetson-nano-deployment)
+13. [Best Practices](#best-practices)
 
 ---
 
@@ -41,7 +42,8 @@ This is an **agentic AI system** with a Python backend using AutoGen and a React
 - Python 3.x
 - FastAPI (WebSocket + REST API)
 - AutoGen (agent framework)
-- ChromaDB (vector storage)
+- ChromaDB 0.4.24 (vector storage for memory)
+- MongoDB 3.6+ (document database)
 - SQLite (voice conversation storage)
 - OpenAI API, Anthropic API
 
@@ -197,6 +199,151 @@ Frontend Components (React)
     ↓
 UI Display
 ```
+
+---
+
+## Database and Memory Systems
+
+### Overview
+
+The agentic system uses two complementary database systems:
+
+1. **MongoDB** - Document database for structured data storage (Database agent)
+2. **ChromaDB** - Vector database for semantic memory search (Memory agent)
+
+**Complete Setup Guide:** See [docs/guides/DATABASE_AND_MEMORY_SETUP.md](docs/guides/DATABASE_AND_MEMORY_SETUP.md)
+
+### MongoDB Configuration
+
+**Jetson Nano (Production):**
+- MongoDB 3.6.3 (system install, latest for Ubuntu 18.04)
+- PyMongo 3.12.3 (compatible with MongoDB 3.6)
+- Database: `agentic_db`
+- Port: 27017 (localhost)
+- Auto-start: Enabled via systemd
+
+**Environment:**
+```bash
+# In backend/.env
+MONGODB_URI=mongodb://localhost:27017/
+MONGODB_DATABASE=agentic_db
+```
+
+**Quick Start:**
+```bash
+# Start MongoDB
+sudo systemctl start mongodb
+sudo systemctl enable mongodb  # Auto-start on boot
+
+# Verify
+mongo --eval "db.adminCommand('ping')"
+```
+
+### ChromaDB Configuration
+
+**Version:** 0.4.24
+**Storage:** `backend/data/memory/`
+**Embeddings:** OpenAI `text-embedding-3-small` (1536 dimensions)
+
+**Structure:**
+```
+backend/data/memory/
+├── chroma_db/              # Vector database
+│   ├── chroma.sqlite3     # Metadata
+│   └── {collection_id}/   # HNSW indexes
+├── memory_index.json      # Bank registry
+└── short_term_memory.txt  # Short-term context
+```
+
+**Dependencies:**
+```bash
+pip install chromadb==0.4.24
+pip install "numpy<2.0"  # Required for ChromaDB 0.4.24
+
+# On Jetson (ARM64), use conda for tokenizers
+conda install -y -c conda-forge tokenizers
+```
+
+### Database Agent (10 Tools)
+
+**Agent:** `backend/agents/Database.json`
+**Tools:** `backend/tools/database.py`
+
+**Capabilities:**
+- Insert documents (single/bulk)
+- Find with filters and projections
+- Update with MongoDB operators
+- Delete operations
+- Aggregation pipelines
+- Index management
+- Collection management
+- Schema documentation
+
+**Usage Example:**
+```python
+# Via agent
+"Store user data: {name: 'John', role: 'Developer'} in users collection"
+
+# Programmatic
+from tools.database import insert_document
+insert_document("users", {"name": "John", "role": "Developer"})
+```
+
+### Memory Agent (8 Tools)
+
+**Agent:** `backend/agents/Memory.json`
+**Tools:** `backend/tools/memory.py`
+
+**Capabilities:**
+- Short-term memory management
+- Create memory banks (vector collections)
+- Add information with embeddings
+- Semantic search
+- Update/replace data
+- Remove data
+- List memory banks
+
+**Usage Example:**
+```python
+# Via agent
+"Remember that Rodrigo is a Developer"
+
+# Programmatic
+from tools.memory import add_to_memory
+add_to_memory("personal_info", "Rodrigo is a Developer")
+```
+
+### Memory Banks
+
+Current memory banks:
+- **personal_info**: User information (2 documents)
+  - "Name: Rodrigo. Role: Developer."
+  - "Archie is an AI assistant system..."
+
+Create new banks as needed:
+```python
+from tools.memory import create_memory_bank
+create_memory_bank("project_info", "Project requirements and details")
+```
+
+### Troubleshooting
+
+**MongoDB connection issues:**
+```bash
+# Check service
+sudo systemctl status mongodb
+
+# Check Python connectivity
+python3 -c "from pymongo import MongoClient; print(MongoClient().server_info())"
+```
+
+**ChromaDB schema issues:**
+```bash
+# Verify collections
+python3 -c "from tools.memory import _get_chroma_client; print(_get_chroma_client().list_collections())"
+```
+
+See [DATABASE_AND_MEMORY_SETUP.md](docs/guides/DATABASE_AND_MEMORY_SETUP.md) for complete troubleshooting guide.
 
 ---
 
@@ -2640,8 +2787,9 @@ See [FRONTEND_REFACTORING.md](FRONTEND_REFACTORING.md) for complete details.
 
 This document should be updated whenever significant architectural changes are made.
 
-**Last updated:** 2025-12-01
+**Last updated:** 2025-12-02
 **Changes:**
+- 2025-12-02: **Database and Memory System Configuration** - Started MongoDB service on Jetson Nano with auto-start enabled; recovered and migrated ChromaDB memory banks from git history; consolidated short_term_memory.txt with project context; created comprehensive setup documentation ([DATABASE_AND_MEMORY_SETUP.md](docs/guides/DATABASE_AND_MEMORY_SETUP.md)); both Memory agent (8 tools) and Database agent (10 tools) fully operational
 - 2025-12-01: Added dynamic agent description injection for nested_team agents - `{{AVAILABLE_AGENTS}}` placeholder automatically populated with sub-agent descriptions; enhanced Researcher and Engineer descriptions; integrated Memory and FileManager into MainConversation
 - 2025-11-29: Fixed mobile voice HTTPS access and echo issue - nginx WebRTC endpoint configuration, desktop/mobile origin consistency, echo elimination by removing desktop mic from mobile stream
 - 2025-11-28: Added mobile voice interface (`MobileVoice.js`) for wireless microphone access from smartphones - no backend changes required, leverages existing multi-client conversation architecture

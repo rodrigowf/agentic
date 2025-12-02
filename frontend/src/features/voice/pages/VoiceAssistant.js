@@ -614,10 +614,10 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     {
       type: 'function',
       name: 'send_to_claude_code',
-      description: 'Send a self-editing instruction to Claude Code to modify the codebase. Use when the user asks to change, add, or fix code.',
+      description: 'Send a self-editing instruction to Claude Code to modify the codebase. Use when the user asks to change, add, or fix code. Supports slash commands: /compact (compress conversation history), /context (check token usage), /clear (reset conversation), /rewind (undo changes). Examples: "/compact Fix the bug", "/context"',
       parameters: {
         type: 'object',
-        properties: { text: { type: 'string', description: 'The instruction for Claude Code.' } },
+        properties: { text: { type: 'string', description: 'The instruction for Claude Code. Can include slash commands.' } },
         required: ['text'],
         additionalProperties: false,
       },
@@ -632,6 +632,12 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
       type: 'function',
       name: 'reset',
       description: 'Reset the nested team conversation state when the user explicitly asks. Automatic calls right after sending a task are ignored.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false },
+    },
+    {
+      type: 'function',
+      name: 'pause_claude_code',
+      description: 'Pause/interrupt the currently running Claude Code task. Use when the user explicitly asks to stop or cancel Claude Code.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   ];
@@ -1285,6 +1291,17 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
         runCompletedRef.current = false;
         setupNestedWebSocketHandlers(ws);
         void recordEvent('controller', 'tool_exec', { tool: name });
+        lastVoiceToolCallRef.current = { name, timestamp: now };
+        return { ok: true };
+      }
+      if (name === 'pause_claude_code') {
+        const now = Date.now();
+        if (claudeCodeWsRef.current && claudeCodeWsRef.current.readyState === WebSocket.OPEN) {
+          claudeCodeWsRef.current.send(JSON.stringify({ type: 'cancel' }));
+          void recordEvent('controller', 'tool_exec', { tool: name, message: 'Pause/cancel command sent to Claude Code' });
+        } else {
+          void recordEvent('controller', 'tool_exec', { tool: name, message: 'No active Claude Code connection to pause' });
+        }
         lastVoiceToolCallRef.current = { name, timestamp: now };
         return { ok: true };
       }

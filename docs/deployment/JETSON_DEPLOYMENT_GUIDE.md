@@ -163,9 +163,17 @@ npm --version     # 10.8.2
 ├── agentic/                  # Main application
 │   ├── backend/              # FastAPI backend
 │   │   ├── main.py
+│   │   ├── .env              # Environment variables (MongoDB, API keys)
 │   │   ├── agents/
 │   │   ├── tools/
-│   │   └── voice_conversations.db
+│   │   ├── data/             # Database storage
+│   │   │   └── memory/       # ChromaDB + memory banks
+│   │   │       ├── chroma_db/
+│   │   │       ├── memory_index.json
+│   │   │       └── short_term_memory.txt
+│   │   ├── database_metadata/  # MongoDB collection schemas
+│   │   │   └── collections_schema.json
+│   │   └── voice_conversations.db  # Voice conversation history
 │   └── frontend/             # React frontend
 │       ├── src/
 │       ├── build/            # Production build (served by nginx)
@@ -186,6 +194,25 @@ npm --version     # 10.8.2
     ├── nginx-access.log
     └── nginx-error.log
 ```
+
+### Database Services
+
+The Jetson runs two database systems:
+
+**MongoDB** (Document database for Database agent):
+- Version: 3.6.3 (system install via apt)
+- Port: 27017 (localhost)
+- Database: `agentic_db`
+- Auto-start: Enabled via systemd
+- Status: `sudo systemctl status mongodb`
+
+**ChromaDB** (Vector database for Memory agent):
+- Version: 0.4.24 (Python package)
+- Storage: `backend/data/memory/chroma_db/`
+- Embeddings: OpenAI `text-embedding-3-small`
+- Memory bank: `personal_info` (2 documents)
+
+**Setup Guide:** See [docs/guides/DATABASE_AND_MEMORY_SETUP.md](../guides/DATABASE_AND_MEMORY_SETUP.md) for complete setup instructions.
 
 ### Deploying Updates
 

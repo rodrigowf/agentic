@@ -1,0 +1,12 @@
+We tried to do a smart trick which is not working: 
+After I first open the app, it should run a script in the background that works as a fake screensaver, so whenever the screen is inactive for more than 40s it should take us back to our app as if it is a screensaver. But this is not working. Please fix it.
+One other trick is: before the app initialization we must open the youtube app so it keep running in the background (to receive casting), but i believe this might be already working.
+
+
+Sometimes I will run agentic voice page from a television which doesn't have a microphone, but that's ok, cause I can connect to it using the mobile-voce page in my phone. But currently the page on the tv fails to start the conversation showing: "Could not start audio source". What can we do to mitigate this and allow me to start the conversation there to speak through the mobile-voice page?
+
+I want you to create for me a new agent (tools script and agent json) for an agent that is capable of answering any questions about anything that is contained in any of the files present in the given root folder, retrieve literal content from them or store textual content into files (md or txt) there.
+To accomplish this it will involve a two parts system: One script that will watch the choosen root folder for any changes, convert all new files to markdown using ###### library, store the whole contents of each file in a local database, the use the lib chunking method 
+
+I want you to build an API Agent based on a nested team that is capable of using APIs through http/https. To do this, this must be a nested_team agent with a new APIManager to orchestrate the conversation, a new APIHandler, which will use all the necessary tools (http calls and store docs), the Researcher for finding and summarizing the docuemntation needed, and the Engineer case we need it.
+To store the documentation found by the researcher, the APIHandler must save .md files within a dedicated folder and index them in a specific json index file (which must contain references and short descriptions to all docs). This json file content must be ever present and updated within the APIManager system prompt, so it knows were each api docs are. Once the documentation is there, the APIHandler can use the http(s) tool call to use the API. If any auth keys are needed, it can stop and ask the user or use the Engineer to grab it.
