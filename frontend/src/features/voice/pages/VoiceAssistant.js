@@ -614,10 +614,10 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     {
       type: 'function',
       name: 'send_to_claude_code',
-      description: 'Send a self-editing instruction to Claude Code to modify the codebase. Use when the user asks to change, add, or fix code. Supports slash commands: /compact (compress conversation history), /context (check token usage), /clear (reset conversation), /rewind (undo changes). Examples: "/compact Fix the bug", "/context"',
+      description: 'Send a self-editing instruction to Claude Code to modify the codebase. Use when the user asks to change, add, or fix code.',
       parameters: {
         type: 'object',
-        properties: { text: { type: 'string', description: 'The instruction for Claude Code. Can include slash commands.' } },
+        properties: { text: { type: 'string', description: 'The instruction for Claude Code.' } },
         required: ['text'],
         additionalProperties: false,
       },
