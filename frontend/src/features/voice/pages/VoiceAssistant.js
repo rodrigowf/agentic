@@ -1483,6 +1483,20 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
     }
   };
 
+  const sendToClaude = () => {
+    if (claudeCodeWsRef.current && claudeCodeWsRef.current.readyState === WebSocket.OPEN && transcript.trim()) {
+      try {
+        claudeCodeWsRef.current.send(JSON.stringify({ type: 'user_message', data: transcript }));
+        void recordEvent('controller', 'system', { message: `Queued user_message to claude: ${transcript}` });
+        setTranscript('');
+      } catch (e) {
+        void recordEvent('controller', 'error', { message: `Failed to send to claude: ${e.message}` });
+        notifyVoiceOfError(`Unable to deliver message to Claude Code: ${e.message || e}`, { source: 'controller', kind: 'controller_error' });
+        setError((prev) => prev || `Failed to send message to Claude Code: ${e.message || e}`);
+      }
+    }
+  };
+
   useEffect(() => () => stopSession(), []);
 
   if (nested) {
@@ -1651,6 +1665,15 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
                 size="small"
               >
                 Nested
+              </Button>
+              <Button
+                variant="contained"
+                color="info"
+                onClick={sendToClaude}
+                disabled={!isRunning || !transcript.trim() || !claudeCodeWsRef.current}
+                size="small"
+              >
+                Claude
               </Button>
             </Box>
           </Box>
@@ -1903,30 +1926,39 @@ function VoiceAssistant({ nested = false, onConversationUpdate }) {
           label="Message"
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
-          placeholder="Type a message to send to Voice or Nested"
+          placeholder="Type a message to send to Voice, Nested, or Claude"
           multiline
           minRows={3}
           maxRows={8}
           sx={{ flexGrow: 1, maxWidth: 'calc(100% - 204px)' }}
         />
         <Stack direction="column" spacing={1} sx={{ minWidth: '200px', padding: '2px' }}>
-          <Button 
-            variant="contained" 
-            color="success" 
-            onClick={sendText} 
+          <Button
+            variant="contained"
+            color="success"
+            onClick={sendText}
             disabled={!isRunning || !transcript.trim()}
             sx={{ flexGrow: 1 }}
           >
             Send to Voice
           </Button>
-          <Button 
-            variant="contained" 
-            color="secondary" 
-            onClick={sendToNested} 
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={sendToNested}
             disabled={!isRunning || !transcript.trim() || !nestedWsRef.current}
             sx={{ flexGrow: 1 }}
           >
             Send to Nested
+          </Button>
+          <Button
+            variant="contained"
+            color="info"
+            onClick={sendToClaude}
+            disabled={!isRunning || !transcript.trim() || !claudeCodeWsRef.current}
+            sx={{ flexGrow: 1 }}
+          >
+            Send to Claude
           </Button>
         </Stack>
       </Box>

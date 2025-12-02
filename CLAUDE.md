@@ -7,6 +7,7 @@
 
 ## Table of Contents
 
+0. [Operational Context - READ THIS FIRST](#operational-context---read-this-first)
 1. [Project Overview](#project-overview)
 2. [Architecture](#architecture)
 3. [Database and Memory Systems](#database-and-memory-systems)
@@ -20,6 +21,259 @@
 11. [Claude Code Self-Editor](#claude-code-self-editor)
 12. [Jetson Nano Deployment](#jetson-nano-deployment)
 13. [Best Practices](#best-practices)
+
+---
+
+## Operational Context - READ THIS FIRST
+
+**CRITICAL: Claude instances operate in TWO distinct contexts with different behaviors.**
+
+### Context Detection
+
+**Check your environment immediately:**
+
+```bash
+# Detect your operating context
+hostname && pwd
+```
+
+**Two Operational Contexts:**
+
+1. **Local Development (VS Code Claude Code Extension)**
+   - Hostname: `rodrigo-laptop` or similar laptop/desktop hostname
+   - Working directory: `/home/rodrigo/agentic`
+   - User: `rodrigo` (local user)
+   - Access: Direct file system access, local Git, can run servers
+   - Backend: http://localhost:8000
+   - Frontend: http://localhost:3000
+
+2. **Jetson Production (Voice Assistant Nested Agent)**
+   - Hostname: `jetson` or Jetson Nano hostname
+   - Working directory: `/home/rodrigo/agentic`
+   - User: `rodrigo` (Jetson user)
+   - Access: Via SSH or voice assistant context
+   - Backend: https://192.168.0.200:8000
+   - Frontend: https://192.168.0.200/agentic/
+
+---
+
+### Context-Specific Behavior Guide
+
+#### When Operating as **Local Development (VS Code)**
+
+**You are:** A developer assistant with full system access
+
+**Your role:**
+- Direct code modification and refactoring
+- Running tests and debugging
+- Git operations (commit, push, branch management)
+- Installing dependencies
+- Starting/stopping development servers
+- Taking screenshots of localhost
+- Database migrations and schema changes
+- Documentation updates
+
+**Decision Tree:**
+
+```
+User Request
+    ↓
+Is it a code change?
+    ↓ YES
+    Can I see/edit the files directly?
+    ↓ YES
+    → Use Edit/Write tools directly
+    → Run tests with Bash
+    → Take screenshots if UI changed
+    → Commit if user requests
+
+    ↓ NO (file not accessible)
+    → Ask user for file location
+    → Or use Grep/Glob to find it
+
+Is it a server operation?
+    ↓ YES
+    → Use localhost URLs
+    → Start servers with Bash
+    → Check logs directly
+```
+
+**Key Operations:**
+
+```bash
+# Start backend (development)
+cd /home/rodrigo/agentic/backend
+source venv/bin/activate
+uvicorn main:app --reload
+
+# Start frontend (development)
+cd /home/rodrigo/agentic/frontend
+npm start
+
+# Run tests
+cd /home/rodrigo/agentic/backend
+pytest tests/ -v
+
+# Take screenshots (local)
+node /home/rodrigo/agentic/debug/screenshot.js http://localhost:3000/voice
+
+# Git operations
+git status
+git add .
+git commit -m "Your changes"
+git push origin main
+```
+
+**URLs to use:**
+- Backend API: `http://localhost:8000/api/...`
+- Frontend: `http://localhost:3000/agentic/...`
+- WebSocket: `ws://localhost:8000/api/...`
+
+**Don't:**
+- SSH to Jetson (you're already local)
+- Use production URLs (192.168.0.200)
+- Restart systemd services (no services running locally)
+
+---
+
+#### When Operating as **Jetson Production (Voice Assistant)**
+
+**You are:** Part of the voice assistant system, operating through nested agents or SSH
+
+**Your role:**
+- Answering questions about the production system
+- Monitoring production services
+- Guiding remote deployments
+- Analyzing production logs
+- Responding to voice commands
+- Coordinating with other agents (Memory, Database, Engineer, etc.)
+
+**Decision Tree:**
+
+```
+User Request (via voice or SSH)
+    ↓
+Is it a production deployment?
+    ↓ YES
+    Am I on Jetson? (check hostname)
+    ↓ YES
+    → Use systemd service commands
+    → Build frontend with npm run build
+    → Reload nginx with kill -HUP
+    → Use production URLs
+
+    ↓ NO (on laptop)
+    → SSH to Jetson: ssh rodrigo@192.168.0.200
+    → Then execute deployment steps
+
+Is it a code change requested via voice?
+    ↓ YES
+    → Use send_to_claude_code tool
+    → Let Claude Code handle file modifications
+    → Narrate progress to user
+    → Don't execute directly (you're an orchestrator)
+
+Is it research/information?
+    ↓ YES
+    → Use Researcher agent
+    → Or Database/Memory agents
+    → Provide concise voice-friendly responses
+```
+
+**Key Operations:**
+
+```bash
+# SSH to Jetson (from laptop)
+ssh rodrigo@192.168.0.200
+
+# Check production services (on Jetson)
+sudo systemctl status agentic-backend
+sudo systemctl status mongodb
+
+# Deploy frontend update (on Jetson)
+cd ~/agentic/frontend
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate agentic
+npm run build
+sudo kill -HUP $(cat ~/nginx.pid)
+
+# Restart backend (on Jetson)
+sudo systemctl restart agentic-backend
+
+# View production logs (on Jetson)
+sudo journalctl -u agentic-backend -f
+tail -f ~/logs/nginx-error.log
+```
+
+**URLs to use:**
+- Backend API: `https://192.168.0.200/api/...`
+- Frontend: `https://192.168.0.200/agentic/...`
+- WebSocket: `wss://192.168.0.200/api/...`
+
+**Special Voice Assistant Behavior:**
+- **Narrate concisely** - Voice users can't see detailed logs
+- **Use tools** - Delegate to send_to_nested, send_to_claude_code
+- **Wait for completion** - Check for [RUN_FINISHED] events
+- **Summarize results** - Provide high-level status updates
+
+**Don't:**
+- Start development servers (use systemd services)
+- Use localhost URLs (use 192.168.0.200)
+- Make direct code edits (delegate to Claude Code)
+- Provide verbose output (voice context is limited)
+
+---
+
+### Quick Context Check
+
+**Run this to identify your context:**
+
+```bash
+if [ "$(hostname)" = "jetson" ]; then
+    echo "Context: PRODUCTION (Jetson Nano)"
+    echo "URLs: https://192.168.0.200"
+    echo "Services: systemd (agentic-backend, mongodb, nginx)"
+elif [ "$(hostname)" = "rodrigo-laptop" ]; then
+    echo "Context: LOCAL DEVELOPMENT (VS Code)"
+    echo "URLs: http://localhost:3000, http://localhost:8000"
+    echo "Services: uvicorn --reload, npm start"
+else
+    echo "Context: UNKNOWN - Check hostname and working directory"
+fi
+```
+
+---
+
+### Context-Aware Decision Matrix
+
+| Scenario | Local Dev (VS Code) | Production (Jetson) |
+|----------|---------------------|---------------------|
+| **User asks: "Fix this bug"** | Edit files directly, run tests, commit | Delegate to Claude Code via voice tool |
+| **User asks: "Deploy changes"** | SSH to Jetson, build, restart | Build, restart services (if on Jetson) |
+| **User asks: "Show me logs"** | Read local log files | SSH to Jetson, journalctl or tail logs |
+| **User asks: "Run the backend"** | `uvicorn main:app --reload` | `sudo systemctl restart agentic-backend` |
+| **User asks: "Take screenshot"** | Screenshot localhost:3000 | Screenshot 192.168.0.200 (via browser) |
+| **User asks: "What's in memory?"** | Query ChromaDB directly | Use Memory agent tools |
+| **Backend not running** | Start with uvicorn | Check systemd: `systemctl status agentic-backend` |
+| **Frontend not loading** | Check npm start, React errors | Check nginx, build artifacts |
+| **Database error** | Start MongoDB: `sudo systemctl start mongodb` | Same + check memory usage |
+| **Permission denied** | Check file permissions, venv activated | Check systemd user, sudo if needed |
+
+---
+
+### Special Case: Claude Code Integration
+
+**When you ARE Claude Code (running in VS Code):**
+- Full permission mode (user approval required unless bypassed)
+- Direct file system access
+- Can run any tools (Bash, Edit, Read, etc.)
+- Should follow normal development workflow
+
+**When you're CALLING Claude Code (via voice assistant):**
+- Use `send_to_claude_code` tool with text instructions
+- Claude Code runs with `bypassPermissions` mode
+- Events streamed back via WebSocket
+- Narrate significant milestones to user
+- Wait for [CODE RESULT] events
 
 ---
 
@@ -2789,6 +3043,7 @@ This document should be updated whenever significant architectural changes are m
 
 **Last updated:** 2025-12-02
 **Changes:**
+- 2025-12-02: **Operational Context Guide** - Added comprehensive section 0 "Operational Context - READ THIS FIRST" to distinguish between Local Development (VS Code) and Jetson Production (Voice Assistant) contexts; includes context detection script, decision trees, context-aware decision matrix, and special guidance for Claude Code integration; ensures Claude instances immediately understand their environment and adapt behavior accordingly
 - 2025-12-02: **Database and Memory System Configuration** - Started MongoDB service on Jetson Nano with auto-start enabled; recovered and migrated ChromaDB memory banks from git history; consolidated short_term_memory.txt with project context; created comprehensive setup documentation ([DATABASE_AND_MEMORY_SETUP.md](docs/guides/DATABASE_AND_MEMORY_SETUP.md)); both Memory agent (8 tools) and Database agent (10 tools) fully operational
 - 2025-12-01: Added dynamic agent description injection for nested_team agents - `{{AVAILABLE_AGENTS}}` placeholder automatically populated with sub-agent descriptions; enhanced Researcher and Engineer descriptions; integrated Memory and FileManager into MainConversation
 - 2025-11-29: Fixed mobile voice HTTPS access and echo issue - nginx WebRTC endpoint configuration, desktop/mobile origin consistency, echo elimination by removing desktop mic from mobile stream
