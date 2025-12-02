@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { Virtuoso } from 'react-virtuoso';
 import {
   Box,
   Stack,
@@ -20,8 +21,6 @@ const NestedAgentInsights = ({
   truncateText,
   safeStringify,
 }) => {
-  const nestedScrollRef = useRef(null);
-
   const nestedHighlights = useMemo(() => {
     if (!messages || messages.length === 0) return [];
     const entries = [];
@@ -174,100 +173,108 @@ const NestedAgentInsights = ({
     return entries.slice(-MAX_NESTED_HIGHLIGHTS);
   }, [messages, formatTimestamp, truncateText, safeStringify]);
 
+  const virtuosoRef = useRef(null);
+
   useEffect(() => {
-    const node = nestedScrollRef.current;
-    if (node) {
-      requestAnimationFrame(() => {
-        node.scrollTop = node.scrollHeight;
+    if (virtuosoRef.current && nestedHighlights.length > 0) {
+      virtuosoRef.current.scrollToIndex({
+        index: nestedHighlights.length - 1,
+        align: 'end',
+        behavior: 'auto'
       });
     }
   }, [nestedHighlights]);
 
+  const renderNestedEntry = (index, entry) => {
+    const chipColor = ['info', 'success', 'warning', 'error'].includes(entry.tone) ? entry.tone : 'default';
+    return (
+      <Box sx={{ mb: 1.25 }}>
+        <Accordion
+          disableGutters
+          elevation={0}
+          sx={{
+            border: '1px solid',
+            borderColor: 'divider',
+            borderLeft: '4px solid',
+            borderLeftColor: (theme) => (chipColor === 'default' ? theme.palette.divider : theme.palette[chipColor].main),
+            bgcolor: 'background.paper',
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
+            <Stack spacing={0.5} sx={{ width: '100%' }}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Chip
+                  size="small"
+                  label={entry.typeLabel}
+                  color={chipColor === 'default' ? 'default' : chipColor}
+                  variant={chipColor === 'default' ? 'outlined' : 'filled'}
+                />
+                <Chip size="small" label={entry.agentName} variant="outlined" />
+                {entry.role && (
+                  <Chip size="small" label={entry.role} variant="outlined" />
+                )}
+                <Box sx={{ flexGrow: 1 }} />
+                {entry.timeLabel && (
+                  <Typography variant="caption" color="text.secondary">{entry.timeLabel}</Typography>
+                )}
+              </Stack>
+              <Typography variant="body2" color="text.secondary">{entry.preview}</Typography>
+            </Stack>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2, pb: 2 }}>
+            <Stack spacing={1.25}>
+              {entry.detail && (
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{entry.detail}</Typography>
+              )}
+              {(entry.metadata.length > 0 || entry.role) && (
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  {entry.role && (
+                    <Chip size="small" variant="outlined" label={`Role: ${entry.role}`} />
+                  )}
+                  {entry.metadata.map((meta, metaIdx) => (
+                    <Chip key={`${entry.key}-meta-${metaIdx}`} size="small" variant="outlined" label={`${meta.label}: ${meta.value}`} />
+                  ))}
+                </Stack>
+              )}
+              <Divider />
+              <Box
+                component="pre"
+                sx={{
+                  bgcolor: 'grey.900',
+                  color: 'grey.100',
+                  borderRadius: 1,
+                  p: 1.25,
+                  fontSize: 12,
+                  overflowX: 'auto',
+                  mb: 0,
+                }}
+              >
+                {safeStringify(entry.raw)}
+              </Box>
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+      </Box>
+    );
+  };
+
   return (
     <Box
-      ref={nestedScrollRef}
       sx={{
         flexGrow: 1,
-        overflowY: 'auto',
         height: '100%',
       }}
     >
       {nestedHighlights.length === 0 ? (
         <Typography variant="body2" color="text.secondary">No nested activity captured yet.</Typography>
       ) : (
-        <Stack spacing={1.25}>
-            {nestedHighlights.map((entry) => {
-              const chipColor = ['info', 'success', 'warning', 'error'].includes(entry.tone) ? entry.tone : 'default';
-              return (
-                <Accordion
-                  key={entry.key}
-                  disableGutters
-                  elevation={0}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderLeft: '4px solid',
-                    borderLeftColor: (theme) => (chipColor === 'default' ? theme.palette.divider : theme.palette[chipColor].main),
-                    bgcolor: 'background.paper',
-                  }}
-                >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
-                    <Stack spacing={0.5} sx={{ width: '100%' }}>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                        <Chip
-                          size="small"
-                          label={entry.typeLabel}
-                          color={chipColor === 'default' ? 'default' : chipColor}
-                          variant={chipColor === 'default' ? 'outlined' : 'filled'}
-                        />
-                        <Chip size="small" label={entry.agentName} variant="outlined" />
-                        {entry.role && (
-                          <Chip size="small" label={entry.role} variant="outlined" />
-                        )}
-                        <Box sx={{ flexGrow: 1 }} />
-                        {entry.timeLabel && (
-                          <Typography variant="caption" color="text.secondary">{entry.timeLabel}</Typography>
-                        )}
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary">{entry.preview}</Typography>
-                    </Stack>
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ px: 2, pb: 2 }}>
-                    <Stack spacing={1.25}>
-                      {entry.detail && (
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{entry.detail}</Typography>
-                      )}
-                      {(entry.metadata.length > 0 || entry.role) && (
-                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                          {entry.role && (
-                            <Chip size="small" variant="outlined" label={`Role: ${entry.role}`} />
-                          )}
-                          {entry.metadata.map((meta, metaIdx) => (
-                            <Chip key={`${entry.key}-meta-${metaIdx}`} size="small" variant="outlined" label={`${meta.label}: ${meta.value}`} />
-                          ))}
-                        </Stack>
-                      )}
-                      <Divider />
-                      <Box
-                        component="pre"
-                        sx={{
-                          bgcolor: 'grey.900',
-                          color: 'grey.100',
-                          borderRadius: 1,
-                          p: 1.25,
-                          fontSize: 12,
-                          overflowX: 'auto',
-                          mb: 0,
-                        }}
-                      >
-                        {safeStringify(entry.raw)}
-                      </Box>
-                    </Stack>
-                  </AccordionDetails>
-                </Accordion>
-              );
-            })}
-        </Stack>
+        <Virtuoso
+          ref={virtuosoRef}
+          style={{ height: '100%' }}
+          data={nestedHighlights}
+          itemContent={renderNestedEntry}
+          followOutput="smooth"
+        />
       )}
     </Box>
   );

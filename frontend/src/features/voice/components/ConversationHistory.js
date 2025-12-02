@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import {
 	Box,
 	Stack,
@@ -556,16 +557,25 @@ const ConversationHistory = ({
 }) => {
 	const formatter = formatTimestampProp || fallbackFormatTimestamp;
 	const groups = useMemo(() => buildGroupedHistory(messages, formatter), [messages, formatter]);
-	const scrollRef = useRef(null);
+	const virtuosoRef = useRef(null);
 
 	useEffect(() => {
-		const node = scrollRef.current;
-		if (node) {
-			requestAnimationFrame(() => {
-				node.scrollTop = node.scrollHeight;
+		if (virtuosoRef.current && groups.length > 0) {
+			virtuosoRef.current.scrollToIndex({
+				index: groups.length - 1,
+				align: 'end',
+				behavior: 'auto'
 			});
 		}
 	}, [groups]);
+
+	const renderGroup = (index, group) => {
+		return (
+			<Box sx={{ mb: 1.25 }}>
+				<ConversationHistoryGroup group={group} formatTimestamp={formatter} />
+			</Box>
+		);
+	};
 
 	return (
 		<Box
@@ -587,46 +597,31 @@ const ConversationHistory = ({
 			</Stack>
 
 			<Box
-				ref={scrollRef}
 				sx={{
 					flexGrow: 1,
-					overflowY: 'auto',
 					pr: 1,
-					'&::-webkit-scrollbar': {
-						width: '8px',
-					},
-					'&::-webkit-scrollbar-track': {
-						backgroundColor: 'transparent',
-					},
-					'&::-webkit-scrollbar-thumb': {
-						backgroundColor: 'rgba(255, 255, 255, 0.1)',
-						borderRadius: '4px',
-						'&:hover': {
-							backgroundColor: 'rgba(255, 255, 255, 0.15)',
-						},
-					},
 				}}
 			>
-				<Stack spacing={0.6}>
-					{messages.length === 0 && !conversationLoading && (
-						<Alert severity="info">No events recorded yet. Start a session to populate the history.</Alert>
-					)}
+				{messages.length === 0 && !conversationLoading && (
+					<Alert severity="info">No events recorded yet. Start a session to populate the history.</Alert>
+				)}
 
-					{groups.length > 0 && (
-						<Stack spacing={1.25}>
-							{groups.map((group) => (
-								<ConversationHistoryGroup key={group.key} group={group} formatTimestamp={formatter} />
-							))}
-						</Stack>
-					)}
+				{groups.length > 0 && (
+					<Virtuoso
+						ref={virtuosoRef}
+						style={{ height: '100%' }}
+						data={groups}
+						itemContent={renderGroup}
+						followOutput="smooth"
+					/>
+				)}
 
-					{conversationLoading && messages.length === 0 && (
-						<Stack spacing={1}>
-							<Typography variant="body2" color="text.secondary">Loading conversation history…</Typography>
-							<CircularProgress size={24} thickness={5} />
-						</Stack>
-					)}
-				</Stack>
+				{conversationLoading && messages.length === 0 && (
+					<Stack spacing={1}>
+						<Typography variant="body2" color="text.secondary">Loading conversation history…</Typography>
+						<CircularProgress size={24} thickness={5} />
+					</Stack>
+				)}
 			</Box>
 		</Box>
 	);

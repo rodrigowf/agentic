@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { Virtuoso } from 'react-virtuoso';
 import {
   Box,
   Stack,
@@ -24,7 +25,6 @@ const ClaudeCodeInsights = ({
   truncateText,
   safeStringify,
 }) => {
-  const codeScrollRef = useRef(null);
 
   const codeHighlights = useMemo(() => {
     if (!messages || messages.length === 0) return [];
@@ -221,144 +221,152 @@ const ClaudeCodeInsights = ({
     return entries.slice(-MAX_CODE_HIGHLIGHTS);
   }, [messages, formatTimestamp, truncateText, safeStringify]);
 
+  const virtuosoRef = useRef(null);
+
   useEffect(() => {
-    const node = codeScrollRef.current;
-    if (node) {
-      requestAnimationFrame(() => {
-        node.scrollTop = node.scrollHeight;
+    if (virtuosoRef.current && codeHighlights.length > 0) {
+      virtuosoRef.current.scrollToIndex({
+        index: codeHighlights.length - 1,
+        align: 'end',
+        behavior: 'auto'
       });
     }
   }, [codeHighlights]);
 
+  const renderCodeEntry = (index, entry) => {
+    const chipColor = ['info', 'success', 'warning', 'error'].includes(entry.tone) ? entry.tone : 'default';
+    return (
+      <Box sx={{ mb: 1.25 }}>
+        <Accordion
+          disableGutters
+          elevation={0}
+          sx={{
+            border: '1px solid',
+            borderColor: 'divider',
+            borderLeft: '4px solid',
+            borderLeftColor: (theme) => (chipColor === 'default' ? theme.palette.divider : theme.palette[chipColor].main),
+            bgcolor: 'background.paper',
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
+            <Stack spacing={0.5} sx={{ width: '100%' }}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  {entry.icon}
+                </Box>
+                <Chip
+                  size="small"
+                  label={entry.typeLabel}
+                  color={chipColor === 'default' ? 'default' : chipColor}
+                  variant={chipColor === 'default' ? 'outlined' : 'filled'}
+                />
+                <Box sx={{ flexGrow: 1 }} />
+                {entry.timeLabel && (
+                  <Typography variant="caption" color="text.secondary">{entry.timeLabel}</Typography>
+                )}
+              </Stack>
+              <Typography
+                variant="body2"
+                color="text.primary"
+                sx={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  mt: 0.5,
+                }}
+              >
+                {entry.preview}
+              </Typography>
+              {entry.metadata.length > 0 && (
+                <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
+                  {entry.metadata.slice(0, 3).map((meta, metaIdx) => (
+                    <Chip
+                      key={`${entry.key}-preview-meta-${metaIdx}`}
+                      size="small"
+                      variant="outlined"
+                      label={`${meta.label}: ${meta.value}`}
+                      sx={{ height: '22px', fontSize: '0.75rem' }}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2, pb: 2 }}>
+            <Stack spacing={1.25}>
+              {entry.detail && entry.detail !== entry.preview && (
+                <Box
+                  sx={{
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+                    borderRadius: 1,
+                    p: 1.5,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      whiteSpace: 'pre-wrap',
+                      fontFamily: 'monospace',
+                      fontSize: '0.8rem',
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary',
+                    }}
+                  >
+                    {entry.detail}
+                  </Typography>
+                </Box>
+              )}
+              {entry.metadata.length > 0 && (
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  {entry.metadata.map((meta, metaIdx) => (
+                    <Chip key={`${entry.key}-meta-${metaIdx}`} size="small" variant="outlined" label={`${meta.label}: ${meta.value}`} />
+                  ))}
+                </Stack>
+              )}
+              <Divider />
+              <Box
+                component="pre"
+                sx={{
+                  bgcolor: 'grey.900',
+                  color: 'grey.100',
+                  borderRadius: 1,
+                  p: 1.25,
+                  fontSize: 12,
+                  overflowX: 'auto',
+                  mb: 0,
+                }}
+              >
+                {safeStringify(entry.raw)}
+              </Box>
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+      </Box>
+    );
+  };
+
   return (
     <Box
-      ref={codeScrollRef}
       sx={{
         flexGrow: 1,
-        overflowY: 'auto',
         height: '100%',
       }}
     >
       {codeHighlights.length === 0 ? (
         <Typography variant="body2" color="text.secondary">No Claude Code activity yet. Send a self-editing task to get started.</Typography>
       ) : (
-        <Stack spacing={1.25}>
-            {codeHighlights.map((entry) => {
-              const chipColor = ['info', 'success', 'warning', 'error'].includes(entry.tone) ? entry.tone : 'default';
-              return (
-                <Accordion
-                  key={entry.key}
-                  disableGutters
-                  elevation={0}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderLeft: '4px solid',
-                    borderLeftColor: (theme) => (chipColor === 'default' ? theme.palette.divider : theme.palette[chipColor].main),
-                    bgcolor: 'background.paper',
-                  }}
-                >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
-                    <Stack spacing={0.5} sx={{ width: '100%' }}>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          {entry.icon}
-                        </Box>
-                        <Chip
-                          size="small"
-                          label={entry.typeLabel}
-                          color={chipColor === 'default' ? 'default' : chipColor}
-                          variant={chipColor === 'default' ? 'outlined' : 'filled'}
-                        />
-                        <Box sx={{ flexGrow: 1 }} />
-                        {entry.timeLabel && (
-                          <Typography variant="caption" color="text.secondary">{entry.timeLabel}</Typography>
-                        )}
-                      </Stack>
-                      <Typography
-                        variant="body2"
-                        color="text.primary"
-                        sx={{
-                          fontFamily: 'monospace',
-                          fontSize: '0.9rem',
-                          lineHeight: 1.6,
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          mt: 0.5,
-                        }}
-                      >
-                        {entry.preview}
-                      </Typography>
-                      {entry.metadata.length > 0 && (
-                        <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
-                          {entry.metadata.slice(0, 3).map((meta, metaIdx) => (
-                            <Chip
-                              key={`${entry.key}-preview-meta-${metaIdx}`}
-                              size="small"
-                              variant="outlined"
-                              label={`${meta.label}: ${meta.value}`}
-                              sx={{ height: '22px', fontSize: '0.75rem' }}
-                            />
-                          ))}
-                        </Stack>
-                      )}
-                    </Stack>
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ px: 2, pb: 2 }}>
-                    <Stack spacing={1.25}>
-                      {entry.detail && entry.detail !== entry.preview && (
-                        <Box
-                          sx={{
-                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
-                            borderRadius: 1,
-                            p: 1.5,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                          }}
-                        >
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              whiteSpace: 'pre-wrap',
-                              fontFamily: 'monospace',
-                              fontSize: '0.8rem',
-                              maxHeight: '300px',
-                              overflowY: 'auto',
-                              color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary',
-                            }}
-                          >
-                            {entry.detail}
-                          </Typography>
-                        </Box>
-                      )}
-                      {entry.metadata.length > 0 && (
-                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                          {entry.metadata.map((meta, metaIdx) => (
-                            <Chip key={`${entry.key}-meta-${metaIdx}`} size="small" variant="outlined" label={`${meta.label}: ${meta.value}`} />
-                          ))}
-                        </Stack>
-                      )}
-                      <Divider />
-                      <Box
-                        component="pre"
-                        sx={{
-                          bgcolor: 'grey.900',
-                          color: 'grey.100',
-                          borderRadius: 1,
-                          p: 1.25,
-                          fontSize: 12,
-                          overflowX: 'auto',
-                          mb: 0,
-                        }}
-                      >
-                        {safeStringify(entry.raw)}
-                      </Box>
-                    </Stack>
-                  </AccordionDetails>
-                </Accordion>
-              );
-            })}
-        </Stack>
+        <Virtuoso
+          ref={virtuosoRef}
+          style={{ height: '100%' }}
+          data={codeHighlights}
+          itemContent={renderCodeEntry}
+          followOutput="smooth"
+        />
       )}
     </Box>
   );
