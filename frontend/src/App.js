@@ -25,6 +25,10 @@ import ToolsDashboard from './features/tools/pages/ToolsDashboard';
 import VoiceDashboard from './features/voice/pages/VoiceDashboard';
 import MobileVoice from './features/voice/pages/MobileVoice';
 import DebugNetwork from './features/voice/pages/DebugNetwork';
+import VoiceDashboardModular from './features/voice/pages/VoiceDashboardModular';
+import VoiceDashboardWebSocket from './features/voice/pages/VoiceDashboardWebSocket';
+import VoiceAssistantPipecatWS from './features/voice/pages/VoiceAssistantPipecatWS';
+import RouteDebug from './features/voice/pages/RouteDebug';
 import KeyboardShortcutsHelp from './shared/components/KeyboardShortcutsHelp';
 import ServerManagementButtons from './shared/components/ServerManagementButtons';
 import KeyboardNavigationProvider from './components/KeyboardNavigationProvider';
@@ -442,6 +446,17 @@ export default function App() {
           <Routes>
             {/* Debug route */}
             <Route path="/debug-network" element={<DebugNetwork />} />
+
+            {/* Voice comparison routes - for testing modular vs original */}
+            <Route path="/voice-modular" element={<VoiceDashboardModular />} />
+            <Route path="/voice-modular/:conversationId" element={<VoiceDashboardModular />} />
+
+            {/* WebSocket Voice routes - Pipecat + FastAPI WebSocket (self-hosted, no Daily) */}
+            <Route path="/voice-ws" element={<VoiceDashboardWebSocket />} />
+            <Route path="/voice-ws/:conversationId" element={<VoiceDashboardWebSocket />} />
+
+            {/* Pipecat WebSocket routes - NEW self-hosted voice assistant */}
+            <Route path="/voice-pipecat-ws/:conversationId" element={<VoiceAssistantPipecatWS />} />
 
             {/* Mobile Voice routes - full screen, no AppBar, no Container (WebRTC enabled) */}
             <Route path="/mobile-voice" element={<MobileVoice />} />

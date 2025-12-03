@@ -24,3 +24,12 @@ mss
 pyautogui
 chromadb>=0.4.0
 pymongo>=4.6.0
+
+# For WebRTC (Backend-Controlled Voice):
+aiortc>=1.6.0
+numpy>=1.24.0,<2.0  # Required by aiortc and ChromaDB 0.4.24
+aiohttp>=3.9.0
+av>=10.0.0
+
+# For Pipecat Voice (Pipecat + Daily + OpenAI Realtime):
+pipecat-ai[daily]>=0.0.96
