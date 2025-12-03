@@ -127,8 +127,22 @@ except Exception:
         logger.warning(f"Failed to import Pipecat WebSocket router: {e}")
 
 if pipecat_ws_router is not None:
-    app.include_router(pipecat_ws_router)
+    app.include_router(pipecat_ws_router, prefix="/api")
     logger.info("Pipecat WebSocket router mounted (self-hosted)")
+
+# Mount Simple Pipecat WebSocket router (Direct OpenAI proxy - no Pipecat pipeline)
+try:
+    from .api.realtime_voice_pipecat_simple import router as pipecat_simple_router  # type: ignore
+except Exception:
+    try:
+        from api.realtime_voice_pipecat_simple import router as pipecat_simple_router  # type: ignore
+    except Exception as e:
+        pipecat_simple_router = None
+        logger.warning(f"Failed to import Simple Pipecat router: {e}")
+
+if pipecat_simple_router is not None:
+    app.include_router(pipecat_simple_router, prefix="/api")
+    logger.info("Simple Pipecat WebSocket router mounted (direct OpenAI proxy)")
 
 # Startup cache
 TOOLS_DIR = "tools"

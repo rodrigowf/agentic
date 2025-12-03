@@ -200,10 +200,13 @@ class EventRecordingProcessor(FrameProcessor):
         await self.push_frame(frame, direction)
 
 
-@router.websocket("/api/realtime/pipecat/ws/{conversation_id}")
+@router.websocket("/realtime/pipecat/ws/{conversation_id}")
 async def pipecat_websocket(websocket: WebSocket, conversation_id: str):
     """
     WebSocket endpoint for Pipecat voice sessions (self-hosted, no Daily)
+
+    Full path: /api/realtime/pipecat/ws/{conversation_id}
+    (Note: router is included with prefix='/api' in main.py)
 
     Path params:
         conversation_id: str - Conversation ID for event persistence
@@ -229,6 +232,31 @@ async def pipecat_websocket(websocket: WebSocket, conversation_id: str):
             return
 
         logger.info(f"Creating Pipecat WebSocket session: {session_id} for conversation: {conversation_id}")
+
+        # Ensure conversation exists in database (create if doesn't exist)
+        existing_conv = conversation_store.get_conversation(conversation_id)
+        if not existing_conv:
+            # Conversation doesn't exist, create it with the specific ID
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).isoformat()
+            with conversation_store._connection() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO conversations (id, name, created_at, updated_at, voice_model, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        conversation_id,
+                        f"Pipecat Session {conversation_id[:8]}",
+                        now,
+                        now,
+                        voice,
+                        "{}"  # Empty JSON object for metadata
+                    )
+                )
+            logger.info(f"Created new conversation: {conversation_id}")
+        else:
+            logger.info(f"Using existing conversation: {conversation_id}")
 
         # Create function handler
         function_handler = VoiceFunctionHandler(conversation_id)
@@ -289,6 +317,7 @@ async def pipecat_websocket(websocket: WebSocket, conversation_id: str):
         }
 
         # Create FastAPI WebSocket transport (NO DAILY NEEDED!)
+        # Note: OpenAI Realtime API has built-in VAD, so we don't need client-side VAD
         transport = FastAPIWebsocketTransport(
             websocket,
             FastAPIWebsocketParams(
@@ -298,17 +327,14 @@ async def pipecat_websocket(websocket: WebSocket, conversation_id: str):
                 audio_out_sample_rate=24000,
                 audio_in_channels=1,  # Mono
                 audio_out_channels=1,
-                add_wav_header=False,  # Send raw PCM16
-                vad_enabled=True,  # Voice Activity Detection
-                vad_analyzer="silero",
-                vad_audio_passthrough=True
+                add_wav_header=False  # Send raw PCM16
             )
         )
 
         # Create session properties for OpenAI Realtime
         session_properties = SessionProperties(
             input_audio_transcription=InputAudioTranscription(),
-            turn_detection=TurnDetection.server_vad(),  # Server-side voice activity detection
+            turn_detection=TurnDetection(),  # Server-side voice activity detection (default)
             input_audio_noise_reduction=InputAudioNoiseReduction(type="near_field"),
             voice=voice,
             instructions=system_prompt or "You are Archie, a helpful voice assistant.",
@@ -321,28 +347,22 @@ async def pipecat_websocket(websocket: WebSocket, conversation_id: str):
         # Create OpenAI Realtime LLM service
         llm = OpenAIRealtimeBetaLLMService(
             api_key=openai_api_key,
-            session_properties=session_properties,
-            start_audio_paused=False
+            session_properties=session_properties
         )
 
         # Register function handlers with LLM
         for func_name, func in function_map.items():
             llm.register_function(func_name, func)
 
-        # Create context aggregators
-        context_aggregator = llm.create_context_aggregator()
-
         # Create event recording processor
         event_recorder = EventRecordingProcessor(conversation_id)
 
-        # Build pipeline
+        # Build pipeline (simplified - no context aggregator needed)
         pipeline = Pipeline([
             transport.input(),              # Audio from WebSocket
-            context_aggregator.user(),      # Track user context
             llm,                            # OpenAI Realtime API
             event_recorder,                 # Record events to DB
-            transport.output(),             # Audio to WebSocket
-            context_aggregator.assistant()  # Track assistant context
+            transport.output()              # Audio to WebSocket
         ])
 
         # Create pipeline task

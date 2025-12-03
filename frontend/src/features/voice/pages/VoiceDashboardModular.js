@@ -1,27 +1,32 @@
-// This is a copy of VoiceDashboard.js but uses VoiceAssistantModular
-// For side-by-side testing of the original implementation
+// Modular VoiceDashboard with Pipecat WebSocket + Old Styling
+// Uses VoiceAssistantModular (working Pipecat implementation) with VoiceDashboard layout/theme
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
-  Typography,
-  Button,
-  IconButton,
   List,
   ListItem,
   ListItemButton,
   ListItemText,
+  Typography,
+  Divider,
+  IconButton,
+  Button,
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
   TextField,
-  Tooltip,
+  Drawer,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import MenuIcon from '@mui/icons-material/Menu';
 import VoiceAssistantModular from './VoiceAssistantModular';
 import {
   listVoiceConversations,
@@ -30,35 +35,60 @@ import {
   deleteVoiceConversation,
 } from '../../../api';
 
-function VoiceDashboardModular() {
+const formatTimestamp = (value) => {
+  if (!value) return '—';
+  try {
+    const date = new Date(value);
+    const now = new Date();
+    const sameDay = date.toDateString() === now.toDateString();
+    if (sameDay) {
+      return date.toLocaleTimeString();
+    }
+    return date.toLocaleDateString();
+  } catch (e) {
+    return value;
+  }
+};
+
+export default function VoiceDashboardModular() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Conversations list state
   const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [renameOpen, setRenameOpen] = useState(false);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
   const [renameTarget, setRenameTarget] = useState(null);
-  const [newName, setNewName] = useState('');
+  const [renameValue, setRenameValue] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Load conversations list
   const fetchConversations = useCallback(async () => {
+    setConversationsLoading(true);
     try {
       const res = await listVoiceConversations();
-      const sorted = (res.data || []).sort((a, b) => {
-        return new Date(b.updated_at) - new Date(a.updated_at);
-      });
-      setConversations(sorted);
+      const convs = res.data ?? [];
+      setConversations(convs);
 
-      // Auto-navigate to most recent if no conversation selected
-      if (!conversationId && sorted.length > 0) {
-        const mostRecent = sorted[0];
+      // Auto-select most recent conversation if no conversation is currently selected
+      if (!conversationId && convs.length > 0) {
+        const mostRecent = convs.reduce((latest, conv) => {
+          const latestDate = new Date(latest.updated_at || latest.created_at || 0);
+          const convDate = new Date(conv.updated_at || conv.created_at || 0);
+          return convDate > latestDate ? conv : latest;
+        }, convs[0]);
+
         if (mostRecent?.id) {
-          navigate(`/voice-modular/${mostRecent.id}`, { replace: true });
+          navigate(`/voice/${mostRecent.id}`, { replace: true });
         }
       }
     } catch (err) {
       console.error('Failed to load conversations', err);
     } finally {
-      setLoading(false);
+      setConversationsLoading(false);
     }
   }, [conversationId, navigate]);
 
@@ -67,149 +97,209 @@ function VoiceDashboardModular() {
   }, [fetchConversations]);
 
   const handleCreate = async () => {
+    setIsCreating(true);
     try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const name = `Conversation ${timestamp}`;
-      const res = await createVoiceConversation(name);
+      const res = await createVoiceConversation({});
       const newConv = res.data;
       if (newConv?.id) {
-        navigate(`/voice-modular/${newConv.id}`);
+        navigate(`/voice/${newConv.id}`);
         await fetchConversations();
       }
     } catch (err) {
       console.error('Failed to create conversation', err);
+    } finally {
+      setIsCreating(false);
     }
   };
 
-  const handleRename = (conv) => {
+  const openRenameDialog = (conv) => {
     setRenameTarget(conv);
-    setNewName(conv.name || '');
-    setRenameOpen(true);
+    setRenameValue(conv?.name || '');
   };
 
-  const handleRenameConfirm = async () => {
-    if (!renameTarget || !newName.trim()) return;
+  const handleRename = async () => {
+    if (!renameTarget?.id) return;
     try {
-      await updateVoiceConversation(renameTarget.id, { name: newName.trim() });
-      setRenameOpen(false);
+      await updateVoiceConversation(renameTarget.id, { name: renameValue });
       setRenameTarget(null);
-      setNewName('');
+      setRenameValue('');
       await fetchConversations();
     } catch (err) {
       console.error('Failed to rename conversation', err);
     }
   };
 
-  const handleDelete = async (conv) => {
-    if (!window.confirm(`Delete conversation "${conv.name || conv.id}"?`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) return;
     try {
-      const deleteTarget = conv;
       await deleteVoiceConversation(deleteTarget.id);
+      setDeleteTarget(null);
       await fetchConversations();
       if (deleteTarget.id === conversationId) {
-        navigate('/voice-modular');
+        navigate('/voice');
       }
     } catch (err) {
       console.error('Failed to delete conversation', err);
     }
   };
 
-  return (
-    <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* Left Sidebar - Conversation List */}
-      <Box
-        sx={{
-          width: 280,
-          height: '100%',
-          bgcolor: 'background.default',
-          borderRight: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <Box
-          sx={{
-            p: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Typography variant="h6">Voice (Modular)</Typography>
-          <Tooltip title="Create new conversation">
-            <IconButton size="small" onClick={handleCreate}>
-              <AddIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-
-        <List sx={{ flexGrow: 1, overflowY: 'auto', py: 0 }}>
-          {loading ? (
-            <ListItem>
-              <ListItemText primary="Loading..." />
-            </ListItem>
-          ) : conversations.length === 0 ? (
-            <ListItem>
-              <ListItemText
-                primary="No conversations"
-                secondary="Click + to create one"
-              />
-            </ListItem>
-          ) : (
-            conversations.map((conv) => (
-              <ListItem
-                key={conv.id}
-                disablePadding
-                secondaryAction={
-                  <Box>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRename(conv);
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(conv);
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                }
+  // Extract conversation list content for reuse in drawer
+  const ConversationListContent = (
+    <>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Voice
+        </Typography>
+        <IconButton size="small" style={{ marginLeft: 'auto' }} onClick={handleCreate} disabled={isCreating} title="New conversation">
+          <AddIcon />
+        </IconButton>
+      </Box>
+      <Divider />
+      <List disablePadding>
+          {conversations.map((conv) => (
+            <ListItem
+              key={conv.id}
+              disablePadding
+              secondaryAction={
+                <Box>
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    onClick={() => openRenameDialog(conv)}
+                    title="Rename"
+                  >
+                    <EditIcon fontSize="inherit" />
+                  </IconButton>
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    color="error"
+                    onClick={() => setDeleteTarget(conv)}
+                    title="Delete"
+                  >
+                    <DeleteIcon fontSize="inherit" />
+                  </IconButton>
+                </Box>
+              }
+            >
+              <ListItemButton
+                component={RouterLink}
+                to={`/voice/${conv.id}`}
+                selected={conv.id === conversationId}
+                sx={{
+                  '&.Mui-selected': {
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(144, 202, 249, 0.16)'
+                        : 'rgba(63, 81, 181, 0.08)',
+                    borderLeft: 3,
+                    borderColor: 'primary.main',
+                  },
+                }}
               >
-                <ListItemButton
-                  selected={conv.id === conversationId}
-                  component={RouterLink}
-                  to={`/voice-modular/${conv.id}`}
-                  sx={{ pr: 10 }}
-                >
-                  <ListItemText
-                    primary={conv.name || conv.id}
-                    secondary={new Date(conv.updated_at).toLocaleString()}
-                    primaryTypographyProps={{
-                      noWrap: true,
-                      fontSize: '0.9rem',
-                    }}
-                    secondaryTypographyProps={{
-                      noWrap: true,
-                      fontSize: '0.75rem',
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            ))
+                <ListItemText
+                  primary={conv.name || `Conversation ${conv.id.slice(0, 8)}`}
+                  secondary={formatTimestamp(conv.updated_at)}
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: conv.id === conversationId ? 600 : 400,
+                    noWrap: true,
+                  }}
+                  secondaryTypographyProps={{
+                    fontSize: '0.75rem',
+                  }}
+                  sx={{ pr: 8 }}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+          {conversations.length === 0 && !conversationsLoading && (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                No conversations yet
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={handleCreate}
+                sx={{ mt: 2 }}
+              >
+                Create one
+              </Button>
+            </Box>
           )}
         </List>
-      </Box>
+      </>
+    );
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        height: 'calc(100vh - 64px)',
+        width: '100%',
+        position: 'fixed',
+        left: 0,
+        top: 64,
+        overflow: 'hidden',
+        bgcolor: 'background.default',
+      }}
+    >
+      {/* Mobile: Hamburger menu button */}
+      {isMobile && (
+        <IconButton
+          onClick={() => setDrawerOpen(true)}
+          sx={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            zIndex: 1201,
+            bgcolor: 'background.paper',
+            boxShadow: 2,
+            '&:hover': { bgcolor: 'action.hover' }
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
+
+      {/* Mobile: Drawer for conversation list */}
+      {isMobile && (
+        <Drawer
+          anchor="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: '85%',
+              maxWidth: 350,
+              bgcolor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+            },
+          }}
+        >
+          {ConversationListContent}
+        </Drawer>
+      )}
+
+      {/* Desktop: Left Panel - Conversations List */}
+      {!isMobile && (
+        <Box
+          sx={{
+            width: '20%',
+            height: '100%',
+            bgcolor: (theme) =>
+              theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+            borderRight: 1,
+            borderColor: 'divider',
+            overflowY: 'auto',
+            flexShrink: 0,
+          }}
+        >
+          {ConversationListContent}
+        </Box>
+      )}
 
       {/* Main Content - Voice Assistant */}
       <Box
@@ -240,30 +330,43 @@ function VoiceDashboardModular() {
       </Box>
 
       {/* Rename Dialog */}
-      <Dialog open={renameOpen} onClose={() => setRenameOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Rename Conversation</DialogTitle>
+      <Dialog open={Boolean(renameTarget)} onClose={() => setRenameTarget(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Rename conversation</DialogTitle>
         <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Choose a descriptive title to make this session easy to find later.
+          </DialogContentText>
           <TextField
             autoFocus
             fullWidth
-            label="Conversation Name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRenameConfirm();
-            }}
-            sx={{ mt: 2 }}
+            label="Conversation name"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRenameOpen(false)}>Cancel</Button>
-          <Button onClick={handleRenameConfirm} variant="contained">
-            Rename
+          <Button onClick={() => setRenameTarget(null)}>Cancel</Button>
+          <Button onClick={handleRename} variant="contained" disabled={!renameValue.trim()}>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)}>
+        <DialogTitle>Delete conversation</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will remove the conversation history permanently. This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button onClick={handleDelete} color="error" variant="contained">
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 }
-
-export default VoiceDashboardModular;
