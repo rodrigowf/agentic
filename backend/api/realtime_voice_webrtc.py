@@ -4,6 +4,7 @@ WebRTC bridge between the browser and OpenAI Realtime (backend-controlled)
 """
 
 import asyncio
+import json
 import logging
 import os
 import uuid
@@ -13,9 +14,10 @@ from typing import Dict, Optional
 import numpy as np
 from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
 from av import AudioFrame, AudioResampler
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, WebSocket
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+import aiohttp
 
 from .openai_webrtc_client import OpenAIWebRTCClient, wait_for_ice_gathering_complete
 
@@ -32,6 +34,71 @@ except ImportError:  # pragma: no cover - fallback path
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+# ============================================================================
+# Tool Definitions for OpenAI Realtime API
+# ============================================================================
+
+REALTIME_TOOLS = [
+    {
+        "type": "function",
+        "name": "send_to_nested",
+        "description": "Send a user message to the nested agents team via WebSocket. Use this when the user wants to perform complex tasks that require multiple agents working together.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "The user message or task to send to the nested agents team"
+                }
+            },
+            "required": ["text"]
+        }
+    },
+    {
+        "type": "function",
+        "name": "send_to_claude_code",
+        "description": "Send a self-editing instruction to Claude Code. Use this when the user wants to modify code, add features, or refactor the codebase.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "The instruction for Claude Code to execute"
+                }
+            },
+            "required": ["text"]
+        }
+    },
+    {
+        "type": "function",
+        "name": "pause",
+        "description": "Pause the current nested agents conversation. Use this when the user wants to stop the current task.",
+        "parameters": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "type": "function",
+        "name": "reset",
+        "description": "Reset the nested agents team conversation state. Use this when the user wants to start fresh or clear the current context.",
+        "parameters": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "type": "function",
+        "name": "pause_claude_code",
+        "description": "Pause or interrupt the currently running Claude Code task. Use this when the user wants to stop Claude Code.",
+        "parameters": {
+            "type": "object",
+            "properties": {}
+        }
+    }
+]
 
 
 class BridgeOffer(BaseModel):
@@ -154,11 +221,22 @@ class BridgeSession:
         self.system_prompt = system_prompt
         self.model = model or "gpt-realtime"  # Default if not specified
 
+        # Browser WebRTC connection
         self.browser_pc = RTCPeerConnection()
         self.browser_audio = AudioFrameSourceTrack()
         self.browser_audio_task: Optional[asyncio.Task] = None
 
+        # OpenAI WebRTC client
         self.openai_client: Optional[OpenAIWebRTCClient] = None
+
+        # WebSocket connections for nested agents and Claude Code
+        self.nested_ws: Optional[aiohttp.ClientWebSocketResponse] = None
+        self.claude_code_ws: Optional[aiohttp.ClientWebSocketResponse] = None
+        self.nested_ws_task: Optional[asyncio.Task] = None
+        self.claude_code_ws_task: Optional[asyncio.Task] = None
+
+        # WebSocket configuration
+        self.backend_base_url = os.getenv("BACKEND_WS_URL", "ws://localhost:8000")
 
         self.browser_pc.onconnectionstatechange = self._on_browser_state_change
 
@@ -297,13 +375,298 @@ class BridgeSession:
         )
 
     async def handle_function_call(self, event: Dict):
-        """Handle function calls emitted by the Realtime API (stub)."""
+        """Handle function calls emitted by the Realtime API."""
+        call_id = event.get("call_id")
+        tool_name = event.get("name")
+        arguments_str = event.get("arguments", "{}")
+
+        try:
+            arguments = json.loads(arguments_str) if isinstance(arguments_str, str) else arguments_str
+        except json.JSONDecodeError:
+            logger.error(f"[Tool Call] Failed to parse arguments: {arguments_str}")
+            arguments = {}
+
+        logger.info(f"[Tool Call] Executing: {tool_name} with args: {arguments}")
+
+        # Record the function call
         await _append_and_broadcast(
             self.conversation_id,
-            {"type": "function_call", "event": event},
+            {"type": "function_call", "tool": tool_name, "arguments": arguments, "call_id": call_id},
             source="voice",
             event_type="function_call",
         )
+
+        # Execute the tool
+        try:
+            result = await self.execute_tool_call(call_id, tool_name, arguments)
+        except Exception as exc:
+            logger.error(f"[Tool Call] Error executing {tool_name}: {exc}")
+            result = {"success": False, "error": str(exc)}
+
+        # Send result back to OpenAI
+        if self.openai_client and call_id:
+            await self.openai_client.send_function_call_result(call_id, result)
+
+        # Record the result
+        await _append_and_broadcast(
+            self.conversation_id,
+            {"type": "function_result", "tool": tool_name, "result": result, "call_id": call_id},
+            source="voice",
+            event_type="function_result",
+        )
+
+    async def execute_tool_call(self, call_id: str, tool_name: str, arguments: Dict) -> Dict:
+        """Execute a tool call and return the result."""
+        if tool_name == "send_to_nested":
+            return await self._tool_send_to_nested(arguments.get("text", ""))
+        elif tool_name == "send_to_claude_code":
+            return await self._tool_send_to_claude_code(arguments.get("text", ""))
+        elif tool_name == "pause":
+            return await self._tool_pause()
+        elif tool_name == "reset":
+            return await self._tool_reset()
+        elif tool_name == "pause_claude_code":
+            return await self._tool_pause_claude_code()
+        else:
+            return {"success": False, "error": f"Unknown tool: {tool_name}"}
+
+    # --------------------------------------------
+    # Tool execution methods
+    # --------------------------------------------
+    async def _tool_send_to_nested(self, text: str) -> Dict:
+        """Send a message to the nested agents team."""
+        if not text.strip():
+            return {"success": False, "error": "Empty message"}
+
+        if not self.nested_ws or self.nested_ws.closed:
+            return {"success": False, "error": "Nested WebSocket not connected"}
+
+        try:
+            await self.nested_ws.send_json({
+                "type": "user_message",
+                "data": text
+            })
+            logger.info(f"[Tool] Sent to nested agents: {text[:100]}...")
+            return {"success": True, "message": f"Sent to nested agents: {text[:100]}..."}
+        except Exception as exc:
+            logger.error(f"[Tool] Failed to send to nested agents: {exc}")
+            return {"success": False, "error": str(exc)}
+
+    async def _tool_send_to_claude_code(self, text: str) -> Dict:
+        """Send a message to Claude Code."""
+        if not text.strip():
+            return {"success": False, "error": "Empty message"}
+
+        if not self.claude_code_ws or self.claude_code_ws.closed:
+            return {"success": False, "error": "Claude Code WebSocket not connected"}
+
+        try:
+            await self.claude_code_ws.send_json({
+                "type": "user_message",
+                "data": text
+            })
+            logger.info(f"[Tool] Sent to Claude Code: {text[:100]}...")
+            return {"success": True, "message": f"Sent to Claude Code: {text[:100]}..."}
+        except Exception as exc:
+            logger.error(f"[Tool] Failed to send to Claude Code: {exc}")
+            return {"success": False, "error": str(exc)}
+
+    async def _tool_pause(self) -> Dict:
+        """Pause the nested agents conversation."""
+        if not self.nested_ws or self.nested_ws.closed:
+            return {"success": False, "error": "Nested WebSocket not connected"}
+
+        try:
+            await self.nested_ws.send_json({
+                "type": "control",
+                "action": "pause"
+            })
+            logger.info("[Tool] Paused nested agents")
+            return {"success": True, "message": "Nested agents paused"}
+        except Exception as exc:
+            logger.error(f"[Tool] Failed to pause nested agents: {exc}")
+            return {"success": False, "error": str(exc)}
+
+    async def _tool_reset(self) -> Dict:
+        """Reset the nested agents conversation."""
+        if not self.nested_ws or self.nested_ws.closed:
+            return {"success": False, "error": "Nested WebSocket not connected"}
+
+        try:
+            await self.nested_ws.send_json({
+                "type": "control",
+                "action": "reset"
+            })
+            logger.info("[Tool] Reset nested agents")
+            return {"success": True, "message": "Nested agents reset"}
+        except Exception as exc:
+            logger.error(f"[Tool] Failed to reset nested agents: {exc}")
+            return {"success": False, "error": str(exc)}
+
+    async def _tool_pause_claude_code(self) -> Dict:
+        """Pause Claude Code."""
+        if not self.claude_code_ws or self.claude_code_ws.closed:
+            return {"success": False, "error": "Claude Code WebSocket not connected"}
+
+        try:
+            await self.claude_code_ws.send_json({
+                "type": "control",
+                "action": "pause"
+            })
+            logger.info("[Tool] Paused Claude Code")
+            return {"success": True, "message": "Claude Code paused"}
+        except Exception as exc:
+            logger.error(f"[Tool] Failed to pause Claude Code: {exc}")
+            return {"success": False, "error": str(exc)}
+
+    # --------------------------------------------
+    # WebSocket connection handlers
+    # --------------------------------------------
+    async def _connect_nested_websocket(self):
+        """Connect to the nested agents WebSocket."""
+        try:
+            ws_url = f"{self.backend_base_url}/api/runs/{self.agent_name}"
+            logger.info(f"[WebSocket] Connecting to nested agents at {ws_url}")
+
+            async with aiohttp.ClientSession() as session:
+                self.nested_ws = await session.ws_connect(ws_url)
+                logger.info("[WebSocket] Connected to nested agents")
+
+                # Start listening task
+                self.nested_ws_task = asyncio.create_task(self._listen_nested_websocket())
+        except Exception as exc:
+            logger.error(f"[WebSocket] Failed to connect to nested agents: {exc}")
+            self.nested_ws = None
+
+    async def _connect_claude_code_websocket(self):
+        """Connect to the Claude Code WebSocket."""
+        try:
+            ws_url = f"{self.backend_base_url}/api/runs/ClaudeCode"
+            logger.info(f"[WebSocket] Connecting to Claude Code at {ws_url}")
+
+            async with aiohttp.ClientSession() as session:
+                self.claude_code_ws = await session.ws_connect(ws_url)
+                logger.info("[WebSocket] Connected to Claude Code")
+
+                # Start listening task
+                self.claude_code_ws_task = asyncio.create_task(self._listen_claude_code_websocket())
+        except Exception as exc:
+            logger.error(f"[WebSocket] Failed to connect to Claude Code: {exc}")
+            self.claude_code_ws = None
+
+    async def _listen_nested_websocket(self):
+        """Listen for messages from nested agents and forward to voice."""
+        if not self.nested_ws:
+            return
+
+        try:
+            async for msg in self.nested_ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    try:
+                        event = json.loads(msg.data)
+                        await self._handle_nested_message(event)
+                    except json.JSONDecodeError:
+                        logger.error(f"[WebSocket] Invalid JSON from nested agents: {msg.data}")
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    logger.error(f"[WebSocket] Nested agents error: {self.nested_ws.exception()}")
+                    break
+        except asyncio.CancelledError:
+            logger.info("[WebSocket] Nested agents listener cancelled")
+        except Exception as exc:
+            logger.error(f"[WebSocket] Error listening to nested agents: {exc}")
+
+    async def _listen_claude_code_websocket(self):
+        """Listen for messages from Claude Code and forward to voice."""
+        if not self.claude_code_ws:
+            return
+
+        try:
+            async for msg in self.claude_code_ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    try:
+                        event = json.loads(msg.data)
+                        await self._handle_claude_code_message(event)
+                    except json.JSONDecodeError:
+                        logger.error(f"[WebSocket] Invalid JSON from Claude Code: {msg.data}")
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    logger.error(f"[WebSocket] Claude Code error: {self.claude_code_ws.exception()}")
+                    break
+        except asyncio.CancelledError:
+            logger.info("[WebSocket] Claude Code listener cancelled")
+        except Exception as exc:
+            logger.error(f"[WebSocket] Error listening to Claude Code: {exc}")
+
+    async def _handle_nested_message(self, event: Dict):
+        """Process and forward nested agent events to voice."""
+        event_type = event.get("type", "").lower()
+
+        # Format message based on event type
+        message = None
+        if event_type == "textmessage":
+            agent = event.get("data", {}).get("source", "Agent")
+            content = event.get("data", {}).get("content", "")
+            message = f"[TEAM {agent}] {content}"
+
+        elif event_type == "toolcallexecutionevent":
+            tool_name = event.get("data", {}).get("name", "Tool")
+            result = event.get("data", {}).get("result", "")
+            # Truncate long results
+            result_str = str(result)[:200] + ("..." if len(str(result)) > 200 else "")
+            message = f"[TEAM {tool_name}] {result_str}"
+
+        elif event_type == "taskresult":
+            outcome = event.get("data", {}).get("outcome", "completed")
+            summary = event.get("data", {}).get("message", "")
+            message = f"[TEAM] Task {outcome}: {summary}"
+
+        # Forward to OpenAI for voice narration
+        if message and self.openai_client:
+            logger.info(f"[Event Forward] {message[:100]}...")
+            await self.openai_client.forward_message_to_voice("system", message)
+
+        # Also broadcast to conversation store
+        if message:
+            await _append_and_broadcast(
+                self.conversation_id,
+                {"type": "nested_event", "event_type": event_type, "message": message},
+                source="nested_agent",
+                event_type="nested_event",
+            )
+
+    async def _handle_claude_code_message(self, event: Dict):
+        """Process and forward Claude Code events to voice."""
+        event_type = event.get("type", "").lower()
+
+        # Format message
+        message = None
+        if event_type == "textmessage":
+            content = event.get("data", {}).get("content", "")
+            message = f"[CODE ClaudeCode] {content}"
+
+        elif event_type == "toolcallexecutionevent":
+            tool_name = event.get("data", {}).get("name", "Tool")
+            result = event.get("data", {}).get("result", "")
+            result_str = str(result)[:200] + ("..." if len(str(result)) > 200 else "")
+            message = f"[CODE {tool_name}] {result_str}"
+
+        elif event_type == "taskresult":
+            outcome = event.get("data", {}).get("outcome", "completed")
+            summary = event.get("data", {}).get("message", "")
+            message = f"[CODE] Task {outcome}: {summary}"
+
+        # Forward to OpenAI for voice narration
+        if message and self.openai_client:
+            logger.info(f"[Event Forward] {message[:100]}...")
+            await self.openai_client.forward_message_to_voice("system", message)
+
+        # Also broadcast to conversation store
+        if message:
+            await _append_and_broadcast(
+                self.conversation_id,
+                {"type": "claude_code_event", "event_type": event_type, "message": message},
+                source="claude_code",
+                event_type="claude_code_event",
+            )
 
     async def send_text(self, text: str):
         if not text.strip():
