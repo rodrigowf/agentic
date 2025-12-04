@@ -5,9 +5,15 @@ import MenuIcon from '@mui/icons-material/Menu';
 import VoiceConfigEditor from '../components/VoiceConfigEditor';
 import useTVNavigation from '../hooks/useTVNavigation';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import { getVoiceConversation, appendVoiceConversationEvent, connectVoiceConversationStream } from '../../../api';
-import { getHttpBase, getWsUrl } from '../../../utils/urlBuilder';
-import { WebRTCPeerConnection } from '../../../utils/webrtcHelper';
+import {
+  getVoiceConversation,
+  appendVoiceConversationEvent,
+  connectVoiceConversationStream,
+  startVoiceWebRTCBridge,
+  stopVoiceWebRTCBridge,
+  sendVoiceWebRTCText
+} from '../../../api';
+import { getWsUrl } from '../../../utils/urlBuilder';
 import { truncateText, safeStringify, formatTimestamp } from '../utils/helpers';
 
 // Import layouts
@@ -62,8 +68,8 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   // ============================================
   // Refs
   // ============================================
-  // WebSocket refs
-  const wsRef = useRef(null); // Pipecat WebSocket connection
+  // Connection refs
+  const peerConnectionRef = useRef(null);
   const nestedWsRef = useRef(null);
   const [sharedNestedWs, setSharedNestedWs] = useState(null);
   const claudeCodeWsRef = useRef(null);
@@ -72,11 +78,8 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
 
   // Audio refs
   const micStreamRef = useRef(null);
-  const audioContextRef = useRef(null);
-  const audioProcessorRef = useRef(null);
-  const playbackBufferRef = useRef([]);
-  const isPlayingRef = useRef(false);
-  const audioRef = useRef(null); // Not used in Pipecat, kept for compatibility
+  const fallbackAudioContextRef = useRef(null);
+  const audioRef = useRef(null);
 
   // Event tracking refs
   const toolCallsRef = useRef({});
@@ -86,15 +89,22 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   const runCompletedRef = useRef(false);
 
   // ============================================
-  // Helper: Record Event (DISABLED - Backend handles event recording)
+  // Helper: Record Event (store in voice conversation feed)
   // ============================================
   const recordEvent = useCallback(
     async (source, type, payload) => {
-      // Backend WebRTC records all events automatically via on_event_callback
-      // No need to record from frontend
-      console.log(`[Event] ${source}:${type}`, payload);
+      if (!conversationId) return;
+      try {
+        await appendVoiceConversationEvent(conversationId, {
+          source,
+          type,
+          payload,
+        });
+      } catch (err) {
+        console.error('Failed to record event', err);
+      }
     },
-    []
+    [conversationId]
   );
 
   // ============================================
@@ -356,360 +366,209 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   );
 
   // ============================================
-  // Audio Conversion Utilities (Pipecat WebSocket)
+  // WebRTC Bridge (backend-controlled)
   // ============================================
-
-  /**
-   * Convert Float32Array (-1.0 to 1.0) to PCM16 Int16Array
-   */
-  const float32ToPCM16 = useCallback((float32Array) => {
-    const pcm16 = new Int16Array(float32Array.length);
-    for (let i = 0; i < float32Array.length; i++) {
-      const s = Math.max(-1, Math.min(1, float32Array[i]));
-      pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-    }
-    return pcm16;
-  }, []);
-
-  /**
-   * Convert PCM16 Int16Array to Float32Array (-1.0 to 1.0)
-   */
-  const pcm16ToFloat32 = useCallback((pcm16Array) => {
-    const float32 = new Float32Array(pcm16Array.length);
-    for (let i = 0; i < pcm16Array.length; i++) {
-      float32[i] = pcm16Array[i] / (pcm16Array[i] < 0 ? 0x8000 : 0x7FFF);
-    }
-    return float32;
-  }, []);
-
-  // ============================================
-  // Audio Playback System (Pipecat WebSocket)
-  // ============================================
-
-  /**
-   * Play queued audio buffers sequentially
-   */
-  const playNextBuffer = useCallback(() => {
-    if (isSpeakerMuted || !audioContextRef.current || isPlayingRef.current) return;
-
-    if (playbackBufferRef.current.length === 0) {
-      isPlayingRef.current = false;
-      return;
-    }
-
-    isPlayingRef.current = true;
-    const pcm16 = playbackBufferRef.current.shift();
-
+  const ensureMicrophoneStream = useCallback(async () => {
     try {
-      // Convert PCM16 to Float32
-      const float32 = pcm16ToFloat32(pcm16);
-
-      // Create audio buffer
-      const audioBuffer = audioContextRef.current.createBuffer(
-        1, // mono
-        float32.length,
-        24000 // OpenAI uses 24kHz
-      );
-      audioBuffer.getChannelData(0).set(float32);
-
-      // Create source and play
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-
-      source.onended = () => {
-        isPlayingRef.current = false;
-        playNextBuffer(); // Play next buffer
-      };
-
-      source.start();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setNoMicrophoneMode(false);
+      return stream;
     } catch (err) {
-      console.error('[Audio] Error playing audio:', err);
-      isPlayingRef.current = false;
-      playNextBuffer(); // Try next buffer
+      console.warn('[Voice] No microphone available, using silent track', err);
+      setNoMicrophoneMode(true);
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0;
+      oscillator.connect(gainNode);
+      const destination = ctx.createMediaStreamDestination();
+      gainNode.connect(destination);
+      oscillator.start();
+      fallbackAudioContextRef.current = ctx;
+      return destination.stream;
     }
-  }, [isSpeakerMuted, pcm16ToFloat32]);
+  }, []);
 
-  /**
-   * Queue audio buffer for playback
-   */
-  const queueAudio = useCallback((pcm16Array) => {
-    playbackBufferRef.current.push(pcm16Array);
-    playNextBuffer();
-  }, [playNextBuffer]);
-
-  // ============================================
-  // Start Session (Pipecat WebSocket Implementation)
-  // ============================================
-  const startSession = async () => {
-    if (isRunning) return;
-    setIsRunning(true);
-    setIsMuted(true); // Start muted by default
-    setError(null);
-
-    try {
-      const agentName = voiceConfig.agentName || 'MainConversation';
-      console.log('[PipecatWS] Starting Pipecat WebSocket session...');
-
-      // Create audio context
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)({
-        sampleRate: 24000 // OpenAI Realtime uses 24kHz
+  const attachRemoteAudio = useCallback((stream) => {
+    if (!audioRef.current) return;
+    audioRef.current.srcObject = stream;
+    audioRef.current.muted = isSpeakerMuted;
+    const playPromise = audioRef.current.play();
+    if (playPromise?.catch) {
+      playPromise.catch((err) => {
+        console.warn('[Voice] Failed to start remote audio playback', err);
       });
-      audioContextRef.current = audioContext;
-
-      // Try to get microphone
-      let micStream = null;
-      let hasMicrophone = false;
-      try {
-        micStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: 1,
-            sampleRate: 24000,
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-        micStreamRef.current = micStream;
-        hasMicrophone = true;
-        setNoMicrophoneMode(false);
-        console.log('[PipecatWS] Desktop microphone acquired');
-
-        // Mute by default
-        micStream.getAudioTracks().forEach(track => track.enabled = false);
-      } catch (micError) {
-        console.warn('[PipecatWS] No microphone available:', micError.message);
-        setNoMicrophoneMode(true);
-        hasMicrophone = false;
-        // Create silent stream
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0;
-        oscillator.connect(gainNode);
-        const silentDestination = audioContext.createMediaStreamDestination();
-        gainNode.connect(silentDestination);
-        oscillator.start();
-        micStream = silentDestination.stream;
-        micStreamRef.current = micStream;
-      }
-
-      // Create WebSocket connection
-      // Note: getWsUrl already adds '/api', so we pass '/realtime/pipecat-simple/ws/...' not '/api/realtime/...'
-      // Using simple router which directly proxies to OpenAI without Pipecat pipeline
-      const wsUrl = getWsUrl(`/realtime/pipecat-simple/ws/${conversationId}?voice=${voiceConfig.voice || 'alloy'}&agent_name=${agentName}`);
-      console.log('[PipecatWS] Connecting to:', wsUrl);
-
-      const ws = new WebSocket(wsUrl);
-      ws.binaryType = 'arraybuffer';
-      wsRef.current = ws;
-
-      // WebSocket event handlers
-      ws.onopen = () => {
-        console.log('[PipecatWS] Connected to Pipecat backend');
-        setError(null);
-
-        if (hasMicrophone) {
-          // Set up audio capture
-          const source = audioContext.createMediaStreamSource(micStream);
-
-          // Use ScriptProcessor for audio capture (deprecated but widely supported)
-          // TODO: Migrate to AudioWorklet for better performance
-          const processor = audioContext.createScriptProcessor(4096, 1, 1);
-          audioProcessorRef.current = processor;
-
-          processor.onaudioprocess = (e) => {
-            if (ws.readyState === WebSocket.OPEN && !isMuted) {
-              const float32 = e.inputBuffer.getChannelData(0);
-              const pcm16 = float32ToPCM16(float32);
-              ws.send(pcm16.buffer);
-            }
-          };
-
-          source.connect(processor);
-          processor.connect(audioContext.destination);
-        }
-
-        // Record session start
-        void recordEvent('controller', 'session_started', {
-          voice: voiceConfig.voice || 'alloy',
-          agent_name: agentName,
-          transport: 'pipecat_websocket',
-        });
-      };
-
-      ws.onmessage = (event) => {
-        if (event.data instanceof ArrayBuffer) {
-          // Received audio from OpenAI
-          const pcm16 = new Int16Array(event.data);
-          queueAudio(pcm16);
-        } else {
-          // Received text event (function calls, transcriptions, etc.)
-          try {
-            const data = JSON.parse(event.data);
-            console.log('[PipecatWS] Event:', data);
-
-            // Handle nested team events
-            if (data.type === 'nested_event' && data.event) {
-              console.log('[PipecatWS] Nested team event:', data.event);
-              // Forward to nested team messages
-              const nestedEvent = normalizeEvent({
-                ...data.event,
-                source: 'nested',
-                timestamp: new Date().toISOString()
-              });
-              if (nestedEvent) {
-                upsertEvents([nestedEvent]);
-              }
-              return;
-            }
-
-            // Handle Claude Code events
-            if (data.type === 'claude_code_event' && data.event) {
-              console.log('[PipecatWS] Claude Code event:', data.event);
-              // Forward to Claude Code messages
-              const claudeEvent = normalizeEvent({
-                ...data.event,
-                source: 'claude_code',
-                timestamp: new Date().toISOString()
-              });
-              if (claudeEvent) {
-                upsertEvents([claudeEvent]);
-              }
-              return;
-            }
-
-            // Add to messages for UI display
-            setMessages(prev => [...prev, {
-              ...data,
-              source: data.source || 'pipecat',
-              timestamp: data.timestamp || new Date().toISOString()
-            }]);
-
-            // Handle transcription
-            if (data.type === 'transcription') {
-              setTranscript(data.text || '');
-            }
-          } catch (err) {
-            console.error('[PipecatWS] Failed to parse message:', err);
-          }
-        }
-      };
-
-      ws.onerror = (event) => {
-        console.error('[PipecatWS] WebSocket error:', event);
-        setError('WebSocket connection error');
-      };
-
-      ws.onclose = (event) => {
-        console.log('[PipecatWS] Disconnected:', event.code, event.reason);
-        setIsRunning(false);
-
-        if (!event.wasClean) {
-          setError(`WebSocket closed unexpectedly: ${event.reason || 'Unknown reason'}`);
-        }
-      };
-
-      console.log('[Modular] Session started successfully with Pipecat WebSocket');
-    } catch (err) {
-      console.error('[Modular] Failed to start session:', err);
-      setError(err.message || 'Failed to start session');
-      setIsRunning(false);
     }
-  };
+  }, [isSpeakerMuted]);
 
-  // ============================================
-  // Stop Session
-  // ============================================
-  const stopSession = async () => {
-    console.log('[Modular] Stop session');
+  const stopSession = useCallback(async (skipBackend = false) => {
+    console.log('[Voice] Stop session');
 
-    // Close WebSocket
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+    const pc = peerConnectionRef.current;
+    if (pc) {
+      pc.getSenders().forEach((sender) => sender.track?.stop());
+      pc.getReceivers().forEach((receiver) => receiver.track?.stop());
+      pc.close();
+      peerConnectionRef.current = null;
     }
 
-    // Stop audio processor
-    if (audioProcessorRef.current) {
-      audioProcessorRef.current.disconnect();
-      audioProcessorRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.srcObject = null;
     }
 
-    // Stop microphone
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((track) => track.stop());
       micStreamRef.current = null;
     }
 
-    // Close audio context
-    if (audioContextRef.current) {
-      try { audioContextRef.current.close(); } catch {}
-      audioContextRef.current = null;
+    if (fallbackAudioContextRef.current) {
+      try {
+        fallbackAudioContextRef.current.close();
+      } catch (err) {
+        console.warn('Failed to close fallback audio context', err);
+      }
+      fallbackAudioContextRef.current = null;
     }
 
-    // Clear playback buffer
-    playbackBufferRef.current = [];
-    isPlayingRef.current = false;
+    if (!skipBackend && conversationId) {
+      try {
+        await stopVoiceWebRTCBridge(conversationId);
+      } catch (err) {
+        console.warn('Failed to stop backend bridge', err);
+      }
+    }
 
-    void recordEvent('controller', 'session_stopped', {});
     setIsRunning(false);
     setIsMuted(false);
     setIsSpeakerMuted(false);
     setTranscript('');
-  };
+  }, [conversationId]);
+
+  const startSession = useCallback(async () => {
+    if (isRunning || !conversationId) return;
+    setError(null);
+    let bridgeStarted = false;
+    try {
+      const localStream = await ensureMicrophoneStream();
+      micStreamRef.current = localStream;
+
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      peerConnectionRef.current = pc;
+
+      console.log('='.repeat(60));
+      console.log('[Frontend WebRTC] 🎤 Adding local audio tracks to peer connection');
+      const tracks = localStream.getTracks();
+      console.log(`[Frontend WebRTC] Local stream has ${tracks.length} tracks:`);
+      tracks.forEach((track, idx) => {
+        console.log(`[Frontend WebRTC]   Track ${idx}: kind=${track.kind}, id=${track.id}, enabled=${track.enabled}`);
+        pc.addTrack(track, localStream);
+        console.log(`[Frontend WebRTC]   ✅ Track ${idx} added to peer connection`);
+      });
+      console.log('='.repeat(60));
+
+      pc.ontrack = (event) => {
+        console.log('[Frontend WebRTC] 🔊 Remote track received:', event.track.kind);
+        const remoteStream = event.streams?.[0] || new MediaStream([event.track]);
+        attachRemoteAudio(remoteStream);
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log('[WebRTC Bridge] Connection state:', pc.connectionState);
+        if (pc.connectionState === 'failed') {
+          setError('WebRTC connection failed');
+        }
+      };
+
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
+      await pc.setLocalDescription(offer);
+      console.log('[Frontend WebRTC] ✅ Created offer, local description set');
+      console.log('[Frontend WebRTC] Offer has sendrecv?', offer.sdp.includes('a=sendrecv'));
+      console.log('[Frontend WebRTC] Offer has recvonly?', offer.sdp.includes('a=recvonly'));
+
+      const response = await startVoiceWebRTCBridge({
+        conversation_id: conversationId,
+        offer: offer.sdp,
+        voice: voiceConfig.voice || 'alloy',
+        agent_name: voiceConfig.agentName || 'MainConversation',
+        system_prompt: voiceConfig.systemPromptContent || undefined,
+      });
+
+      const answerSdp = response?.data?.answer;
+      if (!answerSdp) {
+        throw new Error('Invalid SDP answer from backend');
+      }
+      bridgeStarted = true;
+
+      console.log('[Frontend WebRTC] ✅ Received answer from backend');
+      console.log('[Frontend WebRTC] Answer has sendrecv?', answerSdp.includes('a=sendrecv'));
+      console.log('[Frontend WebRTC] Answer has recvonly?', answerSdp.includes('a=recvonly'));
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: answerSdp }));
+      console.log('[Frontend WebRTC] ✅ Remote description (answer) set');
+
+      setIsRunning(true);
+      setIsMuted(false);
+      setIsSpeakerMuted(false);
+    } catch (err) {
+      console.error('[Voice] Failed to start WebRTC bridge', err);
+      setError(err.message || 'Failed to start session');
+      await stopSession(!bridgeStarted);
+    }
+  }, [attachRemoteAudio, conversationId, ensureMicrophoneStream, isRunning, stopSession, voiceConfig]);
 
   // ============================================
   // Toggle Mute
   // ============================================
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
-
-    // Control microphone track enabled state
     if (micStreamRef.current) {
-      micStreamRef.current.getAudioTracks().forEach(track => {
+      micStreamRef.current.getAudioTracks().forEach((track) => {
         track.enabled = !newMuted;
       });
     }
-
-    console.log(`[Modular] Mute toggled: ${newMuted}`);
-  };
+  }, [isMuted]);
 
   // ============================================
   // Toggle Speaker Mute
   // ============================================
-  const toggleSpeakerMute = () => {
+  const toggleSpeakerMute = useCallback(() => {
     const newMuted = !isSpeakerMuted;
     setIsSpeakerMuted(newMuted);
-
-    // Clear playback buffer when muting speaker
-    if (newMuted) {
-      playbackBufferRef.current = [];
-      isPlayingRef.current = false;
+    if (audioRef.current) {
+      audioRef.current.muted = newMuted;
+      if (!newMuted) {
+        const playPromise = audioRef.current.play();
+        if (playPromise?.catch) {
+          playPromise.catch((err) => console.warn('Failed to resume audio', err));
+        }
+      }
     }
-
-    console.log(`[Audio] Speaker ${newMuted ? 'muted' : 'unmuted'}`);
-  };
+  }, [isSpeakerMuted]);
 
   // ============================================
   // Send Text to Voice
   // ============================================
-  const sendText = () => {
-    if (!transcript.trim()) return;
-    if (dataChannelRef.current?.readyState === 'open') {
-      try {
-        dataChannelRef.current.send(JSON.stringify({
-          type: 'conversation.item.create',
-          item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: transcript }] },
-        }));
-        dataChannelRef.current.send(JSON.stringify({ type: 'response.create' }));
-        void recordEvent('user', 'voice_user_message', { text: transcript });
-        setTranscript('');
-      } catch (err) {
-        console.error('[Send] Failed to send text:', err);
-      }
+  const sendText = useCallback(async () => {
+    const text = transcript.trim();
+    if (!text) return;
+    if (!conversationId) {
+      setError('Missing conversation id.');
+      return;
     }
-  };
+    if (!isRunning) {
+      setError('Start the voice session before sending text.');
+      return;
+    }
+    try {
+      setError(null);
+      await sendVoiceWebRTCText(conversationId, { text });
+      setTranscript('');
+    } catch (err) {
+      console.error('[Voice] Failed to send text over WebRTC bridge', err);
+      const detail = err?.response?.data?.detail;
+      setError(detail || err.message || 'Failed to send text');
+    }
+  }, [conversationId, isRunning, transcript, sendVoiceWebRTCText]);
 
   // ============================================
   // Send to Nested
@@ -769,7 +628,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     return () => {
       if (isRunning) stopSession();
     };
-  }, [isRunning]);
+  }, [isRunning, stopSession]);
 
   // ============================================
   // Notify Parent

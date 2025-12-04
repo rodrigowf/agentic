@@ -1,0 +1,222 @@
+WebRTC Voice Session Flow Diagram
+===================================
+
+User Action: Click "Start Session"
+    ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Browser (VoiceAssistantModular.js)                          │
+├─────────────────────────────────────────────────────────────┤
+│ 1. Request microphone: getUserMedia({audio: true})          │
+│    → User grants permission                                 │
+│    → MediaStream obtained                                   │
+│                                                             │
+│ 2. Create RTCPeerConnection                                 │
+│    → Configure STUN: stun.l.google.com:19302               │
+│    → Add microphone track to peer connection               │
+│                                                             │
+│ 3. Create SDP offer                                         │
+│    → pc.createOffer()                                       │
+│    → pc.setLocalDescription(offer)                          │
+│    → Wait for ICE gathering                                │
+│                                                             │
+│ 4. Send offer to backend                                    │
+│    → POST /api/realtime/webrtc/bridge                       │
+│    → Body: {conversation_id, offer: sdp, voice: "alloy"}   │
+└─────────────────────────────────────────────────────────────┘
+    ↓ HTTP POST
+┌─────────────────────────────────────────────────────────────┐
+│ Backend (realtime_voice_webrtc.py)                          │
+├─────────────────────────────────────────────────────────────┤
+│ 5. Connect to OpenAI Realtime API first                     │
+│    → OpenAIWebRTCClient.connect()                           │
+│    → Establishes WebRTC with OpenAI                        │
+│    → Returns: OpenAI peer connection                       │
+│                                                             │
+│ 6. Create browser peer connection                           │
+│    → RTCPeerConnection()                                    │
+│    → Add outbound audio track (for OpenAI audio)           │
+│                                                             │
+│ 7. Set remote offer (from browser)                          │
+│    → pc.setRemoteDescription(offer)                         │
+│                                                             │
+│ 8. Create SDP answer                                        │
+│    → pc.createAnswer()                                      │
+│    → pc.setLocalDescription(answer)                         │
+│    → Wait for ICE gathering                                │
+│                                                             │
+│ 9. Start audio forwarding tasks                             │
+│    → Task 1: Browser → OpenAI                              │
+│    → Task 2: OpenAI → Browser                              │
+│                                                             │
+│ 10. Return SDP answer                                       │
+│     → Response: {session_id, answer: sdp}                  │
+└─────────────────────────────────────────────────────────────┘
+    ↓ HTTP Response
+┌─────────────────────────────────────────────────────────────┐
+│ Browser (VoiceAssistantModular.js)                          │
+├─────────────────────────────────────────────────────────────┤
+│ 11. Apply SDP answer                                        │
+│     → pc.setRemoteDescription(answer)                       │
+│                                                             │
+│ 12. ICE negotiation                                         │
+│     → ICE state: new                                       │
+│     → ICE state: checking                                  │
+│     → ICE state: connected ✓                               │
+│                                                             │
+│ 13. Connection established                                  │
+│     → Connection state: connected ✓                        │
+│     → Data channel opens: oai-events                       │
+│     → Audio track received from backend                    │
+└─────────────────────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Audio Flow (Continuous)                                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ User speaks into microphone                                 │
+│     ↓ WebRTC audio track                                   │
+│ Backend receives AudioFrame                                 │
+│     → 480 samples, 24000 Hz mono                           │
+│     ↓ Forward to OpenAI                                    │
+│ OpenAI processes speech                                     │
+│     → input_audio_buffer.speech_started                    │
+│     → input_audio_buffer.committed                         │
+│     → response.created                                     │
+│     ↓ Generate response                                    │
+│ OpenAI sends audio + transcript                             │
+│     → response.audio_transcript.delta: "Hello"             │
+│     → response.audio.delta: <PCM data>                     │
+│     ↓ Forward to browser                                   │
+│ Backend sends AudioFrame to browser                         │
+│     → 480 samples, 24000 Hz mono                           │
+│     ↓ WebRTC audio track                                   │
+│ Browser plays audio                                         │
+│     → HTMLAudioElement plays assistant voice               │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+Data Channel Flow (Continuous)
+================================
+
+Browser sends text message
+    ↓ WebRTC data channel
+Backend receives {"text": "message"}
+    ↓ Create OpenAI event
+OpenAI input_text event
+    → {"type": "conversation.item.create", ...}
+    ↓ Send to OpenAI
+OpenAI processes text
+    → response.created
+    → response.audio_transcript.delta
+    → response.audio.delta
+    ↓ Forward to browser
+Browser receives events
+    → Display in UI
+    → Play audio response
+
+Session Events Flow
+===================
+
+Browser → Backend
+    - session.update (config changes)
+    - input_text (text messages)
+    - function_call_output (tool results)
+
+Backend → Browser (via data channel)
+    - session.created
+    - conversation.item.created
+    - input_audio_buffer.speech_started
+    - input_audio_buffer.speech_stopped
+    - response.created
+    - response.audio_transcript.delta
+    - response.audio.delta
+    - response.done
+    - error
+
+Backend → Database (SQLite)
+    - All events stored in voice_conversations.db
+    - Queryable via API: GET /api/realtime/conversations/{id}
+
+Key Components
+==============
+
+Frontend:
+    - VoiceAssistantModular.js: Main UI and WebRTC setup
+    - RTCPeerConnection: Browser WebRTC API
+    - getUserMedia: Microphone access
+    - HTMLAudioElement: Audio playback
+
+Backend:
+    - realtime_voice_webrtc.py: Bridge controller
+    - openai_webrtc_client.py: OpenAI WebRTC client
+    - aiortc: Python WebRTC implementation
+    - BridgeSession: Session management
+
+OpenAI:
+    - Realtime API: WebRTC endpoint
+    - Speech-to-text: User audio transcription
+    - LLM: Response generation
+    - Text-to-speech: Audio synthesis
+
+Timeline (Typical Session)
+===========================
+
+0.0s  - User clicks "Start Session"
+0.1s  - Microphone permission granted
+0.2s  - SDP offer created
+0.3s  - POST to backend
+0.5s  - Backend connects to OpenAI
+0.7s  - Backend creates answer
+0.8s  - Browser applies answer
+1.0s  - ICE connected ✓
+1.2s  - Audio track received ✓
+1.3s  - Data channel open ✓
+1.5s  - Session ready ✓
+
+[User speaks: "Hello"]
+2.0s  - Audio frames sent to backend
+2.2s  - Backend forwards to OpenAI
+2.5s  - OpenAI: speech_started
+3.0s  - OpenAI: speech_stopped
+3.2s  - OpenAI: response.created
+3.5s  - OpenAI: audio_transcript.delta "Hello"
+3.8s  - OpenAI: audio.delta <PCM>
+4.0s  - Backend forwards to browser
+4.2s  - Browser plays audio
+4.5s  - User hears: "Hello! How can I help you?"
+5.0s  - response.done
+
+Total latency: ~2-3 seconds (typical)
+
+Error States
+============
+
+ICE Failed:
+    - Browser: ICE state "failed"
+    - Cause: Firewall, network issues, STUN unreachable
+    - Fix: Check firewall, try different network
+
+Connection Failed:
+    - Browser: Connection state "failed"
+    - Cause: Backend unreachable, SDP negotiation failed
+    - Fix: Check backend running, verify SDP
+
+No Audio:
+    - Browser: Audio track not received
+    - Cause: Backend not forwarding, OpenAI not connected
+    - Fix: Check backend logs, verify OPENAI_API_KEY
+
+Microphone Denied:
+    - Browser: NotAllowedError
+    - Cause: User denied permission, browser policy
+    - Fix: Allow in browser settings, use HTTPS
+
+Data Channel Closed:
+    - Browser: Data channel state "closed"
+    - Cause: Connection lost, session ended
+    - Fix: Restart session
+
+OpenAI Error:
+    - Backend: openai.error.AuthenticationError
+    - Cause: Invalid API key, quota exceeded
+    - Fix: Check API key, billing status

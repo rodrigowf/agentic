@@ -5,9 +5,10 @@ OpenAI Realtime API WebRTC client using aiortc
 
 import asyncio
 import logging
-from typing import Callable, Optional
+from fractions import Fraction
+from typing import Callable, List, Optional
+
 from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
-from aiortc.contrib.media import MediaRecorder
 import aiohttp
 import json
 import numpy as np
@@ -21,11 +22,15 @@ class OpenAIWebRTCClient:
     def __init__(
         self,
         api_key: str,
-        model: str = "gpt-4o-realtime-preview-2024-12-17",
+        model: str = "gpt-realtime",
         voice: str = "alloy",
         on_audio_callback: Optional[Callable] = None,
         on_function_call_callback: Optional[Callable] = None,
-        on_event_callback: Optional[Callable] = None
+        on_event_callback: Optional[Callable] = None,
+        system_prompt: Optional[str] = None,
+        modalities: Optional[List[str]] = None,
+        enable_server_vad: bool = True,
+        initial_response: Optional[str] = "Inicie a conversa com uma breve saudação e convide a pessoa a falar.",
     ):
         self.api_key = api_key
         self.model = model
@@ -33,11 +38,16 @@ class OpenAIWebRTCClient:
         self.on_audio_callback = on_audio_callback
         self.on_function_call_callback = on_function_call_callback
         self.on_event_callback = on_event_callback
+        self.system_prompt = system_prompt
+        self.modalities = modalities or ["audio", "text"]
+        self.enable_server_vad = enable_server_vad
+        self.initial_response = initial_response
 
         self.pc: Optional[RTCPeerConnection] = None
         self.audio_track: Optional[MediaStreamTrack] = None
         self.data_channel = None
         self.session_id: Optional[str] = None
+        self._data_channel_ready: asyncio.Event = asyncio.Event()
 
     async def connect(self):
         """Establish WebRTC connection to OpenAI"""
@@ -94,11 +104,11 @@ class OpenAIWebRTCClient:
         url = "https://api.openai.com/v1/realtime/sessions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
         data = {
             "model": self.model,
-            "voice": self.voice
+            "voice": self.voice,
         }
 
         async with aiohttp.ClientSession() as session:
@@ -120,6 +130,49 @@ class OpenAIWebRTCClient:
         @self.data_channel.on("open")
         def on_open():
             logger.info(f"!!! DATA CHANNEL OPENED: {self.data_channel.label}")
+            try:
+                session_update = {
+                    "type": "session.update",
+                    "session": {
+                        "voice": self.voice,
+                        "modalities": self.modalities,
+                        # Enable input audio transcription to get user speech transcripts
+                        "input_audio_transcription": {
+                            "model": "whisper-1"
+                        },
+                    },
+                }
+                if self.system_prompt:
+                    session_update["session"]["instructions"] = self.system_prompt
+
+                # Configure turn detection based on enable_server_vad setting
+                # When enabled: Model automatically responds when it detects end of speech
+                # When disabled: Manual response.create events needed (for push-to-talk)
+                if self.enable_server_vad:
+                    # Use server VAD with moderate settings
+                    # threshold: 0.5 (default sensitivity)
+                    # silence_duration_ms: 800 (wait 0.8s of silence before responding)
+                    # create_response: true (automatically respond)
+                    session_update["session"]["turn_detection"] = {
+                        "type": "server_vad",
+                        "threshold": 0.5,
+                        "prefix_padding_ms": 300,
+                        "silence_duration_ms": 800,
+                        "create_response": True
+                    }
+                else:
+                    # Disable automatic responses - requires manual response.create events
+                    session_update["session"]["turn_detection"] = None
+                logger.info(f"!!! Sending session.update with transcription enabled: {json.dumps(session_update, indent=2)}")
+                self.data_channel.send(json.dumps(session_update))
+                if self.initial_response:
+                    initial_response = {
+                        "type": "response.create",
+                        "response": {"instructions": self.initial_response},
+                    }
+                    self.data_channel.send(json.dumps(initial_response))
+            finally:
+                self._data_channel_ready.set()
 
         @self.data_channel.on("close")
         def on_close():
@@ -150,6 +203,9 @@ class OpenAIWebRTCClient:
         offer = await self.pc.createOffer()
         await self.pc.setLocalDescription(offer)
 
+        # Wait for ICE gathering to avoid missing candidates in SDP
+        await wait_for_ice_gathering_complete(self.pc)
+
         # Send offer to OpenAI
         url = f"https://api.openai.com/v1/realtime?model={self.model}"
         headers = {
@@ -167,21 +223,26 @@ class OpenAIWebRTCClient:
 
     async def _handle_audio_track(self, track: MediaStreamTrack):
         """Handle incoming audio from OpenAI"""
+        frame_count = 0
         while True:
             try:
                 frame = await track.recv()
+                frame_count += 1
 
-                # Convert frame to PCM16 and send to callback
+                # Log first frame to debug audio parameters
+                if frame_count == 1:
+                    sr = getattr(frame, "sample_rate", None)
+                    samples = getattr(frame, "samples", None)
+                    format_str = getattr(frame, "format", None)
+                    layout = getattr(frame, "layout", None)
+                    logger.info(f"[OpenAI Audio] First frame: sample_rate={sr}, samples={samples}, format={format_str}, layout={layout}")
+
+                # Forward raw audio frame to callback
                 if self.on_audio_callback:
-                    audio_data = frame.to_ndarray()  # NumPy array
-                    # Convert to PCM16 bytes
-                    pcm16 = (audio_data * 32767).astype(np.int16)
-
-                    # Call callback (handle both sync and async)
                     if asyncio.iscoroutinefunction(self.on_audio_callback):
-                        await self.on_audio_callback(pcm16.tobytes())
+                        await self.on_audio_callback(frame)
                     else:
-                        self.on_audio_callback(pcm16.tobytes())
+                        self.on_audio_callback(frame)
 
             except Exception as e:
                 logger.error(f"Error receiving audio: {e}")
@@ -209,23 +270,89 @@ class OpenAIWebRTCClient:
         elif event_type == "error":
             logger.error(f"OpenAI error: {event}")
 
-    async def send_audio(self, audio_data: bytes):
+    async def send_audio_frame(self, audio_data):
         """Send audio to OpenAI"""
         if self.audio_track:
             await self.audio_track.send(audio_data)
+            # Log first few frames
+            if not hasattr(self, '_sent_frame_count'):
+                self._sent_frame_count = 0
+            self._sent_frame_count += 1
+            if self._sent_frame_count <= 3:
+                logger.info(f"[OpenAI Client] Sent audio frame #{self._sent_frame_count} to OpenAI")
+        else:
+            logger.warning("[OpenAI Client] No audio_track available, cannot send audio to OpenAI")
+
+    async def send_audio(self, audio_data: bytes):
+        """Compatibility wrapper for sending raw PCM bytes"""
+        await self.send_audio_frame(audio_data)
+
+    async def commit_audio_buffer(self):
+        """
+        Manually commit the audio buffer and trigger a response.
+        Used in MANUAL MODE when turn detection is disabled.
+        This tells OpenAI: "User is done speaking, please respond now."
+        """
+        if not self.data_channel or self.data_channel.readyState != "open":
+            logger.warning("[OpenAI Client] Cannot commit audio - data channel not open")
+            return
+
+        logger.info("[OpenAI Client] 🎤 Committing audio buffer (user done speaking)")
+        self.data_channel.send(json.dumps({
+            "type": "input_audio_buffer.commit"
+        }))
+
+        # Immediately request a response
+        self.data_channel.send(json.dumps({
+            "type": "response.create"
+        }))
 
     async def send_function_result(self, call_id: str, result: str):
         """Send function call result to OpenAI"""
-        if self.data_channel:
-            message = {
-                "type": "conversation.item.create",
-                "item": {
-                    "type": "function_call_output",
-                    "call_id": call_id,
-                    "output": json.dumps(result)
-                }
+        if not self.data_channel:
+            return
+
+        payload = {
+            "type": "conversation.item.create",
+            "item": {
+                "type": "function_call_output",
+                "call_id": call_id,
+                "output": json.dumps(result)
             }
-            self.data_channel.send(json.dumps(message))
+        }
+
+        if not self._data_channel_ready.is_set():
+            logger.warning("Data channel not marked ready; sending function result anyway.")
+
+        try:
+            self.data_channel.send(json.dumps(payload))
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error("Failed to send function result over data channel: %s", exc)
+            raise
+
+    async def send_text(self, text: str, timeout: float = 5.0) -> None:
+        """Send a user text message over the Realtime data channel."""
+        if not text:
+            return
+        if not self.data_channel:
+            raise RuntimeError("Data channel is not ready")
+
+        try:
+            await asyncio.wait_for(self._data_channel_ready.wait(), timeout=timeout)
+        except asyncio.TimeoutError as exc:
+            raise RuntimeError("Data channel not ready") from exc
+
+        payloads = [
+            {"type": "conversation.item.create", "item": {"type": "input_text", "text": text}},
+            {"type": "response.create", "response": {"modalities": self.modalities}},
+        ]
+
+        for payload in payloads:
+            try:
+                self.data_channel.send(json.dumps(payload))
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.error("Failed to send payload over data channel: %s", exc)
+                raise
 
     async def close(self):
         """Close connection"""
@@ -238,33 +365,55 @@ class AudioTrack(MediaStreamTrack):
     """Custom audio track for sending audio to OpenAI"""
     kind = "audio"
 
-    def __init__(self):
+    def __init__(self, sample_rate: int = 48000):
         super().__init__()
+        # CRITICAL: OpenAI expects 48000 Hz input audio (despite docs saying 24000 Hz)
+        # Sending 24000 Hz causes OpenAI to interpret it incorrectly
         self.queue = asyncio.Queue()
         self._timestamp = 0
-        self._sample_rate = 24000  # OpenAI uses 24kHz
+        self._sample_rate = sample_rate
 
     async def recv(self):
         """Called by aiortc to get next audio frame"""
-        audio_data = await self.queue.get()
-
-        # Convert bytes to numpy array (PCM16)
-        pcm16 = np.frombuffer(audio_data, dtype=np.int16)
-
-        # Create AudioFrame with s16 format (required by Opus encoder)
-        frame = AudioFrame.from_ndarray(
-            pcm16.reshape(1, -1),  # (channels, samples)
-            format='s16',  # Signed 16-bit (required by Opus encoder)
-            layout='mono'
-        )
-        frame.sample_rate = self._sample_rate
-        frame.pts = self._timestamp
-
-        # Update timestamp
-        self._timestamp += frame.samples
-
+        frame = await self.queue.get()
         return frame
 
-    async def send(self, audio_data: bytes):
-        """Send audio frame"""
-        await self.queue.put(audio_data)
+    def _ensure_frame(self, audio_data) -> AudioFrame:
+        """Normalize incoming audio to AudioFrame with correct timing"""
+        if isinstance(audio_data, AudioFrame):
+            sample_rate = getattr(audio_data, "sample_rate", None) or self._sample_rate
+            array = audio_data.to_ndarray()
+        else:
+            sample_rate = self._sample_rate
+            array = np.frombuffer(audio_data, dtype=np.int16).reshape(1, -1)
+
+        frame = AudioFrame.from_ndarray(array, format="s16", layout="mono")
+        frame.sample_rate = sample_rate
+        frame.time_base = Fraction(1, sample_rate)
+        frame.pts = self._timestamp
+        self._timestamp += frame.samples
+        return frame
+
+    async def send(self, audio_data):
+        """Send audio frame or raw PCM16 bytes"""
+        frame = self._ensure_frame(audio_data)
+        await self.queue.put(frame)
+
+
+async def wait_for_ice_gathering_complete(pc: RTCPeerConnection, timeout: float = 10.0) -> None:
+    """Wait for ICE gathering to complete with a timeout."""
+    if pc.iceGatheringState == "complete":
+        return
+
+    event = asyncio.Event()
+
+    def check_state():
+        if pc.iceGatheringState == "complete":
+            event.set()
+
+    pc.onicegatheringstatechange = check_state
+
+    try:
+        await asyncio.wait_for(event.wait(), timeout=timeout)
+    except asyncio.TimeoutError:
+        logger.warning("ICE gathering timeout reached; proceeding with current SDP")

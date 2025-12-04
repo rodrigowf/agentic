@@ -119,7 +119,19 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
       attachSharedSocket(sharedSocket);
       return;
     }
+
+    // Don't connect if nested mode without a shared socket
+    if (nested && !sharedSocket) {
+      return;
+    }
+
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    // Don't connect if no agent name is defined
+    if (!name) {
+      setError('No agent name provided');
       return;
     }
 

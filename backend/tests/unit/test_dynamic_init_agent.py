@@ -269,9 +269,9 @@ class TestDynamicInitWithMemoryAgent:
         assert agent.name == "Memory"
         assert agent.initialization_function == "memory.initialize_memory_agent"
 
-        # The system message should have placeholder
-        # (initialization happens during __init__ before CURRENT_AGENT is set in this test)
-        assert "{{SHORT_TERM_MEMORY}}" in agent._system_messages[0].content
+        # Initialization populates the memory placeholders immediately
+        assert "{{SHORT_TERM_MEMORY}}" not in agent._system_messages[0].content
+        assert agent._system_messages[0].content.strip()
 
 
 if __name__ == '__main__':

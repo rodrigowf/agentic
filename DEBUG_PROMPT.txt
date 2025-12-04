@@ -1,0 +1,18 @@
+Start an interactive WebRTC voice debugging session for me. Please:
+
+1. Open two terminals and run:
+   - Terminal 1: ./start-backend.sh
+   - Terminal 2: ./start-frontend.sh
+
+2. Wait for both services to be ready (backend on :8000, frontend on :3000)
+
+3. Monitor the logs in real-time and show me:
+   - When backend is ready
+   - When frontend is ready
+   - WebRTC connection events
+   - OpenAI events (transcript deltas, audio frames)
+   - Any errors
+
+4. Tell me when I can open the browser and start speaking
+
+Keep the terminals running and stream important log events to me as they happen. Filter for WebRTC, OpenAI, and error messages. Let me know immediately if anything goes wrong.
