@@ -255,7 +255,7 @@ class BridgeSession:
             raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
 
         # Optional mic debug recording
-        if os.getenv("VOICE_DEBUG_RECORD", "1") == "1":
+        if os.getenv("VOICE_DEBUG_RECORD", "0") == "1":
             debug_dir = "/tmp/agentic-logs"
             os.makedirs(debug_dir, exist_ok=True)
             self.debug_audio_path = os.path.join(
@@ -270,7 +270,7 @@ class BridgeSession:
             api_key=api_key,
             model=self.model,
             voice=self.voice,
-            tools=None,  # ← TEMPORARILY DISABLED FOR TESTING
+            tools=REALTIME_TOOLS,
             on_audio_callback=self.handle_openai_audio,
             on_function_call_callback=self.handle_function_call,
             on_event_callback=self._handle_openai_event,
@@ -891,3 +891,55 @@ async def commit_audio(conversation_id: str):
         event_type="audio_committed",
     )
     return JSONResponse({"status": "committed"})
+
+
+@router.post("/api/realtime/webrtc/bridge/{conversation_id}/send-to-nested")
+async def send_to_nested_endpoint(conversation_id: str, payload: BridgeText):
+    """Send a message to the nested agents team."""
+    session = active_bridges.get(conversation_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Bridge not found")
+
+    try:
+        result = await session._tool_send_to_nested(payload.text)
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to send"))
+
+        await _append_and_broadcast(
+            conversation_id,
+            {"type": "manual_send_to_nested", "text": payload.text},
+            source="controller",
+            event_type="manual_send_to_nested",
+        )
+        return JSONResponse(result)
+    except HTTPException:
+        raise
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Failed to send to nested: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Failed to send to nested: {exc}")
+
+
+@router.post("/api/realtime/webrtc/bridge/{conversation_id}/send-to-claude-code")
+async def send_to_claude_code_endpoint(conversation_id: str, payload: BridgeText):
+    """Send a message to Claude Code."""
+    session = active_bridges.get(conversation_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Bridge not found")
+
+    try:
+        result = await session._tool_send_to_claude_code(payload.text)
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to send"))
+
+        await _append_and_broadcast(
+            conversation_id,
+            {"type": "manual_send_to_claude_code", "text": payload.text},
+            source="controller",
+            event_type="manual_send_to_claude_code",
+        )
+        return JSONResponse(result)
+    except HTTPException:
+        raise
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Failed to send to Claude Code: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Failed to send to Claude Code: {exc}")

@@ -1,4 +1,4 @@
-# WebRTC Voice - Quick Start
+# Voice System - Quick Start
 
 ## Start Services (Two Terminals)
 
@@ -66,4 +66,4 @@ pkill -f "npm start"
 
 ## Full Documentation
 
-See: [docs/WEBRTC_INTERACTIVE_TESTING.md](docs/WEBRTC_INTERACTIVE_TESTING.md)
+See: [VOICE_INTERACTIVE_GUIDE.md](docs/WEBRTC_INTERACTIVE_TESTING.md)

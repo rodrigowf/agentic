@@ -70,10 +70,6 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   // ============================================
   // Connection refs
   const peerConnectionRef = useRef(null);
-  const nestedWsRef = useRef(null);
-  const [sharedNestedWs, setSharedNestedWs] = useState(null);
-  const claudeCodeWsRef = useRef(null);
-  const [sharedClaudeCodeWs, setSharedClaudeCodeWs] = useState(null);
   const streamRef = useRef(null); // Conversation stream
 
   // Audio refs
@@ -513,7 +509,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
       setError(err.message || 'Failed to start session');
       await stopSession(!bridgeStarted);
     }
-  }, [attachRemoteAudio, conversationId, ensureMicrophoneStream, isRunning, stopSession, voiceConfig]);
+  }, [attachRemoteAudio, conversationId, ensureMicrophoneStream, isRunning, stopSession, voiceConfig, recordEvent]);
 
   // ============================================
   // Toggle Mute
@@ -573,32 +569,44 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   // ============================================
   // Send to Nested
   // ============================================
-  const sendToNested = () => {
-    if (!transcript.trim()) return;
-    if (nestedWsRef.current?.readyState === WebSocket.OPEN) {
-      try {
-        nestedWsRef.current.send(JSON.stringify({ type: 'user_message', data: transcript }));
-        void recordEvent('controller', 'manual_send_to_nested', { text: transcript });
-        setTranscript('');
-      } catch (err) {
-        console.error('[Send] Failed to send to nested:', err);
+  const sendToNested = async () => {
+    if (!transcript.trim() || !conversationId) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/realtime/webrtc/bridge/${conversationId}/send-to-nested`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: transcript }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to send: ${response.statusText}`);
       }
+      console.log('[Send] Sent to nested team:', transcript);
+      setTranscript('');
+    } catch (err) {
+      console.error('[Send] Failed to send to nested:', err);
+      setError(err.message || 'Failed to send to nested team');
     }
   };
 
   // ============================================
   // Send to Claude Code
   // ============================================
-  const sendToClaude = () => {
-    if (!transcript.trim()) return;
-    if (claudeCodeWsRef.current?.readyState === WebSocket.OPEN) {
-      try {
-        claudeCodeWsRef.current.send(JSON.stringify({ type: 'user_message', data: transcript }));
-        void recordEvent('controller', 'manual_send_to_claude_code', { text: transcript });
-        setTranscript('');
-      } catch (err) {
-        console.error('[Send] Failed to send to Claude Code:', err);
+  const sendToClaude = async () => {
+    if (!transcript.trim() || !conversationId) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/realtime/webrtc/bridge/${conversationId}/send-to-claude-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: transcript }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to send: ${response.statusText}`);
       }
+      console.log('[Send] Sent to Claude Code:', transcript);
+      setTranscript('');
+    } catch (err) {
+      console.error('[Send] Failed to send to Claude Code:', err);
+      setError(err.message || 'Failed to send to Claude Code');
     }
   };
 
@@ -658,8 +666,8 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     onSendToVoice: sendText,
     onSendToNested: sendToNested,
     onSendToClaude: sendToClaude,
-    nestedWsConnected: !!sharedNestedWs,
-    claudeCodeWsConnected: !!sharedClaudeCodeWs,
+    nestedWsConnected: isRunning, // Connected via backend
+    claudeCodeWsConnected: isRunning, // Connected via backend
     onStart: startSession,
     onStop: stopSession,
     onToggleMute: toggleMute,
@@ -698,7 +706,6 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
           formatTimestamp={formatTimestamp}
           truncateText={truncateText}
           safeStringify={safeStringify}
-          sharedTeamWs={sharedNestedWs}
           agentName={voiceConfig.agentName}
           controlPanelProps={controlPanelProps}
           audioRef={audioRef}
@@ -729,7 +736,6 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
         formatTimestamp={formatTimestamp}
         truncateText={truncateText}
         safeStringify={safeStringify}
-        sharedTeamWs={sharedNestedWs}
         agentName={voiceConfig.agentName}
         controlPanelProps={controlPanelProps}
         audioRef={audioRef}

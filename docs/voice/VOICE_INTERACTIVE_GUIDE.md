@@ -1,4 +1,4 @@
-# Interactive WebRTC Voice Session Guide
+# Voice System - Interactive Testing Guide
 
 Complete walkthrough for starting and debugging WebRTC voice sessions from the command line.
 
@@ -374,7 +374,7 @@ ps aux | grep -E "(uvicorn|npm start)" | grep -v grep
 
 ## Additional Resources
 
-- **Quick Start:** [WEBRTC_QUICK_START.md](WEBRTC_QUICK_START.md)
+- **Quick Start:** [VOICE_QUICK_START.md](VOICE_QUICK_START.md)
 - **Full Testing Guide:** [docs/WEBRTC_INTERACTIVE_TESTING.md](docs/WEBRTC_INTERACTIVE_TESTING.md)
 - **Migration Notes:** [docs/webrtc-bridge-notes.md](docs/webrtc-bridge-notes.md)
 - **Backend Implementation:** [backend/api/realtime_voice_webrtc.py](backend/api/realtime_voice_webrtc.py)

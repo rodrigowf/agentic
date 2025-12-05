@@ -186,9 +186,9 @@ Browser (WebRTC) ↔ Backend (aiortc) ↔ OpenAI Realtime API (WebRTC)
 ```
 
 **📖 Complete Guides:**
-- [WEBRTC_QUICK_START.md](WEBRTC_QUICK_START.md) - 1-minute setup
-- [INTERACTIVE_SESSION_GUIDE.md](INTERACTIVE_SESSION_GUIDE.md) - Full walkthrough
-- [docs/WEBRTC_INTERACTIVE_TESTING.md](docs/WEBRTC_INTERACTIVE_TESTING.md) - Testing guide
+- [Voice Quick Start](docs/voice/VOICE_QUICK_START.md) - 1-minute setup
+- [Voice Interactive Guide](docs/voice/VOICE_INTERACTIVE_GUIDE.md) - Full walkthrough
+- [Voice System Overview](docs/voice/VOICE_SYSTEM_OVERVIEW.md) - Testing guide
 
 ### Mobile Voice Interface
 
@@ -196,7 +196,7 @@ Browser (WebRTC) ↔ Backend (aiortc) ↔ OpenAI Realtime API (WebRTC)
 
 **Access:** `http://[YOUR_IP]:3000/agentic/mobile-voice`
 
-**📖 Complete Guide:** [docs/MOBILE_VOICE_GUIDE.md](docs/MOBILE_VOICE_GUIDE.md)
+**📖 Complete Guide:** [docs/guides/MOBILE_VOICE_GUIDE.md](docs/guides/MOBILE_VOICE_GUIDE.md)
 
 ---
 
@@ -410,13 +410,20 @@ grep OPENAI_API_KEY backend/.env
 ### Feature Guides
 - **[DATABASE_AND_MEMORY_SETUP.md](docs/guides/DATABASE_AND_MEMORY_SETUP.md)** - MongoDB & ChromaDB
 - **[MULTIMODAL_AGENT_GUIDE.md](docs/guides/MULTIMODAL_AGENT_GUIDE.md)** - Vision agents
-- **[MOBILE_VOICE_GUIDE.md](docs/MOBILE_VOICE_GUIDE.md)** - Smartphone microphone
+- **[MOBILE_VOICE_GUIDE.md](docs/guides/MOBILE_VOICE_GUIDE.md)** - Smartphone microphone
 
-### WebRTC Voice System
-- **[WEBRTC_QUICK_START.md](WEBRTC_QUICK_START.md)** - 1-minute setup
-- **[INTERACTIVE_SESSION_GUIDE.md](INTERACTIVE_SESSION_GUIDE.md)** - Full walkthrough
-- **[WEBRTC_COMMANDS.md](WEBRTC_COMMANDS.md)** - Command reference
-- **[docs/WEBRTC_INTERACTIVE_TESTING.md](docs/WEBRTC_INTERACTIVE_TESTING.md)** - Testing guide
+### Voice System
+- **[Voice System Overview](docs/voice/VOICE_SYSTEM_OVERVIEW.md)** - Architecture & integration
+- **[Voice Quick Start](docs/voice/VOICE_QUICK_START.md)** - 5-minute setup
+- **[Voice Interactive Guide](docs/voice/VOICE_INTERACTIVE_GUIDE.md)** - Complete walkthrough
+- **[Voice Commands](docs/voice/VOICE_COMMANDS.md)** - Command reference
+- **[Voice Troubleshooting](docs/voice/VOICE_TROUBLESHOOTING.md)** - Debug guide
+
+### Voice Technical Details
+- **[Backend Implementation](docs/voice/technical/BACKEND_IMPLEMENTATION.md)** - WebRTC bridge (coming soon)
+- **[Frontend Implementation](docs/voice/technical/FRONTEND_IMPLEMENTATION.md)** - React components (coming soon)
+- **[Nested Agents Integration](docs/voice/technical/NESTED_AGENTS_INTEGRATION.md)** - Agent orchestration
+- **[Audio Fixes Log](docs/voice/technical/AUDIO_FIXES_LOG.md)** - Historical audio issues & fixes
 
 ### Deployment
 - **[JETSON_DEPLOYMENT_GUIDE.md](docs/JETSON_DEPLOYMENT_GUIDE.md)** - Production server

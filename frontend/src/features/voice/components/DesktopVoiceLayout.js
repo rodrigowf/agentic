@@ -14,7 +14,6 @@ const DesktopVoiceLayout = ({
   formatTimestamp,
   truncateText,
   safeStringify,
-  sharedTeamWs,
   agentName,
 
   // For right panel (chat)
@@ -77,7 +76,7 @@ const DesktopVoiceLayout = ({
 
         {viewTab === 1 && (
           <Box sx={{ height: 'calc(100% - 128px)' }}>
-            <TeamConsolePanel sharedSocket={sharedTeamWs} agentName={agentName} />
+            <TeamConsolePanel agentName={agentName} isRunning={controlPanelProps.isRunning} />
           </Box>
         )}
 

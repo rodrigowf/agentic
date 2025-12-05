@@ -9,7 +9,7 @@ import NestedAgentInsights from './NestedAgentInsights';
 const TeamInsightsPanel = ({ messages, formatTimestamp, truncateText, safeStringify }) => {
   // Filter messages to only show nested team events
   const nestedMessages = React.useMemo(() => {
-    return messages.filter(msg => msg.source === 'nested');
+    return messages.filter(msg => msg.source === 'nested' || msg.source === 'nested_agent');
   }, [messages]);
 
   if (nestedMessages.length === 0) {

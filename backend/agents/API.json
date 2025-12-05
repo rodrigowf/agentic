@@ -32,5 +32,6 @@
   ],
   "mode": "selector",
   "orchestrator_prompt": "__function__",
+  "orchestrator_agent_name": "APIManager",
   "include_inner_dialog": true
 }

@@ -25,12 +25,32 @@ const NestedAgentInsights = ({
     if (!messages || messages.length === 0) return [];
     const entries = [];
     messages.forEach((msg, index) => {
-      if ((msg?.source || '').toLowerCase() !== 'nested') return;
+      const sourceLower = (msg?.source || '').toLowerCase();
+      if (sourceLower !== 'nested' && sourceLower !== 'nested_agent') return;
 
-      const typeRaw = msg?.type || 'event';
+      const rawData = msg?.data || {};
+      const typeRaw = rawData.event_type || msg?.type || 'event';
       const typeLower = typeRaw.toLowerCase();
-      const data = msg?.data || {};
-      const nestedData = (typeof data.data === 'object' && data.data !== null) ? data.data : {};
+      const data = rawData || {};
+      const nestedData = (typeof data.data === 'object' && data.data !== null) ? { ...data.data } : {};
+
+      // Some backend events come in as {type: 'nested_event', event_type: 'textmessage', message: '[TEAM Agent] ...'}
+      // Unpack message so the panel can render it like regular nested events.
+      if (!nestedData.message && data.message) {
+        const teamMatch = typeof data.message === 'string' ? data.message.match(/^\[TEAM\s+([^\]]+)\]\s*(.*)$/) : null;
+        if (teamMatch) {
+          const agentLabel = teamMatch[1];
+          const contentText = teamMatch[2];
+          nestedData.source = nestedData.source || agentLabel;
+          nestedData.agent = nestedData.agent || agentLabel;
+          nestedData.content = nestedData.content || contentText;
+          data.source = data.source || agentLabel;
+          data.agent = data.agent || agentLabel;
+        } else {
+          nestedData.message = data.message;
+        }
+      }
+
       const agentName = nestedData.source || data.source || data.agent || 'Nested agent';
       const role = nestedData.role || nestedData.role_name || data.role;
       const metadata = [];

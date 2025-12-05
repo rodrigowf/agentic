@@ -1,4 +1,4 @@
-# WebRTC Commands Quick Reference
+# Voice System Commands Reference
 
 ## Start Services
 
@@ -204,13 +204,13 @@ rm -rf backend/__pycache__
 
 ```bash
 # View guides
-cat WEBRTC_QUICK_START.md
-cat INTERACTIVE_SESSION_GUIDE.md
+cat VOICE_QUICK_START.md
+cat VOICE_INTERACTIVE_GUIDE.md
 cat docs/WEBRTC_INTERACTIVE_TESTING.md
 cat docs/webrtc-session-flow.txt
 
 # Open in editor
-code README_WEBRTC_SESSION.md
+code VOICE_SYSTEM_OVERVIEW.md
 code docs/webrtc-bridge-notes.md
 ```
 
@@ -262,7 +262,7 @@ jq '.events[] | select(.type == "response.audio_transcript.delta") | .data.delta
 ---
 
 **See also:**
-- [WEBRTC_QUICK_START.md](WEBRTC_QUICK_START.md) - Quick start guide
-- [INTERACTIVE_SESSION_GUIDE.md](INTERACTIVE_SESSION_GUIDE.md) - Full walkthrough
+- [VOICE_QUICK_START.md](VOICE_QUICK_START.md) - Quick start guide
+- [VOICE_INTERACTIVE_GUIDE.md](VOICE_INTERACTIVE_GUIDE.md) - Full walkthrough
 - [docs/WEBRTC_INTERACTIVE_TESTING.md](docs/WEBRTC_INTERACTIVE_TESTING.md) - Testing guide
-- [README_WEBRTC_SESSION.md](README_WEBRTC_SESSION.md) - Overview
+- [VOICE_SYSTEM_OVERVIEW.md](VOICE_SYSTEM_OVERVIEW.md) - Overview

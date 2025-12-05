@@ -25,7 +25,6 @@ import ToolsDashboard from './features/tools/pages/ToolsDashboard';
 import VoiceDashboardModular from './features/voice/pages/VoiceDashboardModular';
 import MobileVoice from './features/voice/pages/MobileVoice';
 import DebugNetwork from './features/voice/pages/DebugNetwork';
-import VoiceDashboardWebSocket from './features/voice/pages/VoiceDashboardWebSocket';
 import RouteDebug from './features/voice/pages/RouteDebug';
 import KeyboardShortcutsHelp from './shared/components/KeyboardShortcutsHelp';
 import ServerManagementButtons from './shared/components/ServerManagementButtons';
@@ -448,10 +447,6 @@ export default function App() {
             {/* Voice comparison routes - for testing modular vs original */}
             <Route path="/voice-modular" element={<VoiceDashboardModular />} />
             <Route path="/voice-modular/:conversationId" element={<VoiceDashboardModular />} />
-
-            {/* WebSocket Voice routes - Pipecat + FastAPI WebSocket (self-hosted, no Daily) */}
-            <Route path="/voice-ws" element={<VoiceDashboardWebSocket />} />
-            <Route path="/voice-ws/:conversationId" element={<VoiceDashboardWebSocket />} />
 
             {/* Mobile Voice routes - full screen, no AppBar, no Container (WebRTC enabled) */}
             <Route path="/mobile-voice" element={<MobileVoice />} />
