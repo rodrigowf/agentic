@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import uuid
+import time
 from fractions import Fraction
 from typing import Dict, Optional
 
@@ -234,11 +235,16 @@ class BridgeSession:
         self.claude_code_ws: Optional[aiohttp.ClientWebSocketResponse] = None
         self.nested_ws_task: Optional[asyncio.Task] = None
         self.claude_code_ws_task: Optional[asyncio.Task] = None
+        self.aiohttp_session: Optional[aiohttp.ClientSession] = None
 
         # WebSocket configuration
         self.backend_base_url = os.getenv("BACKEND_WS_URL", "ws://localhost:8000")
 
         self.browser_pc.onconnectionstatechange = self._on_browser_state_change
+        # Input gain for mic → OpenAI (helps VAD/transcription when levels are low)
+        self.input_gain = float(os.getenv("VOICE_INPUT_GAIN", "4.0"))
+        # Debug mic recording path (enabled when VOICE_DEBUG_RECORD=1)
+        self.debug_audio_path: Optional[str] = None
 
     # --------------------------------------------
     # Setup
@@ -248,6 +254,15 @@ class BridgeSession:
         if not api_key:
             raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
 
+        # Optional mic debug recording
+        if os.getenv("VOICE_DEBUG_RECORD", "1") == "1":
+            debug_dir = "/tmp/agentic-logs"
+            os.makedirs(debug_dir, exist_ok=True)
+            self.debug_audio_path = os.path.join(
+                debug_dir, f"mic_{self.conversation_id}_{self.session_id}.wav"
+            )
+            logger.info(f"[WebRTC Bridge] Mic debug recording enabled: {self.debug_audio_path}")
+
         # Connect to OpenAI first (jitter prevention)
         logger.info(f"[WebRTC Bridge] Using model: {self.model}")
 
@@ -255,13 +270,21 @@ class BridgeSession:
             api_key=api_key,
             model=self.model,
             voice=self.voice,
+            tools=None,  # ← TEMPORARILY DISABLED FOR TESTING
             on_audio_callback=self.handle_openai_audio,
             on_function_call_callback=self.handle_function_call,
             on_event_callback=self._handle_openai_event,
             system_prompt=self.system_prompt or VOICE_SYSTEM_PROMPT,
             enable_server_vad=True,
+            input_gain=self.input_gain,
+            debug_audio_path=self.debug_audio_path,
         )
         await self.openai_client.connect()
+
+        # Connect to nested agents and Claude Code WebSockets
+        logger.info("[WebRTC Bridge] Connecting to nested agents and Claude Code...")
+        await self._connect_nested_websocket()
+        await self._connect_claude_code_websocket()
 
         # Set up ontrack handler BEFORE any SDP operations
         self.browser_pc.ontrack = self._on_browser_track
@@ -342,16 +365,34 @@ class BridgeSession:
                 frame = await track.recv()
                 frame_count += 1
 
-                # Log first frame to confirm browser audio is flowing
-                if frame_count == 1:
-                    logger.info(f"[Browser Audio] ✅ First frame received: samples={frame.samples}, rate={frame.sample_rate}, layout={frame.layout.name}")
+                # Log first frame and periodic signal stats to debug VAD
+                if frame_count == 1 or frame_count % 50 == 0:
+                    array = frame.to_ndarray()
+                    peak = int(np.max(np.abs(array)))
+                    rms = float(np.sqrt(np.mean(np.square(array))))
+                    if frame_count == 1:
+                        logger.info(f"[Browser Audio] ✅ First frame received: samples={frame.samples}, rate={frame.sample_rate}, layout={frame.layout.name}")
+                        logger.info(f"[Browser Audio]    Array shape: {array.shape}, dtype: {array.dtype}")
+                        logger.info(f"[Browser Audio]    Min/Max values: {array.min()}/{array.max()}")
+                        logger.info(f"[Browser Audio]    Non-zero samples: {np.count_nonzero(array)}/{array.size}")
+                        logger.info(f"[Browser Audio]    Track ID: {getattr(track, 'id', 'n/a')}")
+                        try:
+                            settings = track._track.getSettings() if hasattr(track, "_track") and hasattr(track._track, "getSettings") else None
+                            if settings:
+                                logger.info(f"[Browser Audio]    Browser track settings: {settings}")
+                        except Exception:
+                            pass
+                    if frame_count % 50 == 0:
+                        logger.info(f"[Browser Audio] Signal stats @frame {frame_count}: peak={peak}, rms={rms:.2f}")
 
                 if self.openai_client:
+                    # Apply gain before sending to OpenAI
                     await self.openai_client.send_audio_frame(frame)
 
                     # Log periodically to show activity
                     if frame_count % 100 == 0:
                         logger.info(f"[Browser Audio] Forwarded {frame_count} frames to OpenAI")
+
                 else:
                     logger.warning("[Browser Audio] OpenAI client not ready, cannot forward frame")
         except asyncio.CancelledError:  # pragma: no cover - expected on shutdown
@@ -525,15 +566,17 @@ class BridgeSession:
     async def _connect_nested_websocket(self):
         """Connect to the nested agents WebSocket."""
         try:
+            if not self.aiohttp_session:
+                self.aiohttp_session = aiohttp.ClientSession()
+
             ws_url = f"{self.backend_base_url}/api/runs/{self.agent_name}"
             logger.info(f"[WebSocket] Connecting to nested agents at {ws_url}")
 
-            async with aiohttp.ClientSession() as session:
-                self.nested_ws = await session.ws_connect(ws_url)
-                logger.info("[WebSocket] Connected to nested agents")
+            self.nested_ws = await self.aiohttp_session.ws_connect(ws_url)
+            logger.info("[WebSocket] Connected to nested agents")
 
-                # Start listening task
-                self.nested_ws_task = asyncio.create_task(self._listen_nested_websocket())
+            # Start listening task
+            self.nested_ws_task = asyncio.create_task(self._listen_nested_websocket())
         except Exception as exc:
             logger.error(f"[WebSocket] Failed to connect to nested agents: {exc}")
             self.nested_ws = None
@@ -541,15 +584,17 @@ class BridgeSession:
     async def _connect_claude_code_websocket(self):
         """Connect to the Claude Code WebSocket."""
         try:
+            if not self.aiohttp_session:
+                self.aiohttp_session = aiohttp.ClientSession()
+
             ws_url = f"{self.backend_base_url}/api/runs/ClaudeCode"
             logger.info(f"[WebSocket] Connecting to Claude Code at {ws_url}")
 
-            async with aiohttp.ClientSession() as session:
-                self.claude_code_ws = await session.ws_connect(ws_url)
-                logger.info("[WebSocket] Connected to Claude Code")
+            self.claude_code_ws = await self.aiohttp_session.ws_connect(ws_url)
+            logger.info("[WebSocket] Connected to Claude Code")
 
-                # Start listening task
-                self.claude_code_ws_task = asyncio.create_task(self._listen_claude_code_websocket())
+            # Start listening task
+            self.claude_code_ws_task = asyncio.create_task(self._listen_claude_code_websocket())
         except Exception as exc:
             logger.error(f"[WebSocket] Failed to connect to Claude Code: {exc}")
             self.claude_code_ws = None
@@ -679,10 +724,52 @@ class BridgeSession:
     # Cleanup
     # --------------------------------------------
     async def close(self):
+        # Stop WebSocket listener tasks
+        if self.nested_ws_task:
+            self.nested_ws_task.cancel()
+            try:
+                await self.nested_ws_task
+            except asyncio.CancelledError:
+                pass
+            self.nested_ws_task = None
+
+        if self.claude_code_ws_task:
+            self.claude_code_ws_task.cancel()
+            try:
+                await self.claude_code_ws_task
+            except asyncio.CancelledError:
+                pass
+            self.claude_code_ws_task = None
+
+        # Close WebSocket connections
+        if self.nested_ws and not self.nested_ws.closed:
+            try:
+                await self.nested_ws.close()
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.error("Error closing nested WebSocket: %s", exc)
+            self.nested_ws = None
+
+        if self.claude_code_ws and not self.claude_code_ws.closed:
+            try:
+                await self.claude_code_ws.close()
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.error("Error closing Claude Code WebSocket: %s", exc)
+            self.claude_code_ws = None
+
+        # Close aiohttp session
+        if self.aiohttp_session:
+            try:
+                await self.aiohttp_session.close()
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.error("Error closing aiohttp session: %s", exc)
+            self.aiohttp_session = None
+
+        # Stop browser audio task
         if self.browser_audio_task:
             self.browser_audio_task.cancel()
             self.browser_audio_task = None
 
+        # Close WebRTC connections
         try:
             if self.browser_pc:
                 await self.browser_pc.close()

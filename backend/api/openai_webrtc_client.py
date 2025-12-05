@@ -19,7 +19,8 @@ from typing import Callable, Dict, List, Optional
 import aiohttp
 import numpy as np
 from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
-from av import AudioFrame
+from av import AudioFrame, AudioResampler
+import wave
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +37,23 @@ class AudioTrack(MediaStreamTrack):
     """
     kind = "audio"
 
-    def __init__(self, sample_rate: int = 48000):
+    def __init__(
+        self,
+        sample_rate: int = 48000,
+        input_gain: float = 1.0,
+        debug_audio_path: Optional[str] = None,
+        debug_max_seconds: int = 120,
+    ):
         super().__init__()
         self.queue: asyncio.Queue[AudioFrame] = asyncio.Queue()
         self._timestamp = 0
         self._sample_rate = sample_rate
+        self.input_gain = input_gain
+        # Debug recording
+        self._debug_audio_path = debug_audio_path
+        self._debug_wave: Optional[wave.Wave_write] = None
+        self._debug_samples = 0
+        self._debug_max_samples = debug_max_seconds * sample_rate if debug_audio_path else 0
         logger.info(f"[AudioTrack] Initialized with sample_rate={sample_rate} Hz")
 
     async def recv(self) -> AudioFrame:
@@ -51,12 +64,26 @@ class AudioTrack(MediaStreamTrack):
         """Normalize incoming audio to AudioFrame with correct timing"""
         # Handle AudioFrame input
         if isinstance(audio_data, AudioFrame):
-            sample_rate = getattr(audio_data, "sample_rate", None) or self._sample_rate
-            array = audio_data.to_ndarray()
+            incoming_sr = getattr(audio_data, "sample_rate", None) or self._sample_rate
+            frame_in = audio_data
+            # If stereo (or not mono), resample to mono to avoid doubled sample counts (slow-mo)
+            if getattr(frame_in, "layout", None) and getattr(frame_in.layout, "name", "") != "mono":
+                try:
+                    resampler = AudioResampler(format="s16", layout="mono", rate=incoming_sr)
+                    frame_in = next(iter(resampler.resample(frame_in)))
+                except Exception as exc:
+                    logger.error(f"[AudioTrack] Resample to mono failed, falling back: {exc}")
+            sample_rate = getattr(frame_in, "sample_rate", None) or incoming_sr
+            array = frame_in.to_ndarray()
         # Handle raw PCM bytes
         else:
             sample_rate = self._sample_rate
             array = np.frombuffer(audio_data, dtype=np.int16).reshape(1, -1)
+
+        # Apply input gain to boost mic level for VAD/transcription
+        if self.input_gain and self.input_gain != 1.0:
+            boosted = np.clip(array.astype(np.int32) * self.input_gain, -30000, 30000).astype(np.int16)
+            array = boosted
 
         # Create frame with proper timing
         frame = AudioFrame.from_ndarray(array, format="s16", layout="mono")
@@ -65,12 +92,38 @@ class AudioTrack(MediaStreamTrack):
         frame.pts = self._timestamp
         self._timestamp += frame.samples
 
+        # Debug: write to wav if enabled (post-gain)
+        if self._debug_audio_path:
+            if not self._debug_wave:
+                try:
+                    self._debug_wave = wave.open(self._debug_audio_path, "wb")
+                    self._debug_wave.setnchannels(1)
+                    self._debug_wave.setsampwidth(2)  # int16
+                    self._debug_wave.setframerate(int(sample_rate))
+                    logger.info(f"[AudioTrack] Debug recording enabled: {self._debug_audio_path}")
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.error(f"[AudioTrack] Failed to open debug recorder: {exc}")
+            if self._debug_wave and self._debug_samples < self._debug_max_samples:
+                try:
+                    self._debug_wave.writeframes(array.astype(np.int16).tobytes())
+                    self._debug_samples += frame.samples
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.error(f"[AudioTrack] Failed to write debug audio: {exc}")
+
         return frame
 
     async def send(self, audio_data):
         """Send audio frame or raw PCM16 bytes"""
         frame = self._ensure_frame(audio_data)
         await self.queue.put(frame)
+
+    def close(self):
+        if self._debug_wave:
+            try:
+                self._debug_wave.close()
+            except Exception:
+                pass
+            self._debug_wave = None
 
 
 # ============================================================================
@@ -102,6 +155,9 @@ class OpenAIWebRTCClient:
         enable_server_vad: bool = True,
         enable_input_transcription: bool = True,
         initial_response: Optional[str] = None,
+        input_gain: float = 4.0,
+        debug_audio_path: Optional[str] = None,
+        debug_max_seconds: int = 120,
     ):
         """
         Initialize OpenAI WebRTC client.
@@ -130,6 +186,9 @@ class OpenAIWebRTCClient:
         self.enable_server_vad = enable_server_vad
         self.enable_input_transcription = enable_input_transcription
         self.initial_response = initial_response
+        self.input_gain = input_gain
+        self.debug_audio_path = debug_audio_path
+        self.debug_max_seconds = debug_max_seconds
 
         # Callbacks
         self.on_audio_callback = on_audio_callback
@@ -162,7 +221,12 @@ class OpenAIWebRTCClient:
         self._setup_peer_connection_handlers()
 
         # Step 3: Add outbound audio track
-        self.audio_track = AudioTrack()
+        self.audio_track = AudioTrack(
+            sample_rate=48000,
+            input_gain=self.input_gain,
+            debug_audio_path=self.debug_audio_path,
+            debug_max_seconds=self.debug_max_seconds,
+        )
         self.pc.addTrack(self.audio_track)
 
         # Step 4: Exchange SDP (offer/answer)
@@ -178,6 +242,8 @@ class OpenAIWebRTCClient:
         if self.pc:
             await self.pc.close()
             logger.info("[OpenAI Client] Connection closed")
+        if self.audio_track:
+            self.audio_track.close()
 
     # ========================================================================
     # Session Creation
@@ -269,43 +335,61 @@ class OpenAIWebRTCClient:
             logger.warning("[OpenAI Client] Cannot configure - data channel not open")
             return
 
+        logger.info("[OpenAI Client] 🔧 Configuring session...")
+
         # Build session update
         session_config = {
             "voice": self.voice,
             "modalities": self.modalities,
         }
 
+        logger.info(f"[OpenAI Client]    Voice: {self.voice}")
+        logger.info(f"[OpenAI Client]    Modalities: {self.modalities}")
+
         # Add system instructions
         if self.system_prompt:
             session_config["instructions"] = self.system_prompt
+            logger.info(f"[OpenAI Client]    System prompt: {self.system_prompt[:100]}...")
 
         # Configure tools
         if self.tools:
             session_config["tools"] = self.tools
-            logger.info(f"[OpenAI Client] Registering {len(self.tools)} tools")
+            logger.info(f"[OpenAI Client]    Registering {len(self.tools)} tools")
+        else:
+            logger.info("[OpenAI Client]    No tools registered")
 
         # Configure turn detection (VAD)
+        # IMPORTANT: Match the working reference implementation exactly
+        # Use OpenAI's default VAD parameters - don't override threshold/silence_duration
         if self.enable_server_vad:
             session_config["turn_detection"] = {
-                "type": "server_vad",
-                "threshold": 0.5,
-                "prefix_padding_ms": 300,
-                "silence_duration_ms": 800,
+                "type": "server_vad"
+                # DO NOT specify threshold, prefix_padding_ms, silence_duration_ms
+                # Let OpenAI use its default values for best performance
             }
+            logger.info("[OpenAI Client]    VAD: enabled (server_vad with OpenAI defaults)")
         else:
             session_config["turn_detection"] = None
+            logger.info("[OpenAI Client]    VAD: disabled (manual mode)")
 
         # Enable input transcription
+        # IMPORTANT: Explicitly set language to "en" to ensure English responses
+        # Without this, OpenAI may respond in the detected audio language
         if self.enable_input_transcription:
             session_config["input_audio_transcription"] = {
-                "model": "whisper-1"
+                "model": "whisper-1",
+                "language": "en"  # Force English transcription
             }
+            logger.info("[OpenAI Client]    Input transcription: enabled (language: en)")
 
         # Send session.update
-        self._send_event({
+        event = {
             "type": "session.update",
             "session": session_config,
-        })
+        }
+        logger.info(f"[OpenAI Client] 📤 Sending session.update event")
+        self._send_event(event)
+        logger.info("[OpenAI Client] ✅ Session configuration sent")
 
         # Send initial greeting if configured
         if self.initial_response:
@@ -328,6 +412,12 @@ class OpenAIWebRTCClient:
         offer = await self.pc.createOffer()
         await self.pc.setLocalDescription(offer)
 
+        # Debug: Check if our offer includes audio
+        has_audio_in_offer = "m=audio" in offer.sdp
+        logger.info(f"[OpenAI Client] Our offer includes audio track: {has_audio_in_offer}")
+        if not has_audio_in_offer:
+            logger.error("[OpenAI Client] ❌ BUG: Our offer has NO audio track!")
+
         # Wait for ICE gathering to complete
         await _wait_for_ice_gathering(self.pc)
 
@@ -347,7 +437,12 @@ class OpenAIWebRTCClient:
         answer = RTCSessionDescription(sdp=answer_sdp, type="answer")
         await self.pc.setRemoteDescription(answer)
 
-        logger.info("[OpenAI Client] SDP exchange complete")
+        # Debug: Check if answer includes audio track
+        has_audio = "m=audio" in answer_sdp
+        logger.info(f"[OpenAI Client] SDP exchange complete - Answer includes audio track: {has_audio}")
+        if not has_audio:
+            logger.warning("[OpenAI Client] ⚠️  NO AUDIO TRACK IN ANSWER - will receive text only!")
+            logger.warning(f"[OpenAI Client] Answer SDP:\n{answer_sdp[:500]}...")
 
     # ========================================================================
     # Audio Handling
@@ -385,10 +480,26 @@ class OpenAIWebRTCClient:
             logger.warning("[OpenAI Client] No audio track - cannot send audio")
             return
 
+        # Log first frame details
+        self._sent_frame_count += 1
+        if self._sent_frame_count == 1:
+            if isinstance(audio_data, AudioFrame):
+                array = audio_data.to_ndarray()
+                logger.info(f"[OpenAI Client] 📤 Sending FIRST audio frame to OpenAI:")
+                logger.info(f"[OpenAI Client]    Format: AudioFrame")
+                logger.info(f"[OpenAI Client]    Sample rate: {audio_data.sample_rate} Hz")
+                logger.info(f"[OpenAI Client]    Samples: {audio_data.samples}")
+                logger.info(f"[OpenAI Client]    Layout: {audio_data.layout.name}")
+                logger.info(f"[OpenAI Client]    Array shape: {array.shape}, dtype: {array.dtype}")
+                logger.info(f"[OpenAI Client]    Min/Max: {array.min()}/{array.max()}")
+                logger.info(f"[OpenAI Client]    Non-zero: {np.count_nonzero(array)}/{array.size}")
+                logger.info(f"[OpenAI Client]    Input gain: {self.input_gain}x (clipped to +/-30000)")
+            else:
+                logger.info(f"[OpenAI Client] 📤 Sending FIRST audio (raw bytes): {len(audio_data)} bytes")
+
         await self.audio_track.send(audio_data)
 
         # Log first few frames
-        self._sent_frame_count += 1
         if self._sent_frame_count <= 3:
             logger.info(f"[OpenAI Client] Sent audio frame #{self._sent_frame_count} to OpenAI")
 
@@ -403,6 +514,19 @@ class OpenAIWebRTCClient:
     def _handle_event(self, event: Dict):
         """Handle events received from OpenAI data channel"""
         event_type = event.get("type")
+
+        # Log all events for debugging
+        logger.info(f"[OpenAI Client] 📨 Received event: {event_type}")
+
+        # Log important event details
+        if event_type and "response" in event_type:
+            logger.info(f"[OpenAI Client]    Response event: {json.dumps(event)[:200]}...")
+        elif event_type == "session.updated":
+            logger.info("[OpenAI Client]    ✅ Session configuration confirmed by OpenAI")
+        elif event_type == "input_audio_buffer.speech_started":
+            logger.info("[OpenAI Client]    🎤 Speech detected by VAD")
+        elif event_type == "input_audio_buffer.speech_stopped":
+            logger.info("[OpenAI Client]    🤐 Speech ended by VAD")
 
         # Forward all events to callback
         if self.on_event_callback:
@@ -542,6 +666,29 @@ class OpenAIWebRTCClient:
         })
 
         logger.info(f"[OpenAI Client] Forwarded {role} message to voice: {content[:50]}...")
+
+    async def send_function_call_result(self, call_id: str, result: Dict):
+        """
+        Send the result of a function call back to OpenAI.
+
+        Args:
+            call_id: The call ID from the function call event
+            result: The result dictionary to send back
+        """
+        if not self._data_channel_ready.is_set():
+            logger.warning("[OpenAI Client] Cannot send function result - channel not ready")
+            return
+
+        self._send_event({
+            "type": "conversation.item.create",
+            "item": {
+                "type": "function_call_output",
+                "call_id": call_id,
+                "output": json.dumps(result),
+            },
+        })
+
+        logger.info(f"[OpenAI Client] Sent function call result for {call_id}")
 
 
 # ============================================================================

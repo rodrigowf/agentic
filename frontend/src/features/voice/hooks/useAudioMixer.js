@@ -20,16 +20,26 @@ export const useAudioMixer = ({ recordEvent }) => {
   const initializeMixer = useCallback(async () => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     audioContextRef.current = audioContext;
+    console.log('[AudioMixer] Initializing AudioContext - sampleRate:', audioContext.sampleRate);
 
     // Try to get desktop microphone
     let micStream = null;
     let hasMicrophone = false;
 
     try {
+      console.log('[AudioMixer] Requesting getUserMedia audio constraints: { audio: true }');
       micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = micStream;
       hasMicrophone = true;
-      console.log('[AudioMixer] Desktop microphone acquired successfully');
+      console.log('[AudioMixer] Desktop microphone acquired successfully, track count:', micStream.getTracks().length);
+      const track = micStream.getAudioTracks()[0];
+      if (track) {
+        console.log('[AudioMixer] Mic track settings:', track.getSettings());
+        console.log('[AudioMixer] Mic track constraints:', track.getConstraints());
+        track.onended = () => console.warn('[AudioMixer] Mic track ended');
+        track.onmute = () => console.warn('[AudioMixer] Mic track muted');
+        track.onunmute = () => console.warn('[AudioMixer] Mic track unmuted');
+      }
     } catch (micError) {
       console.warn('[AudioMixer] No microphone available, creating silent audio stream:', micError.message);
       // Create silent stream as fallback
@@ -61,6 +71,7 @@ export const useAudioMixer = ({ recordEvent }) => {
     desktopSource.connect(desktopGain);
     desktopGain.connect(mixerDestination);
     desktopGain.gain.value = hasMicrophone ? 1.0 : 0.0; // Mute if no real mic
+    console.log('[AudioMixer] Desktop gain initialized:', desktopGain.gain.value);
 
     // Store desktop source for mute control
     desktopSourceRef.current = { source: desktopSource, gain: desktopGain, hasMicrophone };
@@ -70,6 +81,7 @@ export const useAudioMixer = ({ recordEvent }) => {
     mobileGainNodeRef.current = mobileGain;
     mobileGain.connect(mixerDestination);
     mobileGain.gain.value = 1.0;
+    console.log('[AudioMixer] Mixer destination tracks:', mixerDestination.stream.getTracks().length);
 
     return {
       audioContext,
@@ -119,7 +131,7 @@ export const useAudioMixer = ({ recordEvent }) => {
     const source = audioContextRef.current.createMediaStreamSource(stream);
     source.connect(mobileGainNodeRef.current);
     mobileAudioSourceRef.current = source;
-    console.log('[AudioMixer] Mobile audio connected to mixer');
+    console.log('[AudioMixer] Mobile audio connected to mixer, tracks:', stream.getTracks().length);
   }, []);
 
   /**
