@@ -1,3 +1,8 @@
+/**
+ * VoiceDashboard - Voice assistant dashboard with conversation management
+ * Uses WebRTC bridge for OpenAI Realtime API connection
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {

@@ -22,7 +22,7 @@ import AgentEditor from './features/agents/components/AgentEditor';
 import RunConsole from './features/agents/components/RunConsole';
 import AgentDashboard from './features/agents/pages/AgentDashboard';
 import ToolsDashboard from './features/tools/pages/ToolsDashboard';
-import VoiceDashboardModular from './features/voice/pages/VoiceDashboardModular';
+import VoiceDashboard from './features/voice/pages/VoiceDashboard';
 import MobileVoice from './features/voice/pages/MobileVoice';
 import DebugNetwork from './features/voice/pages/DebugNetwork';
 import RouteDebug from './features/voice/pages/RouteDebug';
@@ -444,9 +444,6 @@ export default function App() {
             {/* Debug route */}
             <Route path="/debug-network" element={<DebugNetwork />} />
 
-            {/* Voice comparison routes - for testing modular vs original */}
-            <Route path="/voice-modular" element={<VoiceDashboardModular />} />
-            <Route path="/voice-modular/:conversationId" element={<VoiceDashboardModular />} />
 
             {/* Mobile Voice routes - full screen, no AppBar, no Container (WebRTC enabled) */}
             <Route path="/mobile-voice" element={<MobileVoice />} />
@@ -543,8 +540,8 @@ export default function App() {
                         <Route path="/runs/:name" element={<RunConsole />} />
                         <Route path="/tools" element={<ToolsDashboard />} />
                         <Route path="/tools/:filename" element={<ToolsDashboard />} />
-                        <Route path="/voice" element={<VoiceDashboardModular />} />
-                        <Route path="/voice/:conversationId" element={<VoiceDashboardModular />} />
+                        <Route path="/voice" element={<VoiceDashboard />} />
+                        <Route path="/voice/:conversationId" element={<VoiceDashboard />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Container>

@@ -1,6 +1,13 @@
 """
 backend/api/realtime_voice_webrtc.py
 WebRTC bridge between the browser and OpenAI Realtime (backend-controlled)
+
+Architecture:
+- ONE OpenAI WebRTC connection per conversation (conversation_id)
+- MULTIPLE frontend WebRTC clients can connect to the same conversation
+- All frontend audio is mixed and sent to OpenAI
+- OpenAI audio is broadcast to all connected frontends
+- When any frontend presses "stop", ALL connections are closed (OpenAI + all frontends)
 """
 
 import asyncio
@@ -10,7 +17,7 @@ import os
 import uuid
 import time
 from fractions import Fraction
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Set
 
 import numpy as np
 from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
