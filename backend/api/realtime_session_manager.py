@@ -492,61 +492,120 @@ class OpenAISession:
             logger.error(f"Error listening to Claude Code: {exc}")
 
     async def _handle_nested_message(self, event: Dict) -> None:
+        """Handle messages from nested agents WebSocket.
+
+        Preserves the full original event data for the frontend TeamInsights panel
+        while also creating a formatted message for the voice model.
+        """
         event_type = event.get("type", "").lower()
+        event_data = event.get("data", {})
         message = None
 
+        # Extract agent/source info
+        agent = event_data.get("source") or event_data.get("agent") or "Agent"
+
         if event_type == "textmessage":
-            agent = event.get("data", {}).get("source", "Agent")
-            content = event.get("data", {}).get("content", "")
+            content = event_data.get("content", "")
             message = f"[TEAM {agent}] {content}"
+        elif event_type == "toolcallrequestevent":
+            tool_name = event_data.get("name", "Tool")
+            message = f"[TEAM {agent}] Requesting tool: {tool_name}"
         elif event_type == "toolcallexecutionevent":
-            tool_name = event.get("data", {}).get("name", "Tool")
-            result = str(event.get("data", {}).get("result", ""))[:200]
-            message = f"[TEAM {tool_name}] {result}"
+            tool_name = event_data.get("name") or "Tool"
+            # Check for content array (AutoGen format)
+            content_items = event_data.get("content", [])
+            if isinstance(content_items, list) and content_items:
+                tool_name = content_items[0].get("name", tool_name)
+            result = str(event_data.get("result", ""))[:200]
+            message = f"[TEAM {tool_name}] {result}" if result else f"[TEAM {tool_name}] completed"
         elif event_type == "taskresult":
-            outcome = event.get("data", {}).get("outcome", "completed")
-            summary = event.get("data", {}).get("message", "")
+            outcome = event_data.get("outcome", "completed")
+            summary = event_data.get("message", "")
             message = f"[TEAM] Task {outcome}: {summary}"
+        elif event_type == "system":
+            sys_message = event_data.get("message", "")
+            message = f"[TEAM System] {sys_message}"
+        else:
+            # Forward unknown event types too
+            message = f"[TEAM {agent}] {event_type}"
 
         if message and self.openai_client:
             logger.info(f"[Event Forward] {message[:100]}...")
             await self.openai_client.forward_message_to_voice("system", message)
 
-        if message:
-            await _append_and_broadcast(
-                self.conversation_id,
-                {"type": "nested_event", "event_type": event_type, "message": message},
-                source="nested_agent",
-                event_type="nested_event",
-            )
+        # Broadcast with full original event data for frontend panels
+        await _append_and_broadcast(
+            self.conversation_id,
+            {
+                "type": "nested_event",
+                "event_type": event_type,
+                "message": message,
+                # Include full original event data for rich UI display
+                "source": agent,
+                "agent": agent,
+                "data": event_data,
+            },
+            source="nested_agent",
+            event_type=event_type,
+        )
 
     async def _handle_claude_code_message(self, event: Dict) -> None:
+        """Handle messages from Claude Code WebSocket.
+
+        Preserves the full original event data for the frontend ClaudeCodeInsights panel
+        while also creating a formatted message for the voice model.
+        """
         event_type = event.get("type", "").lower()
+        event_data = event.get("data", {})
         message = None
 
+        # Extract source info
+        source = event_data.get("source") or event_data.get("agent") or "ClaudeCode"
+
         if event_type == "textmessage":
-            content = event.get("data", {}).get("content", "")
-            message = f"[CODE ClaudeCode] {content}"
+            content = event_data.get("content", "")
+            message = f"[CODE {source}] {content}"
+        elif event_type == "toolcallrequestevent":
+            tool_name = event_data.get("name", "Tool")
+            message = f"[CODE {source}] Requesting tool: {tool_name}"
         elif event_type == "toolcallexecutionevent":
-            tool_name = event.get("data", {}).get("name", "Tool")
-            result = str(event.get("data", {}).get("result", ""))[:200]
-            message = f"[CODE {tool_name}] {result}"
+            tool_name = event_data.get("name") or "Tool"
+            # Check for content array (AutoGen format)
+            content_items = event_data.get("content", [])
+            if isinstance(content_items, list) and content_items:
+                tool_name = content_items[0].get("name", tool_name)
+            result = str(event_data.get("result", ""))[:200]
+            message = f"[CODE {tool_name}] {result}" if result else f"[CODE {tool_name}] completed"
         elif event_type == "taskresult":
-            outcome = event.get("data", {}).get("outcome", "completed")
-            summary = event.get("data", {}).get("message", "")
+            outcome = event_data.get("outcome", "completed")
+            summary = event_data.get("message", "")
             message = f"[CODE] Task {outcome}: {summary}"
+        elif event_type == "system":
+            sys_message = event_data.get("message", "")
+            message = f"[CODE System] {sys_message}"
+        else:
+            # Forward unknown event types too
+            message = f"[CODE {source}] {event_type}"
 
         if message and self.openai_client:
             logger.info(f"[Event Forward] {message[:100]}...")
             await self.openai_client.forward_message_to_voice("system", message)
 
-        if message:
-            await _append_and_broadcast(
-                self.conversation_id,
-                {"type": "claude_code_event", "event_type": event_type, "message": message},
-                source="claude_code",
-                event_type="claude_code_event",
-            )
+        # Broadcast with full original event data for frontend panels
+        await _append_and_broadcast(
+            self.conversation_id,
+            {
+                "type": "claude_code_event",
+                "event_type": event_type,
+                "message": message,
+                # Include full original event data for rich UI display
+                "source": source,
+                "agent": source,
+                "data": event_data,
+            },
+            source="claude_code",
+            event_type=event_type,
+        )
 
 
 class RealtimeSessionManager:

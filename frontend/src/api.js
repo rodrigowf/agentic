@@ -60,6 +60,7 @@ export const connectVoiceConversationStream = (conversationId, params = {}) => {
 };
 export const startVoiceWebRTCBridge = (payload) => API.post(`${VOICE_BASE}/webrtc/bridge`, payload);
 export const stopVoiceWebRTCBridge = (conversationId) => API.delete(`${VOICE_BASE}/webrtc/bridge/${conversationId}`);
+export const disconnectVoiceWebRTC = (connectionId) => API.post(`${VOICE_BASE}/webrtc/disconnect`, { connection_id: connectionId });
 export const sendVoiceWebRTCText = (conversationId, payload) => API.post(`${VOICE_BASE}/webrtc/bridge/${conversationId}/text`, payload);
 
 // Voice configurations
@@ -108,6 +109,7 @@ export default {
   connectVoiceConversationStream,
   startVoiceWebRTCBridge,
   stopVoiceWebRTCBridge,
+  disconnectVoiceWebRTC,
   sendVoiceWebRTCText,
   listVoiceConfigs,
   getVoiceConfig,

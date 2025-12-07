@@ -6,7 +6,10 @@ import {
   TextField,
   Chip,
   Alert,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import StopCircleIcon from '@mui/icons-material/StopCircle';
 import VoiceSessionControls from './VoiceSessionControls';
 import ConversationHistory from './ConversationHistory';
 
@@ -42,6 +45,7 @@ const VoiceControlPanel = ({
   // Session controls
   onStart,
   onStop,
+  onForceStop,
   onToggleMute,
   onToggleSpeakerMute,
 
@@ -73,21 +77,45 @@ const VoiceControlPanel = ({
           </Button>
         </Box>
 
-        {/* Modern Voice Session Controls */}
-        <VoiceSessionControls
-          isRunning={isRunning}
-          isMuted={isMuted}
-          isSpeakerMuted={isSpeakerMuted}
-          onStart={onStart}
-          onStop={onStop}
-          onToggleMute={onToggleMute}
-          onToggleSpeakerMute={onToggleSpeakerMute}
-          disabled={isRunning || conversationLoading || Boolean(conversationError)}
-          stream={micStream}
-          statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active (joinable)' : 'Idle'}
-          statusColor={isRunning ? 'success' : remoteSessionActive ? 'info' : 'default'}
-          style={{ mb: 3 }}
-        />
+        {/* Modern Voice Session Controls with Force Stop */}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+          <VoiceSessionControls
+            isRunning={isRunning}
+            isMuted={isMuted}
+            isSpeakerMuted={isSpeakerMuted}
+            onStart={onStart}
+            onStop={onStop}
+            onToggleMute={onToggleMute}
+            onToggleSpeakerMute={onToggleSpeakerMute}
+            disabled={isRunning || conversationLoading || Boolean(conversationError)}
+            stream={micStream}
+            statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active (joinable)' : 'Idle'}
+            statusColor={isRunning ? 'success' : remoteSessionActive ? 'info' : 'default'}
+            style={{ mb: 3, flex: 1 }}
+          />
+
+          {/* Force Stop button - visible when session is active elsewhere */}
+          {!isRunning && remoteSessionActive && !conversationError && (
+            <Tooltip title="Force stop session for all connected tabs" arrow>
+              <IconButton
+                onClick={onForceStop}
+                sx={{
+                  mt: 2,
+                  width: 48,
+                  height: 48,
+                  bgcolor: 'error.main',
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'error.dark',
+                    transform: 'scale(1.05)',
+                  },
+                }}
+              >
+                <StopCircleIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
 
         {!isRunning && remoteSessionActive && !conversationError && (
           <Alert severity="info" sx={{ mb: 2 }}>

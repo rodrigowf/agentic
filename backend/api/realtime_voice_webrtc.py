@@ -199,9 +199,14 @@ async def signal_disconnect(request: DisconnectRequest):
 
     This only closes the specific browser connection.
     Other browsers and the OpenAI session remain active.
+    OpenAI session stays alive even when all browsers disconnect.
+    Use DELETE /conversation/{id} (Force Stop) to close everything.
     """
     connection_id = request.connection_id
     logger.info(f"[Signal] Browser {connection_id[:8]} disconnecting")
+
+    connection_found = False
+    conv_id_found = None
 
     # Find which conversation this connection belongs to
     async with _lock:
@@ -209,9 +214,20 @@ async def signal_disconnect(request: DisconnectRequest):
             if connection_id in browser_mgr.connection_ids:
                 removed = await browser_mgr.remove_connection(connection_id)
                 if removed:
+                    connection_found = True
+                    conv_id_found = conv_id
+                    remaining = browser_mgr.connection_count
                     logger.info(f"[Signal] ✅ Browser {connection_id[:8]} disconnected from {conv_id}")
-                    logger.info(f"[Signal]    Remaining browsers: {browser_mgr.connection_count}")
-                    return JSONResponse({"status": "disconnected", "connection_id": connection_id})
+                    logger.info(f"[Signal]    Remaining browsers: {remaining}")
+                    # OpenAI session stays alive - only Force Stop closes it
+                break
+
+    if connection_found:
+        return JSONResponse({
+            "status": "disconnected",
+            "connection_id": connection_id,
+            "conversation_id": conv_id_found,
+        })
 
     raise HTTPException(status_code=404, detail="Connection not found")
 

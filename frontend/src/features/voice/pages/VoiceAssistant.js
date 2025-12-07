@@ -11,6 +11,7 @@ import {
   connectVoiceConversationStream,
   startVoiceWebRTCBridge,
   stopVoiceWebRTCBridge,
+  disconnectVoiceWebRTC,
   sendVoiceWebRTCText
 } from '../../../api';
 import { getWsUrl } from '../../../utils/urlBuilder';
@@ -70,6 +71,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   // ============================================
   // Connection refs
   const peerConnectionRef = useRef(null);
+  const connectionIdRef = useRef(null); // Backend connection ID for this browser
   const streamRef = useRef(null); // Conversation stream
 
   // Audio refs
@@ -426,18 +428,36 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
       fallbackAudioContextRef.current = null;
     }
 
-    if (!skipBackend && conversationId) {
+    // Disconnect this browser from the backend (doesn't stop the whole session)
+    if (!skipBackend && connectionIdRef.current) {
       try {
-        await stopVoiceWebRTCBridge(conversationId);
+        console.log('[Voice] Disconnecting browser connection:', connectionIdRef.current);
+        await disconnectVoiceWebRTC(connectionIdRef.current);
       } catch (err) {
-        console.warn('Failed to stop backend bridge', err);
+        console.warn('Failed to disconnect from backend:', err);
       }
+      connectionIdRef.current = null;
     }
 
     setIsRunning(false);
     setIsMuted(false);
     setIsSpeakerMuted(false);
     setTranscript('');
+  }, []);
+
+  /**
+   * Force stop the entire conversation (all browsers + OpenAI session)
+   */
+  const forceStopSession = useCallback(async () => {
+    if (!conversationId) return;
+    console.log('[Voice] Force stopping entire conversation:', conversationId);
+
+    try {
+      await stopVoiceWebRTCBridge(conversationId);
+      console.log('[Voice] ✅ Conversation force stopped');
+    } catch (err) {
+      console.warn('Failed to force stop conversation:', err);
+    }
   }, [conversationId]);
 
   const startSession = useCallback(async () => {
@@ -490,12 +510,14 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
       });
 
       const answerSdp = response?.data?.answer;
+      const sessionId = response?.data?.session_id; // This is our connection_id
       if (!answerSdp) {
         throw new Error('Invalid SDP answer from backend');
       }
       bridgeStarted = true;
+      connectionIdRef.current = sessionId; // Store connection ID for disconnect
 
-      console.log('[Frontend WebRTC] ✅ Received answer from backend');
+      console.log('[Frontend WebRTC] ✅ Received answer from backend, connection_id:', sessionId);
       console.log('[Frontend WebRTC] Answer has sendrecv?', answerSdp.includes('a=sendrecv'));
       console.log('[Frontend WebRTC] Answer has recvonly?', answerSdp.includes('a=recvonly'));
       await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: answerSdp }));
@@ -670,6 +692,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     claudeCodeWsConnected: isRunning, // Connected via backend
     onStart: startSession,
     onStop: stopSession,
+    onForceStop: forceStopSession,
     onToggleMute: toggleMute,
     onToggleSpeakerMute: toggleSpeakerMute,
     conversationLoading,
