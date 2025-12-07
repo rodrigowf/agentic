@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, useTheme, useMediaQuery, Drawer, IconButton } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
+import { Box, useTheme, useMediaQuery } from '@mui/material';
 import VoiceConfigEditor from '../components/VoiceConfigEditor';
 import useTVNavigation from '../hooks/useTVNavigation';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
@@ -58,7 +57,6 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   const [viewTab, setViewTab] = useState(0);
   const [mainTab, setMainTab] = useState(3);
   const [configEditorOpen, setConfigEditorOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [voiceConfig, setVoiceConfig] = useState({
     agentName: 'MainConversation',
     systemPromptFile: 'default.txt',
@@ -735,20 +733,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   if (isMobile) {
     return (
       <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        {/* Mobile drawer button */}
-        <IconButton
-          onClick={() => setDrawerOpen(!drawerOpen)}
-          sx={{ position: 'absolute', top: 8, left: 8, zIndex: 1300, bgcolor: 'background.paper' }}
-        >
-          <MenuIcon />
-        </IconButton>
-
-        {/* Mobile drawer */}
-        <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-          <Box sx={{ width: 250, p: 2 }}>
-            {/* Drawer content if needed */}
-          </Box>
-        </Drawer>
+        {/* Note: Mobile drawer with conversations list is handled by VoiceDashboard parent component */}
 
         {/* Mobile layout */}
         <MobileVoiceLayout
