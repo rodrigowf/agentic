@@ -120,7 +120,29 @@ const NestedAgentInsights = ({
           icon = 'success';
           const firstContent = contentItems[0] || {};
           toolName = firstContent.name || nestedData.name || nestedData.tool || data.name;
-          const result = nestedData.result ?? data.data?.result ?? data.result;
+
+          // Extract result from multiple possible locations:
+          // 1. nestedData.result (direct result)
+          // 2. data.data?.result (nested result)
+          // 3. data.result (top-level result)
+          // 4. contentItems[].content (AutoGen format - tool output in content array)
+          let result = nestedData.result ?? data.data?.result ?? data.result;
+
+          // If no direct result, try to extract from content items (AutoGen format)
+          // Each content item may have: { name, content, is_error }
+          if (!result && contentItems.length > 0) {
+            const contentTexts = contentItems
+              .map((item) => {
+                if (typeof item.content === 'string') return item.content;
+                if (item.content != null) return safeStringify(item.content);
+                return null;
+              })
+              .filter(Boolean);
+            if (contentTexts.length > 0) {
+              result = contentTexts.join('\n\n');
+            }
+          }
+
           if (nestedData.duration_ms) metadata.push({ label: 'Duration', value: `${nestedData.duration_ms} ms` });
           const rawArgs = firstContent.arguments ?? nestedData.arguments ?? nestedData.args;
           if (rawArgs != null) {
@@ -138,7 +160,7 @@ const NestedAgentInsights = ({
             tone = 'error';
             icon = 'error';
             metadata.push({ label: 'Status', value: 'Error' });
-            const errorDetail = nestedData.error || nestedData.message || firstContent?.error || resultText;
+            const errorDetail = nestedData.error || nestedData.message || firstContent?.error || firstContent?.content || resultText;
             previewText = toolName ? `Error in ${toolName}` : 'Tool execution error';
             descriptiveText = typeof errorDetail === 'string' ? errorDetail : safeStringify(errorDetail);
           } else {
