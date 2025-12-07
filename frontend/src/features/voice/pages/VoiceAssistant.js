@@ -66,6 +66,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   });
   const [noMicrophoneMode, setNoMicrophoneMode] = useState(false);
   const [backendSessionActive, setBackendSessionActive] = useState(false); // Real-time backend status
+  const [isStarting, setIsStarting] = useState(false); // Loading state for start button
 
   // ============================================
   // Refs
@@ -482,14 +483,19 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     try {
       await stopVoiceWebRTCBridge(conversationId);
       console.log('[Voice] ✅ Conversation force stopped');
+      // Immediately update state - don't wait for the 5-second status check
+      setBackendSessionActive(false);
     } catch (err) {
       console.warn('Failed to force stop conversation:', err);
+      // Still update state even on error - the session is likely not active
+      setBackendSessionActive(false);
     }
   }, [conversationId]);
 
   const startSession = useCallback(async () => {
-    if (isRunning || !conversationId) return;
+    if (isRunning || isStarting || !conversationId) return;
     setError(null);
+    setIsStarting(true);
     let bridgeStarted = false;
     try {
       const localStream = await ensureMicrophoneStream();
@@ -555,6 +561,8 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
       console.error('[Voice] Failed to start WebRTC bridge', err);
       setError(err.message || 'Failed to start session');
       await stopSession(!bridgeStarted);
+    } finally {
+      setIsStarting(false);
     }
   }, [attachRemoteAudio, conversationId, ensureMicrophoneStream, isRunning, stopSession, recordEvent]);
 
@@ -699,6 +707,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   // ============================================
   const controlPanelProps = {
     isRunning,
+    isStarting,
     isMuted,
     isSpeakerMuted,
     sessionLocked,

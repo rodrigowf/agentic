@@ -16,6 +16,7 @@ import ConversationHistory from './ConversationHistory';
 const VoiceControlPanel = ({
   // Session state
   isRunning,
+  isStarting,
   isMuted,
   isSpeakerMuted,
   sessionLocked,
@@ -77,6 +78,7 @@ const VoiceControlPanel = ({
         {/* Modern Voice Session Controls with Force Stop */}
         <VoiceSessionControls
           isRunning={isRunning}
+          isStarting={isStarting}
           isMuted={isMuted}
           isSpeakerMuted={isSpeakerMuted}
           onStart={onStart}
@@ -84,11 +86,11 @@ const VoiceControlPanel = ({
           onToggleMute={onToggleMute}
           onToggleSpeakerMute={onToggleSpeakerMute}
           onForceStop={onForceStop}
-          showForceStop={!isRunning && remoteSessionActive && !conversationError}
-          disabled={isRunning || conversationLoading || Boolean(conversationError)}
+          showForceStop={!isRunning && !isStarting && remoteSessionActive && !conversationError}
+          disabled={isStarting || conversationLoading || Boolean(conversationError)}
           stream={micStream}
-          statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active (joinable)' : 'Idle'}
-          statusColor={isRunning ? 'success' : remoteSessionActive ? 'info' : 'default'}
+          statusLabel={isStarting ? 'Connecting...' : isRunning ? 'Connected' : remoteSessionActive ? 'Active (joinable)' : 'Idle'}
+          statusColor={isStarting ? 'warning' : isRunning ? 'success' : remoteSessionActive ? 'info' : 'default'}
           style={{ mb: 3 }}
         />
 

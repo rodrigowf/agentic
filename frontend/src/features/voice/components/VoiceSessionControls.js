@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, IconButton, Tooltip, Typography, Chip } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography, Chip, CircularProgress } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
@@ -14,6 +14,7 @@ import AudioVisualizer from './AudioVisualizer';
  */
 export default function VoiceSessionControls({
   isRunning,
+  isStarting = false,
   isMuted,
   isSpeakerMuted = false,
   onStart,
@@ -48,22 +49,22 @@ export default function VoiceSessionControls({
       <Box sx={{ display: 'flex', gap: 1 }}>
         {!isRunning ? (
           <>
-            <Tooltip title="Start voice session (Ctrl+S)" arrow>
+            <Tooltip title={isStarting ? "Connecting..." : "Start voice session (Ctrl+S)"} arrow>
               <span>
                 <IconButton
                   onClick={onStart}
-                  disabled={disabled}
+                  disabled={disabled || isStarting}
                   data-tv-focusable="true"
-                  aria-label="Start voice session"
+                  aria-label={isStarting ? "Connecting" : "Start voice session"}
                   sx={{
                     width: 56,
                     height: 56,
-                    bgcolor: 'primary.main',
+                    bgcolor: isStarting ? 'warning.main' : 'primary.main',
                     color: 'white',
                     transition: 'all 0.2s ease',
                     '&:hover': {
-                      bgcolor: 'primary.dark',
-                      transform: 'scale(1.05)',
+                      bgcolor: isStarting ? 'warning.main' : 'primary.dark',
+                      transform: isStarting ? 'none' : 'scale(1.05)',
                     },
                     '&:focus': {
                       outline: '3px solid',
@@ -78,11 +79,16 @@ export default function VoiceSessionControls({
                       boxShadow: '0 0 20px rgba(25, 118, 210, 0.6)',
                     },
                     '&:disabled': {
-                      bgcolor: 'action.disabledBackground',
+                      bgcolor: isStarting ? 'warning.main' : 'action.disabledBackground',
+                      color: isStarting ? 'white' : undefined,
                     },
                   }}
                 >
-                  <PlayArrowIcon sx={{ fontSize: 32 }} />
+                  {isStarting ? (
+                    <CircularProgress size={28} sx={{ color: 'white' }} />
+                  ) : (
+                    <PlayArrowIcon sx={{ fontSize: 32 }} />
+                  )}
                 </IconButton>
               </span>
             </Tooltip>

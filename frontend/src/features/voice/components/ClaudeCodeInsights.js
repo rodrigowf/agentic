@@ -222,9 +222,16 @@ const ClaudeCodeInsights = ({
   }, [messages, formatTimestamp, truncateText, safeStringify]);
 
   const virtuosoRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+
+  // Track whether user is scrolled to bottom
+  const handleAtBottomStateChange = (atBottom) => {
+    isAtBottomRef.current = atBottom;
+  };
 
   useEffect(() => {
-    if (virtuosoRef.current && codeHighlights.length > 0) {
+    // Only auto-scroll if user is already at the bottom
+    if (virtuosoRef.current && codeHighlights.length > 0 && isAtBottomRef.current) {
       virtuosoRef.current.scrollToIndex({
         index: codeHighlights.length - 1,
         align: 'end',
@@ -365,7 +372,9 @@ const ClaudeCodeInsights = ({
           style={{ height: '100%' }}
           data={codeHighlights}
           itemContent={renderCodeEntry}
-          followOutput="smooth"
+          atBottomStateChange={handleAtBottomStateChange}
+          followOutput={(isAtBottom) => isAtBottom ? 'smooth' : false}
+          atBottomThreshold={100}
         />
       )}
     </Box>

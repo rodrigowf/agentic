@@ -325,17 +325,21 @@ async def stop_conversation(conversation_id: str):
     - All browser connections
     - The OpenAI session
     - Cleans up all resources
+
+    Returns success even if the conversation was not active (idempotent).
     """
     logger.info(f"[Signal] Stopping conversation {conversation_id}")
 
     async with _lock:
-        if conversation_id not in _active_conversations:
-            raise HTTPException(status_code=404, detail="Conversation not active")
+        was_active = conversation_id in _active_conversations
 
-    await _cleanup_conversation(conversation_id)
+    if was_active:
+        await _cleanup_conversation(conversation_id)
+        logger.info(f"[Signal] ✅ Conversation {conversation_id} stopped")
+    else:
+        logger.info(f"[Signal] Conversation {conversation_id} was not active (already stopped or never started)")
 
-    logger.info(f"[Signal] ✅ Conversation {conversation_id} stopped")
-    return JSONResponse({"status": "stopped", "conversation_id": conversation_id})
+    return JSONResponse({"status": "stopped", "conversation_id": conversation_id, "was_active": was_active})
 
 
 @router.get("/api/realtime/webrtc/conversation/{conversation_id}/status")

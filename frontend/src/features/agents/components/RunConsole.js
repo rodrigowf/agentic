@@ -30,6 +30,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
   const [error, setError] = useState(null);
   const ws = useRef(null);
   const logContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [taskInput, setTaskInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -322,8 +323,18 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
     };
   }, [connectWebSocket, sharedSocket]);
 
-  useEffect(() => {
+  // Track scroll position to determine if user is at bottom
+  const handleScroll = useCallback(() => {
     if (logContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = logContainerRef.current;
+      // Consider "at bottom" if within 100px of the bottom
+      isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
+    }
+  }, []);
+
+  useEffect(() => {
+    // Only auto-scroll if user is already at the bottom
+    if (logContainerRef.current && isAtBottomRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [logs]);
@@ -419,7 +430,7 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
 
       {error && <Alert severity="error" sx={{ flexShrink: 0 }}>{error}</Alert>}
 
-      <Box component={nested ? Box : Paper} ref={logContainerRef} sx={{
+      <Box component={nested ? Box : Paper} ref={logContainerRef} onScroll={handleScroll} sx={{
         flexGrow: 1,
         p: 2,
         overflowY: 'auto',
