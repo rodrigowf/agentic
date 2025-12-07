@@ -52,14 +52,19 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
   const [selectedVoice, setSelectedVoice] = useState('alloy');
   const [memoryFilePath, setMemoryFilePath] = useState('backend/data/memory/short_term_memory.txt');
 
-  // Available OpenAI voices
+  // Available OpenAI Realtime API voices
+  // See: https://platform.openai.com/docs/guides/realtime
   const availableVoices = [
     { value: 'alloy', label: 'Alloy' },
+    { value: 'ash', label: 'Ash' },
+    { value: 'ballad', label: 'Ballad' },
+    { value: 'cedar', label: 'Cedar' },
+    { value: 'coral', label: 'Coral' },
     { value: 'echo', label: 'Echo' },
-    { value: 'fable', label: 'Fable' },
-    { value: 'onyx', label: 'Onyx' },
-    { value: 'nova', label: 'Nova' },
+    { value: 'marin', label: 'Marin' },
+    { value: 'sage', label: 'Sage' },
     { value: 'shimmer', label: 'Shimmer' },
+    { value: 'verse', label: 'Verse' },
   ];
 
   useEffect(() => {

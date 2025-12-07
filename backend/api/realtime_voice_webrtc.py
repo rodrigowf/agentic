@@ -32,9 +32,11 @@ from .browser_connection_manager import (
 )
 
 try:
-    from .realtime_voice import VOICE_SYSTEM_PROMPT
+    from .realtime_voice import prepare_voice_system_prompt, VOICE_SYSTEM_PROMPT
 except Exception:
     VOICE_SYSTEM_PROMPT = "You are a realtime voice assistant."
+    def prepare_voice_system_prompt(base_prompt, agent_name, conversation_id=None, memory_file_path=None):
+        return base_prompt
 
 try:
     from ..utils.voice_conversation_store import store as conversation_store
@@ -49,7 +51,26 @@ router = APIRouter()
 # ============================================================================
 
 VOICE_CONFIGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "voice", "configs")
+VOICE_PROMPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "voice", "prompts")
 VOICE_SELECTED_CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "voice", "selected_config.json")
+
+def _load_voice_prompt_file(filename: str) -> str:
+    """Load a voice prompt from the prompts directory.
+
+    Falls back to VOICE_SYSTEM_PROMPT constant if file doesn't exist.
+    """
+    try:
+        prompt_path = os.path.join(VOICE_PROMPTS_DIR, filename)
+        if os.path.exists(prompt_path):
+            with open(prompt_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                logger.info(f"[VoiceConfig] Loaded prompt from '{filename}' ({len(content)} chars)")
+                return content
+        else:
+            logger.warning(f"[VoiceConfig] Prompt file '{filename}' not found, using VOICE_SYSTEM_PROMPT fallback")
+    except Exception as e:
+        logger.error(f"[VoiceConfig] Error loading prompt file '{filename}': {e}, using VOICE_SYSTEM_PROMPT fallback")
+    return VOICE_SYSTEM_PROMPT
 
 
 def _load_selected_voice_config() -> dict:
@@ -166,8 +187,18 @@ async def _get_or_setup_conversation(
     agent_name = voice_config.get("agent_name", "MainConversation")
     memory_file_path = voice_config.get("memory_file_path", "backend/data/memory/short_term_memory.txt")
     voice_model = voice_config.get("voice_model", "gpt-realtime")
+    system_prompt_file = voice_config.get("system_prompt_file", "default.txt")
 
-    logger.info(f"[Setup] Creating session for {conversation_id} with config: voice={voice}, agent={agent_name}")
+    logger.info(f"[Setup] Creating session for {conversation_id} with config: voice={voice}, agent={agent_name}, prompt_file={system_prompt_file}")
+
+    # Load the base prompt from file and prepare it with injections
+    base_prompt = _load_voice_prompt_file(system_prompt_file)
+    system_prompt = prepare_voice_system_prompt(
+        base_prompt=base_prompt,
+        agent_name=agent_name,
+        conversation_id=conversation_id,
+        memory_file_path=memory_file_path,
+    )
 
     # Create browser manager first (we need to pass audio callback to OpenAI session)
     browser_mgr = await get_or_create_manager(conversation_id)
@@ -178,7 +209,7 @@ async def _get_or_setup_conversation(
         conversation_id=conversation_id,
         voice=voice,
         agent_name=agent_name,
-        system_prompt=VOICE_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         model=voice_model,
         on_audio_callback=browser_mgr.broadcast_audio,  # OpenAI audio → all browsers
         memory_file_path=memory_file_path,  # Memory file for context injection

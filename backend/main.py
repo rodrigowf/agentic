@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 import re
+import json
 import inspect  # Added inspect
 import asyncio  # Added asyncio
 import google.generativeai as genai

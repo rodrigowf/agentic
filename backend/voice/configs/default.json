@@ -3,8 +3,8 @@
   "agent_name": "MainConversation",
   "system_prompt_file": "default.txt",
   "voice_model": "gpt-realtime",
-  "voice": "alloy",
+  "voice": "cedar",
   "memory_file_path": "backend/data/memory/short_term_memory.txt",
-  "description": "Default voice assistant configuration with MainConversation agent",
+  "description": "Voice configuration: MainConversation with cedar voice",
   "metadata": {}
 }
