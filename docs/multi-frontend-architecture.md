@@ -110,13 +110,15 @@ return { connection_id, answer }
 **Disconnect (POST /api/realtime/webrtc/disconnect):**
 ```python
 # Clean up just this browser connection
-# OpenAI session stays alive for other browsers
+# OpenAI session stays alive even when ALL browsers disconnect
+# Session persists until explicitly stopped via Force Stop
 await browser_mgr.remove_connection(connection_id)
 ```
 
-**Stop Conversation (DELETE /api/realtime/webrtc/conversation/{id}):**
+**Force Stop (DELETE /api/realtime/webrtc/conversation/{id}):**
 ```python
-# Close everything for this conversation
+# Close everything for this conversation (Force Stop button)
+# This is the ONLY way to close the OpenAI session
 await browser_mgr.close_all()
 await session_manager.close_session(conversation_id)
 ```
@@ -126,8 +128,8 @@ await session_manager.close_session(conversation_id)
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/realtime/webrtc/signal` | POST | Connect browser, returns connection_id + SDP answer |
-| `/api/realtime/webrtc/disconnect` | POST | Disconnect single browser (others stay connected) |
-| `/api/realtime/webrtc/conversation/{id}` | DELETE | Stop entire conversation (all browsers + OpenAI) |
+| `/api/realtime/webrtc/disconnect` | POST | Disconnect single browser (OpenAI session persists) |
+| `/api/realtime/webrtc/conversation/{id}` | DELETE | **Force Stop** - closes all browsers + OpenAI session |
 | `/api/realtime/webrtc/conversation/{id}/status` | GET | Get conversation status (browser count, etc.) |
 | `/api/realtime/webrtc/conversation/{id}/text` | POST | Send text message |
 | `/api/realtime/webrtc/conversation/{id}/commit` | POST | Manual VAD commit |
@@ -154,10 +156,11 @@ function VoiceComponent() {
     onTrack: (evt) => { /* handle incoming audio */ },
   });
 
-  // Disconnect just this tab (other tabs stay connected)
+  // Disconnect just this tab (OpenAI session stays alive)
   await disconnect();
 
-  // Stop entire conversation (all tabs + OpenAI)
+  // Force Stop - closes ALL tabs + OpenAI session
+  // Only way to terminate the OpenAI session
   await stopConversation();
 }
 ```
@@ -168,19 +171,47 @@ function VoiceComponent() {
 |-----------|----------|
 | **Conversation isolation** | One OpenAI session per conversation_id |
 | **Connection order matters** | Always establish OpenAI first, then browser connections |
-| **Session persistence** | OpenAI session survives frontend disconnects |
+| **Session persistence** | OpenAI session survives ALL frontend disconnects (until Force Stop) |
 | **Independent browser control** | Each browser has its own connection_id |
-| **Resource cleanup** | Map-based tracking with unique IDs, graceful teardown |
+| **Explicit cleanup only** | OpenAI session only closes via Force Stop button |
 | **Overlapping speech** | OpenAI's VAD handles multiple speakers naturally |
 | **Broadcast efficiency** | Single OpenAI response → fan-out to all frontends |
 
 ## Why This Design?
 
 1. **Conversation Isolation**: Different conversations have completely separate OpenAI sessions
-2. **Decoupling**: Frontend lifecycle is independent from OpenAI session lifecycle
+2. **Decoupling**: Frontend lifecycle is completely independent from OpenAI session lifecycle
 3. **Efficiency**: One OpenAI connection per conversation regardless of frontend count
-4. **Resilience**: Tab crashes don't kill the session for others
-5. **Simplicity**: Each layer has a single responsibility
+4. **Resilience**: Tab closes/crashes don't affect the session - browsers can rejoin anytime
+5. **Explicit Control**: Only Force Stop terminates the OpenAI session (no auto-cleanup)
+6. **Simplicity**: Each layer has a single responsibility
+
+## Session Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Session Lifecycle                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. First tab connects                                                   │
+│     └─→ Creates OpenAI session + browser connection                      │
+│                                                                          │
+│  2. More tabs join                                                       │
+│     └─→ Added to same OpenAI session (N:1)                              │
+│                                                                          │
+│  3. Tab disconnects (close tab / stop button)                           │
+│     └─→ Only that browser removed, OpenAI session stays alive           │
+│                                                                          │
+│  4. ALL tabs disconnect                                                  │
+│     └─→ OpenAI session STILL stays alive (joinable state)               │
+│     └─→ Any browser can rejoin anytime                                  │
+│                                                                          │
+│  5. Force Stop button pressed                                            │
+│     └─→ Kills ALL browser connections + OpenAI session                  │
+│     └─→ This is the ONLY way to close the OpenAI session                │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ## File Locations
 
