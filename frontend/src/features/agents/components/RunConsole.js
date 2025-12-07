@@ -120,11 +120,6 @@ export default function RunConsole({ nested = false, agentName, sharedSocket, re
       return;
     }
 
-    // Don't connect if nested mode without a shared socket
-    if (nested && !sharedSocket) {
-      return;
-    }
-
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       return;
     }

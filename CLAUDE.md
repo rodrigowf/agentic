@@ -1,6 +1,6 @@
 # CLAUDE.md - Agentic System Guide
 
-**Last Updated:** 2025-12-04
+**Last Updated:** 2025-12-07
 **For:** Future Claude instances working on this codebase
 
 ---
@@ -42,15 +42,20 @@ hostname && pwd
 
 **📖 See:** [OPERATIONAL_CONTEXT.md](docs/guides/OPERATIONAL_CONTEXT.md) for complete context guide.
 
-### ⚠️ CRITICAL: Always Use NVM Node Paths
+### ⚠️ CRITICAL: Node.js Environment Differences
 
+**Local Development (uses NVM):**
 ```bash
-# Correct
 ~/.nvm/versions/node/v22.21.1/bin/npm start
-
-# Wrong
-npm start  # System node may be outdated!
 ```
+
+**Jetson Production (uses Conda):**
+```bash
+export PATH=/home/rodrigo/miniconda3/envs/agentic/bin:$PATH
+npm run build
+```
+
+**Note:** Never use bare `npm` or `node` commands - always use full paths or set PATH first.
 
 ---
 
@@ -250,10 +255,17 @@ ssh rodrigo@192.168.0.200
 https://192.168.0.200/agentic/
 ```
 
+**Environment:** Miniconda3 with `agentic` conda environment (Python 3.11, Node 20.17)
+
 **Common Tasks:**
 ```bash
+# Set PATH for conda environment (required for non-interactive SSH)
+export PATH=/home/rodrigo/miniconda3/envs/agentic/bin:$PATH
+
 # Deploy frontend update
-cd ~/agentic/frontend && npm run build
+cd ~/agentic/frontend
+npm install  # if new dependencies
+npm run build
 sudo kill -HUP $(cat ~/nginx.pid)
 
 # Restart backend
@@ -263,7 +275,7 @@ sudo systemctl restart agentic-backend
 sudo journalctl -u agentic-backend -f
 ```
 
-**📖 Complete Guide:** [docs/JETSON_DEPLOYMENT_GUIDE.md](docs/JETSON_DEPLOYMENT_GUIDE.md)
+**📖 Complete Guide:** [docs/deployment/JETSON_DEPLOYMENT_GUIDE.md](docs/deployment/JETSON_DEPLOYMENT_GUIDE.md)
 
 ---
 

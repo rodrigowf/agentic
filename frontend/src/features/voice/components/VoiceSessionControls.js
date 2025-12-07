@@ -20,6 +20,8 @@ export default function VoiceSessionControls({
   onStop,
   onToggleMute,
   onToggleSpeakerMute,
+  onForceStop,
+  showForceStop = false,
   disabled = false,
   stream = null,
   statusLabel = 'Idle',
@@ -45,44 +47,69 @@ export default function VoiceSessionControls({
       {/* Primary Control Buttons */}
       <Box sx={{ display: 'flex', gap: 1 }}>
         {!isRunning ? (
-          <Tooltip title="Start voice session (Ctrl+S)" arrow>
-            <span>
-              <IconButton
-                onClick={onStart}
-                disabled={disabled}
-                data-tv-focusable="true"
-                aria-label="Start voice session"
-                sx={{
-                  width: 56,
-                  height: 56,
-                  bgcolor: 'primary.main',
-                  color: 'white',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    bgcolor: 'primary.dark',
-                    transform: 'scale(1.05)',
-                  },
-                  '&:focus': {
-                    outline: '3px solid',
-                    outlineColor: 'primary.light',
-                    outlineOffset: '4px',
-                  },
-                  '&[data-tv-focused="true"]': {
-                    outline: '4px solid',
-                    outlineColor: 'primary.light',
-                    outlineOffset: '4px',
-                    transform: 'scale(1.1)',
-                    boxShadow: '0 0 20px rgba(25, 118, 210, 0.6)',
-                  },
-                  '&:disabled': {
-                    bgcolor: 'action.disabledBackground',
-                  },
-                }}
-              >
-                <PlayArrowIcon sx={{ fontSize: 32 }} />
-              </IconButton>
-            </span>
-          </Tooltip>
+          <>
+            <Tooltip title="Start voice session (Ctrl+S)" arrow>
+              <span>
+                <IconButton
+                  onClick={onStart}
+                  disabled={disabled}
+                  data-tv-focusable="true"
+                  aria-label="Start voice session"
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: 'primary.dark',
+                      transform: 'scale(1.05)',
+                    },
+                    '&:focus': {
+                      outline: '3px solid',
+                      outlineColor: 'primary.light',
+                      outlineOffset: '4px',
+                    },
+                    '&[data-tv-focused="true"]': {
+                      outline: '4px solid',
+                      outlineColor: 'primary.light',
+                      outlineOffset: '4px',
+                      transform: 'scale(1.1)',
+                      boxShadow: '0 0 20px rgba(25, 118, 210, 0.6)',
+                    },
+                    '&:disabled': {
+                      bgcolor: 'action.disabledBackground',
+                    },
+                  }}
+                >
+                  <PlayArrowIcon sx={{ fontSize: 32 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            {/* Force Stop button - visible when session is active elsewhere */}
+            {showForceStop && onForceStop && (
+              <Tooltip title="Force stop session for all connected tabs" arrow>
+                <IconButton
+                  onClick={onForceStop}
+                  aria-label="Force stop session"
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    bgcolor: 'error.main',
+                    color: 'white',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: 'error.dark',
+                      transform: 'scale(1.05)',
+                    },
+                  }}
+                >
+                  <StopIcon sx={{ fontSize: 28 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </>
         ) : (
           <Tooltip title="Stop voice session (Ctrl+S)" arrow>
             <span>

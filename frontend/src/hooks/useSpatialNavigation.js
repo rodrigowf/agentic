@@ -141,6 +141,19 @@ export default function useSpatialNavigation({
     }
 
     const currentElement = document.activeElement;
+
+    // Skip spatial navigation when inside text input fields
+    // to allow normal text cursor movement with arrow keys
+    const isTextInput = currentElement && (
+      currentElement.tagName === 'TEXTAREA' ||
+      (currentElement.tagName === 'INPUT' &&
+        ['text', 'password', 'email', 'search', 'url', 'tel', 'number'].includes(currentElement.type)) ||
+      currentElement.isContentEditable
+    );
+
+    if (isTextInput) {
+      return; // Let the browser handle arrow keys normally for text navigation
+    }
     const elements = getFocusableElements();
 
     // If no element is focused, focus the first one

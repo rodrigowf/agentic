@@ -27,7 +27,9 @@ hostname && pwd
   - Backend: `https://192.168.0.200:8000`
   - Frontend: `https://192.168.0.200/agentic/`
 
-## ⚠️ CRITICAL: Always Use NVM Node Paths
+## ⚠️ CRITICAL: Node.js Environment Differences
+
+### Local Development (uses NVM)
 
 **DO NOT use system node/npm commands!** Always use the full nvm path:
 
@@ -46,7 +48,30 @@ npm start
 
 **Available nvm versions:** v16.20.2, v20.19.4, v22.19.0, v22.21.1
 
-**Reason:** System node may be outdated or incompatible with project dependencies.
+### Jetson Production (uses Conda)
+
+**The Jetson uses Miniconda, NOT nvm!** Set the PATH to use the conda environment:
+
+```bash
+# Option 1: Activate conda environment
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate agentic
+npm run build
+
+# Option 2: Export PATH directly (for non-interactive SSH)
+export PATH=/home/rodrigo/miniconda3/envs/agentic/bin:$PATH
+npm run build
+
+# Option 3: Use full path
+~/miniconda3/envs/agentic/bin/npm run build
+```
+
+**Conda environment versions:**
+- Python: 3.11.13
+- Node.js: 20.17.0
+- npm: 10.8.2
+
+**Reason:** The systemd backend service uses the conda PATH. Frontend builds must use the same environment for consistency.
 
 ## Local Development Behavior
 
@@ -111,9 +136,10 @@ ssh rodrigo@192.168.0.200
 sudo systemctl status agentic-backend
 sudo systemctl status mongodb
 
-# Deploy frontend update (on Jetson)
+# Deploy frontend update (on Jetson via non-interactive SSH)
+export PATH=/home/rodrigo/miniconda3/envs/agentic/bin:$PATH
 cd ~/agentic/frontend
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate agentic
+npm install  # if new dependencies added
 npm run build
 sudo kill -HUP $(cat ~/nginx.pid)
 

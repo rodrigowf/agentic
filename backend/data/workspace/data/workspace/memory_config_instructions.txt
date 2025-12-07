@@ -1,0 +1,4 @@
+1) Add a new configuration input for the memory file path.
+2) Update the system so that at startup, it reads the short-term memory from the specified file path.
+3) Inject that memory content into the voice agent's system prompt using a placeholder variable.
+4) Ensure this enables the voice agent to start with the latest short-term memory context automatically.
