@@ -82,16 +82,16 @@ const VoiceControlPanel = ({
           onStop={onStop}
           onToggleMute={onToggleMute}
           onToggleSpeakerMute={onToggleSpeakerMute}
-          disabled={sessionLocked || conversationLoading || Boolean(conversationError)}
+          disabled={isRunning || conversationLoading || Boolean(conversationError)}
           stream={micStream}
-          statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active elsewhere' : 'Idle'}
-          statusColor={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
+          statusLabel={isRunning ? 'Connected' : remoteSessionActive ? 'Active (joinable)' : 'Idle'}
+          statusColor={isRunning ? 'success' : remoteSessionActive ? 'info' : 'default'}
           style={{ mb: 3 }}
         />
 
         {!isRunning && remoteSessionActive && !conversationError && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            Another tab is currently running this voice session.
+            Voice session is active. Click Start to join from this tab.
           </Alert>
         )}
 
@@ -134,8 +134,8 @@ const VoiceControlPanel = ({
           />
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
             <Chip
-              label={isRunning ? 'Connected' : remoteSessionActive ? 'Active' : 'Idle'}
-              color={isRunning ? 'success' : remoteSessionActive ? 'warning' : 'default'}
+              label={isRunning ? 'Connected' : remoteSessionActive ? 'Active (joinable)' : 'Idle'}
+              color={isRunning ? 'success' : remoteSessionActive ? 'info' : 'default'}
               size="small"
             />
             <Box sx={{ flexGrow: 1 }} />
