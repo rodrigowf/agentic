@@ -67,6 +67,7 @@ class VoiceConfig(BaseSchema):
     system_prompt_file: str = Field(..., description="Filename of the system prompt (in voice_prompts directory)")
     voice_model: str = Field(default="gpt-realtime", description="Model to use for voice (e.g., gpt-realtime)")
     voice: str = Field(default="alloy", description="Voice to use (e.g., alloy, echo, fable, onyx, nova, shimmer)")
+    memory_file_path: str = Field(default="backend/data/memory/short_term_memory.txt", description="Path to memory file for context injection")
     description: Optional[str] = Field(default=None, description="Optional description of this voice configuration")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 

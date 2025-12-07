@@ -63,6 +63,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     systemPromptFile: 'default.txt',
     systemPromptContent: '',
     voice: 'alloy',
+    memoryFilePath: 'backend/data/memory/short_term_memory.txt',
   });
   const [noMicrophoneMode, setNoMicrophoneMode] = useState(false);
 
@@ -507,6 +508,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
         voice: voiceConfig.voice || 'alloy',
         agent_name: voiceConfig.agentName || 'MainConversation',
         system_prompt: voiceConfig.systemPromptContent || undefined,
+        memory_file_path: voiceConfig.memoryFilePath || 'backend/data/memory/short_term_memory.txt',
       });
 
       const answerSdp = response?.data?.answer;

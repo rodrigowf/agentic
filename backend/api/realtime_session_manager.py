@@ -24,10 +24,11 @@ from av import AudioFrame
 from .openai_webrtc_client import OpenAIWebRTCClient
 
 try:
-    from .realtime_voice import VOICE_SYSTEM_PROMPT, stream_manager
+    from .realtime_voice import VOICE_SYSTEM_PROMPT, stream_manager, prepare_voice_system_prompt
 except Exception:
     VOICE_SYSTEM_PROMPT = "You are a realtime voice assistant."
     stream_manager = None
+    prepare_voice_system_prompt = None
 
 try:
     from ..utils.voice_conversation_store import store as conversation_store
@@ -628,6 +629,7 @@ class RealtimeSessionManager:
         system_prompt: Optional[str] = None,
         model: str = "gpt-realtime",
         on_audio_callback: Optional[Callable[[AudioFrame], None]] = None,
+        memory_file_path: Optional[str] = None,
     ) -> OpenAISession:
         """
         Get existing session or create new one for a conversation.
@@ -639,6 +641,7 @@ class RealtimeSessionManager:
             system_prompt: System instructions
             model: OpenAI model name
             on_audio_callback: Called when audio received from OpenAI
+            memory_file_path: Path to memory file for context injection
 
         Returns:
             OpenAISession for the conversation
@@ -655,13 +658,26 @@ class RealtimeSessionManager:
                     # Session exists but not connected, clean it up
                     del self._sessions[conversation_id]
 
+            # Prepare the system prompt with memory and history injection
+            final_prompt = system_prompt or VOICE_SYSTEM_PROMPT
+            if prepare_voice_system_prompt:
+                final_prompt = prepare_voice_system_prompt(
+                    base_prompt=final_prompt,
+                    agent_name=agent_name,
+                    conversation_id=conversation_id,
+                    memory_file_path=memory_file_path,
+                )
+                logger.info(f"[SessionManager] Prepared system prompt with memory and history injection")
+            else:
+                logger.warning("[SessionManager] prepare_voice_system_prompt not available, using raw prompt")
+
             # Create new session
             logger.info(f"[SessionManager] Creating new session for {conversation_id}")
             session = OpenAISession(
                 conversation_id=conversation_id,
                 voice=voice,
                 agent_name=agent_name,
-                system_prompt=system_prompt,
+                system_prompt=final_prompt,
                 model=model,
                 on_audio_callback=on_audio_callback,
             )

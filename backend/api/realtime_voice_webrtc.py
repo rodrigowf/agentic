@@ -53,6 +53,7 @@ class SignalRequest(BaseModel):
     voice: Optional[str] = "alloy"
     agent_name: Optional[str] = "MainConversation"
     system_prompt: Optional[str] = None
+    memory_file_path: Optional[str] = None  # Path to memory file for context
 
 
 class SignalResponse(BaseModel):
@@ -86,6 +87,7 @@ async def _get_or_setup_conversation(
     voice: str = "alloy",
     agent_name: str = "MainConversation",
     system_prompt: Optional[str] = None,
+    memory_file_path: Optional[str] = None,
 ) -> tuple[OpenAISession, BrowserConnectionManager]:
     """
     Get or set up a conversation with both OpenAI session and browser manager.
@@ -107,11 +109,20 @@ async def _get_or_setup_conversation(
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
+    metadata = conversation.get("metadata", {})
     voice_model = conversation.get("voice_model") or "gpt-realtime"
     final_system_prompt = (
         system_prompt
-        or conversation.get("metadata", {}).get("system_prompt")
+        or metadata.get("system_prompt")
         or VOICE_SYSTEM_PROMPT
+    )
+
+    # Get memory file path from request or conversation metadata
+    # Default to short_term_memory.txt if not specified
+    final_memory_file_path = (
+        memory_file_path
+        or metadata.get("memory_file_path")
+        or "backend/data/memory/short_term_memory.txt"
     )
 
     # Create browser manager first (we need to pass audio callback to OpenAI session)
@@ -126,6 +137,7 @@ async def _get_or_setup_conversation(
         system_prompt=final_system_prompt,
         model=voice_model,
         on_audio_callback=browser_mgr.broadcast_audio,  # OpenAI audio → all browsers
+        memory_file_path=final_memory_file_path,  # Memory file for context injection
     )
 
     # Set up browser audio callback → OpenAI
@@ -175,6 +187,7 @@ async def signal_connect(request: SignalRequest):
             voice=request.voice or "alloy",
             agent_name=request.agent_name or "MainConversation",
             system_prompt=request.system_prompt,
+            memory_file_path=request.memory_file_path,
         )
 
         # Add browser connection
@@ -348,6 +361,7 @@ class BridgeOffer(BaseModel):
     voice: Optional[str] = "alloy"
     agent_name: Optional[str] = "MainConversation"
     system_prompt: Optional[str] = None
+    memory_file_path: Optional[str] = None
 
 
 class BridgeAnswer(BaseModel):
@@ -370,6 +384,7 @@ async def handle_bridge_legacy(offer: BridgeOffer):
         voice=offer.voice,
         agent_name=offer.agent_name,
         system_prompt=offer.system_prompt,
+        memory_file_path=offer.memory_file_path,
     ))
 
     # Return in legacy format

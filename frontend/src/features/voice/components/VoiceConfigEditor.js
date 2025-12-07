@@ -41,6 +41,7 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
   const [promptContent, setPromptContent] = useState('');
   const [newPromptName, setNewPromptName] = useState('');
   const [selectedVoice, setSelectedVoice] = useState('alloy');
+  const [memoryFilePath, setMemoryFilePath] = useState('backend/data/memory/short_term_memory.txt');
 
   // Available OpenAI voices
   const availableVoices = [
@@ -122,6 +123,7 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
       systemPromptFile: selectedPromptFile,
       systemPromptContent: promptContent,
       voice: selectedVoice,
+      memoryFilePath: memoryFilePath,
     });
     onClose();
   };
@@ -178,6 +180,17 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
                 ))}
               </Select>
             </FormControl>
+
+            {/* Memory File Path */}
+            <TextField
+              fullWidth
+              label="Memory File"
+              value={memoryFilePath}
+              onChange={(e) => setMemoryFilePath(e.target.value)}
+              placeholder="backend/data/memory/short_term_memory.txt"
+              helperText="Path to memory file for context injection (relative to project root)"
+              size="small"
+            />
 
             {/* Prompt File Selection */}
             <FormControl fullWidth>

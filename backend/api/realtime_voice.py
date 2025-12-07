@@ -11,10 +11,13 @@ Exports used by other modules:
 - VOICE_SYSTEM_PROMPT: System prompt for the voice assistant
 - stream_manager: ConversationStreamManager for event broadcasting
 - _inject_available_agents: Helper to inject agent info into prompts
+- _inject_memory_content: Helper to inject memory file content into prompts
+- _inject_conversation_history: Helper to inject conversation history into prompts
 """
 
 import asyncio
 import logging
+import os
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Set
@@ -36,6 +39,10 @@ VOICE_SYSTEM_PROMPT = (
     "Act as a calm, concise narrator/controller; the team does the reasoning and actions, and Claude Code handles self-editing tasks.\n\n"
     "**AVAILABLE AGENTS IN THE TEAM**:\n"
     "{{AVAILABLE_AGENTS}}\n\n"
+    "**MEMORY CONTEXT** (information from the memory system):\n"
+    "{{MEMORY_CONTENT}}\n\n"
+    "**CONVERSATION HISTORY** (previous messages in this session):\n"
+    "{{CONVERSATION_HISTORY}}\n\n"
     "Reading controller messages:\n"
     "- [TEAM Agent] ... are team updates (incl. tool usage/completion). Treat them as situational awareness and keep them off-mic unless summarizing key results.\n"
     "- [CODE ClaudeCode] ... are self-editing updates from Claude Code editing the codebase. Mention when files are modified or significant changes are made.\n"
@@ -199,6 +206,190 @@ def _inject_available_agents(instructions: str, agent_name: str) -> str:
     except Exception as e:
         logger.error(f"Error injecting available agents: {e}")
         return instructions.replace("{{AVAILABLE_AGENTS}}", "(Error loading agents information)")
+
+
+def _inject_memory_content(instructions: str, memory_file_path: Optional[str] = None) -> str:
+    """
+    Inject memory file content into the voice system prompt.
+    Replaces {{MEMORY_CONTENT}} placeholder with the file contents.
+
+    Args:
+        instructions: The system prompt with placeholder
+        memory_file_path: Path to the memory file (relative to backend directory)
+
+    Returns:
+        Updated instructions with memory content injected
+    """
+    if not memory_file_path:
+        return instructions.replace("{{MEMORY_CONTENT}}", "(No memory file configured)")
+
+    try:
+        # Get the backend directory path
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # Handle relative paths (relative to project root, not backend)
+        if memory_file_path.startswith("backend/"):
+            # Path is relative to project root, strip "backend/" prefix
+            file_path = os.path.join(backend_dir, memory_file_path[8:])
+        elif os.path.isabs(memory_file_path):
+            file_path = memory_file_path
+        else:
+            # Relative to backend directory
+            file_path = os.path.join(backend_dir, memory_file_path)
+
+        if not os.path.exists(file_path):
+            logger.warning(f"Memory file not found: {file_path}")
+            return instructions.replace("{{MEMORY_CONTENT}}", f"(Memory file not found: {memory_file_path})")
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+
+        if not content:
+            return instructions.replace("{{MEMORY_CONTENT}}", "(Memory file is empty)")
+
+        # Limit content length to avoid excessive token usage
+        max_chars = 4000
+        if len(content) > max_chars:
+            content = content[:max_chars] + "\n... (truncated)"
+            logger.info(f"Memory content truncated to {max_chars} characters")
+
+        logger.info(f"Injected memory content from {file_path} ({len(content)} chars)")
+        return instructions.replace("{{MEMORY_CONTENT}}", content)
+
+    except Exception as e:
+        logger.error(f"Error loading memory file: {e}")
+        return instructions.replace("{{MEMORY_CONTENT}}", f"(Error loading memory: {str(e)})")
+
+
+def _inject_conversation_history(instructions: str, conversation_id: str, max_messages: int = 50) -> str:
+    """
+    Inject conversation history into the voice system prompt.
+    Replaces {{CONVERSATION_HISTORY}} placeholder with formatted history.
+
+    Args:
+        instructions: The system prompt with placeholder
+        conversation_id: The conversation ID to load history from
+        max_messages: Maximum number of messages to include
+
+    Returns:
+        Updated instructions with conversation history injected
+    """
+    if not conversation_id:
+        return instructions.replace("{{CONVERSATION_HISTORY}}", "(No conversation history available)")
+
+    try:
+        # Get events from the conversation store
+        events = conversation_store.list_events(conversation_id, limit=max_messages * 2)
+
+        if not events:
+            return instructions.replace("{{CONVERSATION_HISTORY}}", "(No previous messages in this conversation)")
+
+        # Format relevant events into a readable history
+        history_lines = []
+        for event in events:
+            event_type = event.get("type", "").lower()
+            source = event.get("source", "").lower()
+            payload = event.get("payload", {})
+
+            # Skip non-relevant events
+            if event_type in ["session_started", "session_stopped", "session_error"]:
+                continue
+
+            # Handle voice transcripts
+            if event_type == "conversation.item.input_audio_transcription.completed":
+                transcript = payload.get("transcript", "")
+                if transcript:
+                    history_lines.append(f"[User]: {transcript}")
+
+            # Handle assistant responses
+            elif event_type == "response.audio_transcript.done":
+                transcript = payload.get("transcript", "")
+                if transcript:
+                    history_lines.append(f"[Archie]: {transcript}")
+
+            # Handle text messages (from UI)
+            elif event_type == "input_text":
+                text = payload.get("text", "")
+                if text:
+                    history_lines.append(f"[User]: {text}")
+
+            # Handle nested agent events
+            elif source == "nested_agent":
+                message = payload.get("message", "")
+                if message:
+                    # Truncate long messages
+                    if len(message) > 200:
+                        message = message[:200] + "..."
+                    history_lines.append(f"{message}")
+
+            # Handle Claude Code events
+            elif source == "claude_code":
+                message = payload.get("message", "")
+                if message:
+                    if len(message) > 200:
+                        message = message[:200] + "..."
+                    history_lines.append(f"{message}")
+
+            # Handle function calls
+            elif event_type == "function_call":
+                tool = payload.get("tool", "unknown")
+                history_lines.append(f"[Tool Called]: {tool}")
+
+            # Stop if we have enough messages
+            if len(history_lines) >= max_messages:
+                break
+
+        if not history_lines:
+            return instructions.replace("{{CONVERSATION_HISTORY}}", "(No relevant conversation history)")
+
+        history_text = "\n".join(history_lines)
+
+        # Limit total history length
+        max_chars = 6000
+        if len(history_text) > max_chars:
+            # Keep the most recent messages
+            lines = history_lines[-max_messages//2:]
+            history_text = "... (earlier messages omitted)\n" + "\n".join(lines)
+            logger.info(f"Conversation history truncated to most recent messages")
+
+        logger.info(f"Injected {len(history_lines)} conversation history messages")
+        return instructions.replace("{{CONVERSATION_HISTORY}}", history_text)
+
+    except Exception as e:
+        logger.error(f"Error loading conversation history: {e}")
+        return instructions.replace("{{CONVERSATION_HISTORY}}", f"(Error loading history: {str(e)})")
+
+
+def prepare_voice_system_prompt(
+    base_prompt: str,
+    agent_name: str,
+    conversation_id: Optional[str] = None,
+    memory_file_path: Optional[str] = None,
+) -> str:
+    """
+    Prepare the complete voice system prompt with all injections.
+
+    Args:
+        base_prompt: The base system prompt with placeholders
+        agent_name: Name of the nested team agent
+        conversation_id: ID of the current conversation
+        memory_file_path: Path to the memory file
+
+    Returns:
+        Fully prepared system prompt with all placeholders replaced
+    """
+    prompt = base_prompt
+
+    # Inject available agents
+    prompt = _inject_available_agents(prompt, agent_name)
+
+    # Inject memory content
+    prompt = _inject_memory_content(prompt, memory_file_path)
+
+    # Inject conversation history
+    prompt = _inject_conversation_history(prompt, conversation_id)
+
+    return prompt
 
 
 # ---------------------------------------------------------------------------
