@@ -3,6 +3,11 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import CssBaseline from '@mui/material/CssBaseline';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+import { interceptConsole } from './utils/logger';
+
+// Intercept all console logs and send to backend for debugging
+// SAFE VERSION: Prevents infinite loops with isSending flag and originalConsole
+interceptConsole();
 
 // Error boundary for debugging TV WebView issues
 class ErrorBoundary extends React.Component {

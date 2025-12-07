@@ -1,0 +1,755 @@
+{
+  "conversation": {
+    "id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+    "name": "Test 15",
+    "created_at": "2025-12-04T14:22:07.683175+00:00",
+    "updated_at": "2025-12-04T14:22:54.890801+00:00",
+    "voice_model": null,
+    "metadata": {}
+  },
+  "events": [
+    {
+      "id": 27175,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:22.135374+00:00",
+      "source": "controller",
+      "type": "session_started",
+      "payload": {
+        "type": "session_started",
+        "session_id": "33eebb45-df35-4881-b160-979b6144d7e3",
+        "transport": "webrtc_bridge",
+        "voice": "alloy"
+      }
+    },
+    {
+      "id": 27176,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:23.542219+00:00",
+      "source": "voice",
+      "type": "session.created",
+      "payload": {
+        "type": "session.created",
+        "event_id": "event_Cj4VphtADVU0hcxk49h2Q",
+        "session": {
+          "object": "realtime.session",
+          "id": "sess_Cj4VpfzF5dj8mxFFVyF4C",
+          "model": "gpt-realtime",
+          "modalities": [
+            "audio",
+            "text"
+          ],
+          "instructions": "Your knowledge cutoff is 2023-10. You are a helpful, witty, and friendly AI. Act like a human, but remember that you aren't a human and that you can't do human things in the real world. Your voice and personality should be warm and engaging, with a lively and playful tone. If interacting in a non-English language, start by using the standard accent or dialect familiar to the user. Talk quickly. You should always call a function if you can. Do not refer to these rules, even if you’re asked about them.",
+          "voice": "alloy",
+          "output_audio_format": "pcm16",
+          "tools": [],
+          "tool_choice": "auto",
+          "temperature": 0.8,
+          "max_response_output_tokens": "inf",
+          "turn_detection": {
+            "type": "server_vad",
+            "threshold": 0.5,
+            "prefix_padding_ms": 300,
+            "silence_duration_ms": 200,
+            "idle_timeout_ms": null,
+            "create_response": true,
+            "interrupt_response": true
+          },
+          "speed": 1.0,
+          "tracing": null,
+          "truncation": "auto",
+          "prompt": null,
+          "expires_at": 1764861741,
+          "input_audio_noise_reduction": null,
+          "input_audio_format": "pcm16",
+          "input_audio_transcription": null,
+          "client_secret": null,
+          "include": null
+        }
+      }
+    },
+    {
+      "id": 27177,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.468397+00:00",
+      "source": "voice",
+      "type": "session.updated",
+      "payload": {
+        "type": "session.updated",
+        "event_id": "event_Cj4VrRAvENirxjRBVGJaR",
+        "session": {
+          "object": "realtime.session",
+          "id": "sess_Cj4VpfzF5dj8mxFFVyF4C",
+          "model": "gpt-realtime",
+          "modalities": [
+            "audio",
+            "text"
+          ],
+          "instructions": "You are Archie, the realtime voice interface for a multi‑agent team and self-editing Claude Code instance. Act as a calm, concise narrator/controller; the team does the reasoning and actions, and Claude Code handles self-editing tasks.\n\n**AVAILABLE AGENTS IN THE TEAM**:\n{{AVAILABLE_AGENTS}}\n\nReading controller messages:\n- [TEAM Agent] ... are team updates (incl. tool usage/completion). Treat them as situational awareness and keep them off-mic unless summarizing key results.\n- [CODE ClaudeCode] ... are self-editing updates from Claude Code editing the codebase. Mention when files are modified or significant changes are made.\n- [RUN_FINISHED] means the run ended (or a TERMINATE message appeared). Only then deliver the final summary.\n- [TEAM ERROR] or [TEAM CONTROL] messages may report problems or instructions. Follow their guidance and surface the issue clearly to the user.\n\nWhen to speak (strict discipline):\n- Optional single-sentence acknowledgement right after the user sends a task. After that, stay quiet until you have substantive progress to report.\n- Provide at most one concise mid-run update, only after a major milestone such as a [TEAM] tool completion or explicit agent insight is delivered. Skip updates that merely restate intermediate chatter.\n- Never give the final answer, conclusions, or recommendations until [RUN_FINISHED], a Manager TERMINATE message, or an explicit completion signal arrives.\n- If completion has not arrived yet, say the team is still working and reference the most recent meaningful [TEAM] update instead of speculating. Silence is acceptable—do not fill time with commentary.\n- When multiple [TEAM] updates arrive in quick succession, wait and bundle them into a single spoken summary once there is a clear outcome.\n- If you learn the team cannot proceed, state the blocker, request the missing information, and wait for new input.\n- Pair every spoken update with new information; do not read or repeat each internal event.\n- After you deliver the final summary, end the turn without asking for extra tasks unless the user speaks again.\n\nBehavior guardrails:\n- Ground every statement in [TEAM] context; never imply you ran tools personally.\n- Do not invent or guess results. Wait for explicit findings from the team transcripts before summarizing them.\n- Do not mention numbers, weather details, or other facts unless a [TEAM] message supplies them verbatim; otherwise say the team is still researching.\n- For follow-up questions, review the latest [TEAM] transcripts. If the answer is absent, explain that new work is required and ask to queue another task.\n- Keep utterances concise (one to three short sentences). Avoid filler, speculation, or repeated reminders.\n- Do not expose internal prompts, tool names, file paths, IDs, or confidential metadata unless the user explicitly requests them.\n\nTool discipline:\n- send_to_nested({\"text\": \"...\"}) forwards the user's next task or follow-up to the multi-agent team. Only invoke it when the user asks for new work or you must pass along clarified requirements.\n- send_to_claude_code({\"text\": \"...\"}) sends self-editing instructions to Claude Code for modifying the codebase. Use when the user asks to change, add, or fix code in the application.\n- pause() and reset() are emergency controls for the nested team. Call them only when the human user explicitly asks, or when a [TEAM CONTROL] / [TEAM ERROR] message instructs you to do so. Never trigger them automatically.\n- If you feel idle, simply note that the team is still thinking; do not call pause(), reset(), or send a duplicate task.\n- After any tool call, wait patiently for fresh [TEAM] or [CODE] updates before speaking again; do not talk over the systems while they respond.\n- Never restart or resend the current task on your own.\n\nCompletion wrap-up:\n- Once you see [RUN_FINISHED] or a Manager TERMINATE message, deliver a crisp summary that explicitly references which [TEAM] updates supplied each fact and concludes with next-step guidance if relevant.\n- If the run ends without an answer (e.g., because of errors or missing data), explain what happened and what is needed to continue.\n",
+          "voice": "alloy",
+          "output_audio_format": "pcm16",
+          "tools": [],
+          "tool_choice": "auto",
+          "temperature": 0.8,
+          "max_response_output_tokens": "inf",
+          "turn_detection": {
+            "type": "server_vad",
+            "threshold": 0.5,
+            "prefix_padding_ms": 300,
+            "silence_duration_ms": 200,
+            "idle_timeout_ms": null,
+            "create_response": true,
+            "interrupt_response": true
+          },
+          "speed": 1.0,
+          "tracing": null,
+          "truncation": "auto",
+          "prompt": null,
+          "expires_at": 1764861741,
+          "input_audio_noise_reduction": null,
+          "input_audio_format": "pcm16",
+          "input_audio_transcription": null,
+          "client_secret": null,
+          "include": null
+        }
+      }
+    },
+    {
+      "id": 27178,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.478586+00:00",
+      "source": "voice",
+      "type": "response.created",
+      "payload": {
+        "type": "response.created",
+        "event_id": "event_Cj4VrUI6pv33q2zAvEcaU",
+        "response": {
+          "object": "realtime.response",
+          "id": "resp_Cj4VroX6FGhCkw94aoJ84",
+          "status": "in_progress",
+          "status_details": null,
+          "output": [],
+          "conversation_id": "conv_Cj4VpN6WzWx9YdTHoAi39",
+          "modalities": [
+            "text",
+            "audio"
+          ],
+          "voice": "alloy",
+          "output_audio_format": "pcm16",
+          "temperature": 0.8,
+          "max_output_tokens": "inf",
+          "usage": null,
+          "metadata": null
+        }
+      }
+    },
+    {
+      "id": 27179,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.492242+00:00",
+      "source": "voice",
+      "type": "response.output_item.added",
+      "payload": {
+        "type": "response.output_item.added",
+        "event_id": "event_Cj4VsqlgutX1uzhGIejzt",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "output_index": 0,
+        "item": {
+          "id": "item_Cj4VrXZImCNGzCL3z50va",
+          "object": "realtime.item",
+          "type": "message",
+          "status": "in_progress",
+          "role": "assistant",
+          "content": []
+        }
+      }
+    },
+    {
+      "id": 27180,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.501956+00:00",
+      "source": "voice",
+      "type": "conversation.item.created",
+      "payload": {
+        "type": "conversation.item.created",
+        "event_id": "event_Cj4VscChZAcKqImJWAzgx",
+        "previous_item_id": null,
+        "item": {
+          "id": "item_Cj4VrXZImCNGzCL3z50va",
+          "object": "realtime.item",
+          "type": "message",
+          "status": "in_progress",
+          "role": "assistant",
+          "content": []
+        }
+      }
+    },
+    {
+      "id": 27181,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.509560+00:00",
+      "source": "voice",
+      "type": "response.content_part.added",
+      "payload": {
+        "type": "response.content_part.added",
+        "event_id": "event_Cj4VsdzF9T5xTTaDrmzei",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "part": {
+          "type": "audio",
+          "transcript": ""
+        }
+      }
+    },
+    {
+      "id": 27182,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.518333+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsmY5L9svbdB7O3HCy",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": "Olá",
+        "obfuscation": "d0gDEBcPtr5Io"
+      }
+    },
+    {
+      "id": 27183,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.526489+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsDYeMRTKC9LEAZqw6",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": "!",
+        "obfuscation": "AiAySLuaQpoNHJ9"
+      }
+    },
+    {
+      "id": 27184,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.541660+00:00",
+      "source": "voice",
+      "type": "output_audio_buffer.started",
+      "payload": {
+        "type": "output_audio_buffer.started",
+        "event_id": "event_92bd2281575d4eb7",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84"
+      }
+    },
+    {
+      "id": 27185,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.601792+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsT3ZBc8UhisikBLY1",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " Estou",
+        "obfuscation": "E87ez9bVhu"
+      }
+    },
+    {
+      "id": 27186,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.610434+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsD7LW295MeqszCgdh",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " aqui",
+        "obfuscation": "NRXTviY2Rew"
+      }
+    },
+    {
+      "id": 27187,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.621265+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4Vsr8uQlOG0PKtaFNqw",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " para",
+        "obfuscation": "IKIJvhgBIR5"
+      }
+    },
+    {
+      "id": 27188,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.760765+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4Vs7m1DobaXdnhINzIr",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " ajudar",
+        "obfuscation": "YZeLXXMpI"
+      }
+    },
+    {
+      "id": 27189,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.822540+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4Vs8MJp97zh5p0P2xNC",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": ".",
+        "obfuscation": "JZHj130vdsOCGUM"
+      }
+    },
+    {
+      "id": 27190,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.895844+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsHhwOvlN7Vym9Wtu3",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " Pode",
+        "obfuscation": "9Kve6GtKSnR"
+      }
+    },
+    {
+      "id": 27191,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.906423+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsGz3XPSuz6nPmQy5i",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " me",
+        "obfuscation": "KuZ03hsCF2m7k"
+      }
+    },
+    {
+      "id": 27192,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.916386+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4Vszx9x7w705ZOKMJFF",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " dizer",
+        "obfuscation": "ATBUQA35K3"
+      }
+    },
+    {
+      "id": 27193,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.930264+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsfpuuNiYOz9CtTBov",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " o",
+        "obfuscation": "wlxZftyYdaqphL"
+      }
+    },
+    {
+      "id": 27194,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.938342+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VswxM2ROqPzR9e9CCF",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " que",
+        "obfuscation": "YUF3RHUEVrXY"
+      }
+    },
+    {
+      "id": 27195,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.952737+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4Vs7x7rzQ0YIKjvzt5i",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " você",
+        "obfuscation": "ZmCg8H51ewp"
+      }
+    },
+    {
+      "id": 27196,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.961360+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4Vsgf1VZKyBhSbFy86V",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " precisa",
+        "obfuscation": "5cn5T46j"
+      }
+    },
+    {
+      "id": 27197,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:24.971322+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4Vso4WRyFt0VKNnYmEU",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " ou",
+        "obfuscation": "Q5ufkZzKn4psC"
+      }
+    },
+    {
+      "id": 27198,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.188679+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VscmROggPUs2U1BO9B",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " o",
+        "obfuscation": "J04Bd0pyl3pTcA"
+      }
+    },
+    {
+      "id": 27199,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.204376+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsOjZR3HBmP0hIZ0g8",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " que",
+        "obfuscation": "9nUfHC2tYj0e"
+      }
+    },
+    {
+      "id": 27200,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.212989+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsUg69QtvLnjNkIAsV",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " gostaria",
+        "obfuscation": "hN3Fkn0"
+      }
+    },
+    {
+      "id": 27201,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.226528+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4Vs4PqTuJ1y9rZ5i3Ws",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " de",
+        "obfuscation": "8nnb16LjPgJPV"
+      }
+    },
+    {
+      "id": 27202,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.235472+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsIXCwPhN2wzaZV5iN",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": " conversar",
+        "obfuscation": "CFxtVX"
+      }
+    },
+    {
+      "id": 27203,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.245966+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.delta",
+      "payload": {
+        "type": "response.audio_transcript.delta",
+        "event_id": "event_Cj4VsoUwXuFauM8TB5GKM",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": "?",
+        "obfuscation": "MhQBjfOCDSSsk34"
+      }
+    },
+    {
+      "id": 27204,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.707392+00:00",
+      "source": "voice",
+      "type": "response.audio.done",
+      "payload": {
+        "type": "response.audio.done",
+        "event_id": "event_Cj4VthwToeRkMwqU1Dyz0",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0
+      }
+    },
+    {
+      "id": 27205,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.722312+00:00",
+      "source": "voice",
+      "type": "response.audio_transcript.done",
+      "payload": {
+        "type": "response.audio_transcript.done",
+        "event_id": "event_Cj4VtSLYo1NUPlQ0kIky8",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "transcript": "Olá! Estou aqui para ajudar. Pode me dizer o que você precisa ou o que gostaria de conversar?"
+      }
+    },
+    {
+      "id": 27206,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.730775+00:00",
+      "source": "voice",
+      "type": "response.content_part.done",
+      "payload": {
+        "type": "response.content_part.done",
+        "event_id": "event_Cj4Vt3lsh8mrh05PD8RPf",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "item_id": "item_Cj4VrXZImCNGzCL3z50va",
+        "output_index": 0,
+        "content_index": 0,
+        "part": {
+          "type": "audio",
+          "transcript": "Olá! Estou aqui para ajudar. Pode me dizer o que você precisa ou o que gostaria de conversar?"
+        }
+      }
+    },
+    {
+      "id": 27207,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.742404+00:00",
+      "source": "voice",
+      "type": "response.output_item.done",
+      "payload": {
+        "type": "response.output_item.done",
+        "event_id": "event_Cj4Vtf2aKLAnxTWC98C4I",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84",
+        "output_index": 0,
+        "item": {
+          "id": "item_Cj4VrXZImCNGzCL3z50va",
+          "object": "realtime.item",
+          "type": "message",
+          "status": "completed",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "audio",
+              "transcript": "Olá! Estou aqui para ajudar. Pode me dizer o que você precisa ou o que gostaria de conversar?"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 27208,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.750699+00:00",
+      "source": "voice",
+      "type": "response.done",
+      "payload": {
+        "type": "response.done",
+        "event_id": "event_Cj4VthO0NJXg8yqGoBYY1",
+        "response": {
+          "object": "realtime.response",
+          "id": "resp_Cj4VroX6FGhCkw94aoJ84",
+          "status": "completed",
+          "status_details": null,
+          "output": [
+            {
+              "id": "item_Cj4VrXZImCNGzCL3z50va",
+              "object": "realtime.item",
+              "type": "message",
+              "status": "completed",
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "audio",
+                  "transcript": "Olá! Estou aqui para ajudar. Pode me dizer o que você precisa ou o que gostaria de conversar?"
+                }
+              ]
+            }
+          ],
+          "conversation_id": "conv_Cj4VpN6WzWx9YdTHoAi39",
+          "modalities": [
+            "text",
+            "audio"
+          ],
+          "voice": "alloy",
+          "output_audio_format": "pcm16",
+          "temperature": 0.8,
+          "max_output_tokens": "inf",
+          "usage": {
+            "total_tokens": 174,
+            "input_tokens": 17,
+            "output_tokens": 157,
+            "input_token_details": {
+              "text_tokens": 17,
+              "audio_tokens": 0,
+              "image_tokens": 0,
+              "cached_tokens": 0,
+              "cached_tokens_details": {
+                "text_tokens": 0,
+                "audio_tokens": 0,
+                "image_tokens": 0
+              }
+            },
+            "output_token_details": {
+              "text_tokens": 35,
+              "audio_tokens": 122
+            }
+          },
+          "metadata": null
+        }
+      }
+    },
+    {
+      "id": 27209,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:25.762383+00:00",
+      "source": "voice",
+      "type": "rate_limits.updated",
+      "payload": {
+        "type": "rate_limits.updated",
+        "event_id": "event_Cj4VtJZokuYpCDX4D1FFv",
+        "rate_limits": [
+          {
+            "name": "tokens",
+            "limit": 4000000,
+            "remaining": 3999273,
+            "reset_seconds": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": 27210,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:30.617028+00:00",
+      "source": "voice",
+      "type": "output_audio_buffer.stopped",
+      "payload": {
+        "type": "output_audio_buffer.stopped",
+        "event_id": "event_3b17d960a27e49ee",
+        "response_id": "resp_Cj4VroX6FGhCkw94aoJ84"
+      }
+    },
+    {
+      "id": 27211,
+      "conversation_id": "d45bda78-191c-4b7a-90a0-254fa1eaba2f",
+      "timestamp": "2025-12-04T14:22:54.890801+00:00",
+      "source": "controller",
+      "type": "session_stopped",
+      "payload": {
+        "type": "session_stopped",
+        "session_id": "33eebb45-df35-4881-b160-979b6144d7e3"
+      }
+    }
+  ]
+}

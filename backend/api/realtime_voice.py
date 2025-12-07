@@ -1,52 +1,25 @@
 """
-This module provides an HTTP API for initiating OpenAI realtime voice
-sessions and a basic wrapper around text/function calling.  It is not
-dependent on the `autogen` stack and instead talks directly to
-OpenAI’s realtime REST API.  The intent is to enable a voice‐driven
-assistant that can be controlled via WebRTC on the client side while
-leveraging the same tools/agents defined in the existing backend.
+Voice Conversation Management Module
 
-Features
---------
+This module provides conversation management for the voice assistant system.
+It handles persistence, event broadcasting, and conversation lifecycle.
 
-* **GET /token/openai** – Create a realtime session on the OpenAI API
-  and return the session id along with a short‑lived client secret.
-  The front‑end should call this endpoint to obtain credentials for
-  negotiating a WebRTC connection.  Query parameters `model` and
-  optional `voice` mirror the OpenAI API.  See the official docs
-  (https://platform.openai.com/docs/api-reference/realtime-sessions)
-  for valid values.
+The actual voice/audio handling is done by realtime_voice_webrtc.py which
+uses the WebRTC bridge to connect to OpenAI's Realtime API.
 
-* **POST /call** – Simple helper for text/function calling without
-  realtime audio.  This endpoint accepts a list of messages and
-  optional tool definitions and forwards them to the OpenAI chat
-  completion API.  It demonstrates how to invoke function/tool
-  calling when building a multimodal voice assistant.  Clients can
-  use this endpoint to drive the underlying agents when handling
-  `text` events from the WebRTC session.
-
-This module deliberately avoids handling WebRTC or audio streams on
-the server.  The browser (or other client) is responsible for
-establishing the peer connection, sending microphone audio frames and
-`session_update`/`text` events.  The server merely proxies calls to
-OpenAI’s REST APIs and optionally integrates with existing agents for
-tool execution.  See the `frontend` counterpart for a
-proof‑of‑concept WebRTC client.
+Exports used by other modules:
+- VOICE_SYSTEM_PROMPT: System prompt for the voice assistant
+- stream_manager: ConversationStreamManager for event broadcasting
+- _inject_available_agents: Helper to inject agent info into prompts
 """
 
 import asyncio
 import logging
-import os
-import json
-import time
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Set
 
-import requests
-from fastapi import APIRouter, FastAPI, HTTPException, Query, Body, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi import APIRouter, HTTPException, Query, Body, WebSocket
 from pydantic import BaseModel, Field
 from starlette.websockets import WebSocketDisconnect
 
@@ -54,18 +27,12 @@ from starlette.websockets import WebSocketDisconnect
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Environment configuration
+# Voice System Prompt
 # ---------------------------------------------------------------------------
 
-# Do not raise at import time; defer validation to endpoints so the module can be mounted safely.
-
-OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-OPENAI_REALTIME_SESSIONS = f"{OPENAI_API_BASE}/realtime/sessions"
-
-# A focused system prompt for the realtime voice model so it understands
-# the app's architecture and how to behave alongside the nested team.
 VOICE_SYSTEM_PROMPT = (
     "You are Archie, the realtime voice interface for a multi‑agent team and self-editing Claude Code instance. "
+    "**IMPORTANT: Always respond in English, regardless of the language you detect in the user's speech.** "
     "Act as a calm, concise narrator/controller; the team does the reasoning and actions, and Claude Code handles self-editing tasks.\n\n"
     "**AVAILABLE AGENTS IN THE TEAM**:\n"
     "{{AVAILABLE_AGENTS}}\n\n"
@@ -102,12 +69,19 @@ VOICE_SYSTEM_PROMPT = (
     "- If the run ends without an answer (e.g., because of errors or missing data), explain what happened and what is needed to continue.\n"
 )
 
+# ---------------------------------------------------------------------------
+# Conversation Store
+# ---------------------------------------------------------------------------
 
 try:
     from ..utils.voice_conversation_store import store as conversation_store  # type: ignore
-except ImportError:  # pragma: no cover - fallback when running as script
+except ImportError:
     from utils.voice_conversation_store import store as conversation_store  # type: ignore
 
+
+# ---------------------------------------------------------------------------
+# Stream Manager for Event Broadcasting
+# ---------------------------------------------------------------------------
 
 class ConversationStreamManager:
     """Keeps track of WebSocket subscribers for conversation event broadcasts."""
@@ -152,119 +126,9 @@ class ConversationStreamManager:
 stream_manager = ConversationStreamManager()
 
 
-class AudioRelayManager:
-    """Manages audio relay connections between mobile and desktop clients."""
-
-    def __init__(self) -> None:
-        self._lock = asyncio.Lock()
-        # conversation_id -> {"desktop": WebSocket, "mobile": WebSocket}
-        self._connections: Dict[str, Dict[str, WebSocket]] = {}
-        # WebRTC signaling connections: conversation_id -> {"desktop": WebSocket, "mobile": WebSocket}
-        self._signaling: Dict[str, Dict[str, WebSocket]] = {}
-
-    async def register_desktop(self, conversation_id: str, websocket: WebSocket) -> None:
-        async with self._lock:
-            if conversation_id not in self._connections:
-                self._connections[conversation_id] = {}
-            self._connections[conversation_id]["desktop"] = websocket
-
-    async def register_mobile(self, conversation_id: str, websocket: WebSocket) -> None:
-        async with self._lock:
-            if conversation_id not in self._connections:
-                self._connections[conversation_id] = {}
-            self._connections[conversation_id]["mobile"] = websocket
-
-    async def unregister(self, conversation_id: str, client_type: str) -> None:
-        async with self._lock:
-            if conversation_id in self._connections:
-                self._connections[conversation_id].pop(client_type, None)
-                if not self._connections[conversation_id]:
-                    self._connections.pop(conversation_id, None)
-
-    async def relay_to_desktop(self, conversation_id: str, data: bytes) -> bool:
-        """Relay audio from mobile to desktop. Returns True if sent successfully."""
-        async with self._lock:
-            conn = self._connections.get(conversation_id)
-            if not conn or "desktop" not in conn:
-                logger.warning(f"[AudioRelay] Desktop not connected for conversation {conversation_id}")
-                return False
-            desktop_ws = conn["desktop"]
-
-        try:
-            await desktop_ws.send_bytes(data)
-            logger.debug(f"[AudioRelay] Relayed {len(data)} bytes from mobile to desktop for conversation {conversation_id}")
-            return True
-        except Exception as e:
-            logger.error(f"[AudioRelay] Failed to relay to desktop: {e}")
-            return False
-
-    async def relay_to_mobile(self, conversation_id: str, data: bytes) -> bool:
-        """Relay audio from desktop to mobile. Returns True if sent successfully."""
-        async with self._lock:
-            conn = self._connections.get(conversation_id)
-            if not conn or "mobile" not in conn:
-                return False
-            mobile_ws = conn["mobile"]
-
-        try:
-            await mobile_ws.send_bytes(data)
-            return True
-        except Exception:
-            return False
-
-    def has_mobile(self, conversation_id: str) -> bool:
-        """Check if mobile client is connected."""
-        return conversation_id in self._connections and "mobile" in self._connections[conversation_id]
-
-    async def register_signaling_peer(self, conversation_id: str, peer_id: str, websocket: WebSocket) -> None:
-        """Register a WebRTC signaling peer (desktop or mobile)."""
-        async with self._lock:
-            if conversation_id not in self._signaling:
-                self._signaling[conversation_id] = {}
-            self._signaling[conversation_id][peer_id] = websocket
-
-    async def unregister_signaling_peer(self, conversation_id: str, peer_id: str) -> None:
-        """Unregister a WebRTC signaling peer."""
-        async with self._lock:
-            if conversation_id in self._signaling:
-                self._signaling[conversation_id].pop(peer_id, None)
-                if not self._signaling[conversation_id]:
-                    self._signaling.pop(conversation_id, None)
-
-    async def forward_signaling(self, conversation_id: str, target_peer: str, message: Dict[str, Any]) -> bool:
-        """Forward a WebRTC signaling message to the target peer."""
-        async with self._lock:
-            peers = self._signaling.get(conversation_id)
-            if not peers or target_peer not in peers:
-                logger.warning(f"[WebRTC] Target peer {target_peer} not connected for conversation {conversation_id}")
-                return False
-            target_ws = peers[target_peer]
-
-        try:
-            await target_ws.send_json(message)
-            return True
-        except Exception as e:
-            logger.error(f"[WebRTC] Failed to forward signaling to {target_peer}: {e}")
-            return False
-
-
-audio_relay_manager = AudioRelayManager()
-
-
-def _json_headers() -> Dict[str, str]:
-    key = os.getenv("OPENAI_API_KEY")
-    if not key:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured on server")
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "realtime=v1",
-    }
-    org = os.getenv("OPENAI_ORG")
-    if org:
-        headers["OpenAI-Organization"] = org
-    return headers
-
+# ---------------------------------------------------------------------------
+# Agent Injection Helper
+# ---------------------------------------------------------------------------
 
 def _inject_available_agents(instructions: str, agent_name: str) -> str:
     """
@@ -279,10 +143,8 @@ def _inject_available_agents(instructions: str, agent_name: str) -> str:
         Updated instructions with agent list injected
     """
     try:
-        # Import here to avoid circular dependency
         from config.config_loader import load_agents
 
-        # Load all agents
         agents_dir = "agents"
         all_agents = load_agents(agents_dir)
 
@@ -305,15 +167,11 @@ def _inject_available_agents(instructions: str, agent_name: str) -> str:
         # Extract sub-agent descriptions
         agent_descriptions = []
         for sub_agent in agent_config.sub_agents:
-            # Sub-agents can be either strings or AgentConfig objects
-            # Extract the name if it's an AgentConfig object
             if hasattr(sub_agent, 'name'):
                 sub_agent_name = sub_agent.name
-                # Use the sub_agent object directly since it's already loaded
                 description = sub_agent.description or "No description available"
                 agent_descriptions.append(f"- **{sub_agent_name}**: {description}")
             else:
-                # If it's a string, find the configuration
                 sub_agent_name = sub_agent
                 sub_agent_config = None
                 for agent in all_agents:
@@ -333,7 +191,6 @@ def _inject_available_agents(instructions: str, agent_name: str) -> str:
         else:
             agents_text = "(No sub-agents configured)"
 
-        # Replace placeholder
         updated_instructions = instructions.replace("{{AVAILABLE_AGENTS}}", agents_text)
         logger.info(f"Injected {len(agent_descriptions)} agent descriptions into voice prompt")
 
@@ -341,50 +198,12 @@ def _inject_available_agents(instructions: str, agent_name: str) -> str:
 
     except Exception as e:
         logger.error(f"Error injecting available agents: {e}")
-        # Return instructions with placeholder removed on error
         return instructions.replace("{{AVAILABLE_AGENTS}}", "(Error loading agents information)")
 
+
 # ---------------------------------------------------------------------------
-# Pydantic models
+# Pydantic Models
 # ---------------------------------------------------------------------------
-
-class ChatMessage(BaseModel):
-    """Represents a message to the chat completion API."""
-    role: str
-    content: Optional[str] = None
-    # tool/function call messages may include a name and arguments
-    name: Optional[str] = None
-    tool_call_id: Optional[str] = None
-    function_call: Optional[Dict[str, Any]] = None
-
-class ToolDefinition(BaseModel):
-    """Definition of a function/tool exposed to the model."""
-    name: str
-    description: Optional[str] = None
-    parameters: Dict[str, Any]
-
-class ChatRequest(BaseModel):
-    """Request body for the /call endpoint."""
-    model: str
-    messages: List[ChatMessage]
-    tools: Optional[List[ToolDefinition]] = None
-    tool_choice: Optional[str] = None  # 'auto' | tool name
-    temperature: float = 0.0
-
-class ChatResponse(BaseModel):
-    """Response payload from the chat completion API."""
-    id: str
-    choices: Any
-    usage: Any
-
-class SessionResponse(BaseModel):
-    """Response from the realtime session endpoint."""
-    id: str
-    client_secret: str
-    expires_at: int
-    media_addr: str
-    # Additional fields are preserved in the raw dict returned to the client.
-
 
 class CreateConversationRequest(BaseModel):
     name: Optional[str] = None
@@ -425,69 +244,17 @@ class UpdateConversationRequest(BaseModel):
     name: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
+
 # ---------------------------------------------------------------------------
-# FastAPI app and router
+# FastAPI Router
 # ---------------------------------------------------------------------------
 
 router = APIRouter()
 
 
-@router.get("/connections/active")
-async def list_active_connections() -> Dict[str, Any]:
-    """List all active WebSocket connections for debugging."""
-    async with stream_manager._lock:
-        active_conversations = {
-            conv_id: len(sockets)
-            for conv_id, sockets in stream_manager._subscribers.items()
-        }
-    async with audio_relay_manager._lock:
-        audio_connections = {
-            conv_id: list(conn.keys())
-            for conv_id, conn in audio_relay_manager._connections.items()
-        }
-    return {
-        "stream_connections": active_conversations,
-        "audio_relay_connections": audio_connections,
-        "total_conversations": len(active_conversations)
-    }
-
-
-@router.post("/connections/cleanup")
-async def cleanup_all_connections() -> Dict[str, Any]:
-    """Force close all active WebSocket connections (useful for clearing zombie connections)."""
-    closed_streams = 0
-    closed_relays = 0
-
-    # Close all stream connections
-    async with stream_manager._lock:
-        for conv_id, sockets in list(stream_manager._subscribers.items()):
-            for ws in list(sockets):
-                try:
-                    await ws.close()
-                    closed_streams += 1
-                except Exception:
-                    pass
-            sockets.clear()
-        stream_manager._subscribers.clear()
-
-    # Close all audio relay connections
-    async with audio_relay_manager._lock:
-        for conv_id, connections in list(audio_relay_manager._connections.items()):
-            for client_type, ws in list(connections.items()):
-                try:
-                    await ws.close()
-                    closed_relays += 1
-                except Exception:
-                    pass
-            connections.clear()
-        audio_relay_manager._connections.clear()
-
-    return {
-        "closed_stream_connections": closed_streams,
-        "closed_relay_connections": closed_relays,
-        "total_closed": closed_streams + closed_relays
-    }
-
+# ---------------------------------------------------------------------------
+# Conversation CRUD Endpoints
+# ---------------------------------------------------------------------------
 
 @router.post("/conversations", response_model=ConversationSummary, status_code=201)
 def create_conversation(req: CreateConversationRequest = Body(...)) -> ConversationSummary:
@@ -563,6 +330,10 @@ def cleanup_inactive_conversations(
     }
 
 
+# ---------------------------------------------------------------------------
+# Conversation Events Endpoints
+# ---------------------------------------------------------------------------
+
 @router.get("/conversations/{conversation_id}/events", response_model=List[ConversationEvent])
 def list_conversation_events(
     conversation_id: str,
@@ -601,117 +372,9 @@ async def append_conversation_event(
     return payload
 
 
-@router.websocket("/audio-relay/{conversation_id}/desktop")
-async def desktop_audio_relay(websocket: WebSocket, conversation_id: str) -> None:
-    """Desktop client connects here to receive audio from mobile."""
-    conversation = conversation_store.get_conversation(conversation_id)
-    if not conversation:
-        await websocket.close(code=4404, reason="Conversation not found")
-        return
-
-    await websocket.accept()
-    await audio_relay_manager.register_desktop(conversation_id, websocket)
-    logger.info(f"[AudioRelay] Desktop connected for conversation {conversation_id}")
-
-    try:
-        while True:
-            # Desktop can send audio back to mobile (optional)
-            data = await websocket.receive_bytes()
-            logger.debug(f"[AudioRelay] Desktop sending {len(data)} bytes to mobile for conversation {conversation_id}")
-            await audio_relay_manager.relay_to_mobile(conversation_id, data)
-    except WebSocketDisconnect:
-        logger.info(f"[AudioRelay] Desktop disconnected for conversation {conversation_id}")
-    finally:
-        await audio_relay_manager.unregister(conversation_id, "desktop")
-
-
-@router.websocket("/audio-relay/{conversation_id}/mobile")
-async def mobile_audio_relay(websocket: WebSocket, conversation_id: str) -> None:
-    """Mobile client connects here to send audio to desktop."""
-    conversation = conversation_store.get_conversation(conversation_id)
-    if not conversation:
-        await websocket.close(code=4404, reason="Conversation not found")
-        return
-
-    await websocket.accept()
-    await audio_relay_manager.register_mobile(conversation_id, websocket)
-    logger.info(f"[AudioRelay] Mobile connected for conversation {conversation_id}")
-
-    try:
-        while True:
-            # Receive audio from mobile and relay to desktop
-            data = await websocket.receive_bytes()
-            logger.debug(f"[AudioRelay] Received {len(data)} bytes from mobile for conversation {conversation_id}")
-            success = await audio_relay_manager.relay_to_desktop(conversation_id, data)
-            if not success:
-                # Desktop not connected, optionally notify mobile
-                logger.warning(f"[AudioRelay] Failed to relay mobile audio - desktop not connected")
-    except WebSocketDisconnect:
-        logger.info(f"[AudioRelay] Mobile disconnected for conversation {conversation_id}")
-    finally:
-        await audio_relay_manager.unregister(conversation_id, "mobile")
-
-
-@router.websocket("/webrtc-signal/{conversation_id}/{peer_id}")
-async def webrtc_signaling(websocket: WebSocket, conversation_id: str, peer_id: str) -> None:
-    """
-    Unified WebRTC signaling endpoint for peer-to-peer audio between desktop and mobile.
-    Handles SDP exchange (offer/answer) and ICE candidates.
-
-    Args:
-        conversation_id: The voice conversation ID
-        peer_id: Either "desktop" or "mobile"
-
-    Message format:
-        - {"type": "offer", "sdp": "..."}
-        - {"type": "answer", "sdp": "..."}
-        - {"type": "candidate", "candidate": {...}}
-    """
-    conversation = conversation_store.get_conversation(conversation_id)
-    if not conversation:
-        await websocket.close(code=4404, reason="Conversation not found")
-        return
-
-    if peer_id not in ["desktop", "mobile"]:
-        await websocket.close(code=4400, reason="peer_id must be 'desktop' or 'mobile'")
-        return
-
-    await websocket.accept()
-    await audio_relay_manager.register_signaling_peer(conversation_id, peer_id, websocket)
-    logger.info(f"[WebRTC] {peer_id} registered for signaling on conversation {conversation_id}")
-
-    # Notify the other peer that this peer has joined
-    other_peer = "mobile" if peer_id == "desktop" else "desktop"
-    await audio_relay_manager.forward_signaling(
-        conversation_id,
-        other_peer,
-        {"type": "peer_joined", "peerId": peer_id}
-    )
-
-    try:
-        async for message in websocket.iter_text():
-            data = json.loads(message)
-            msg_type = data.get("type")
-
-            if msg_type in ["offer", "answer", "candidate"]:
-                # Forward signaling messages to the other peer
-                target = "mobile" if peer_id == "desktop" else "desktop"
-                success = await audio_relay_manager.forward_signaling(conversation_id, target, data)
-                if success:
-                    logger.debug(f"[WebRTC] Forwarded {msg_type} from {peer_id} to {target}")
-                else:
-                    logger.warning(f"[WebRTC] Failed to forward {msg_type} - {target} not connected")
-            else:
-                logger.warning(f"[WebRTC] Unknown message type from {peer_id}: {msg_type}")
-
-    except WebSocketDisconnect:
-        logger.info(f"[WebRTC] {peer_id} disconnected from signaling")
-    except Exception as e:
-        logger.error(f"[WebRTC] Error in signaling for {peer_id}: {e}")
-    finally:
-        await audio_relay_manager.unregister_signaling_peer(conversation_id, peer_id)
-        logger.info(f"[WebRTC] {peer_id} unregistered from signaling")
-
+# ---------------------------------------------------------------------------
+# Conversation Stream WebSocket
+# ---------------------------------------------------------------------------
 
 @router.websocket("/conversations/{conversation_id}/stream")
 async def conversation_stream(websocket: WebSocket, conversation_id: str) -> None:
@@ -751,217 +414,3 @@ async def conversation_stream(websocket: WebSocket, conversation_id: str) -> Non
         pass
     finally:
         await stream_manager.unsubscribe(conversation_id, websocket)
-
-
-@router.get("/token/openai", response_model=SessionResponse)
-def get_openai_token(
-    model: str = Query(..., description="Name of the realtime model, e.g. gpt-realtime"),
-    voice: Optional[str] = Query("alloy", description="Voice to use (omit or set to 'none' to disable audio)"),
-    system_prompt: Optional[str] = Query(None, description="Custom system prompt (uses default if not provided)"),
-    agent_name: Optional[str] = Query("MainConversation", description="Name of the nested team agent to use"),
-) -> Any:
-    """Create a realtime session and return the session id and client secret.
-
-    The client uses the returned session id and secret to negotiate a
-    WebRTC connection with OpenAI's realtime servers.  The session
-    expires automatically; do not reuse it after expiry.
-    """
-    def create_session(payload: Dict[str, Any]) -> requests.Response:
-        return requests.post(
-            OPENAI_REALTIME_SESSIONS,
-            headers=_json_headers(),
-            data=json.dumps(payload),
-            timeout=15,
-        )
-
-    # Use provided system prompt or fall back to default
-    instructions = system_prompt if system_prompt else VOICE_SYSTEM_PROMPT
-
-    # Inject available agents if using default prompt and agent is nested_team
-    if not system_prompt and agent_name:
-        instructions = _inject_available_agents(instructions, agent_name)
-    payload: Dict[str, Any] = {"model": model, "instructions": instructions}
-    if voice and voice.lower() != "none":
-        payload["voice"] = voice
-
-    # First attempt (possibly with voice)
-    try:
-        resp = create_session(payload)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to contact OpenAI realtime API: {exc}")
-
-    # If 400 and a voice was provided, retry without voice as fallback
-    if resp.status_code == 400 and "voice" in payload:
-        first_error_detail = None
-        try:
-            first_error_detail = resp.json()
-        except Exception:
-            first_error_detail = resp.text
-        try:
-            resp = create_session({"model": model, "instructions": instructions})
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Failed to contact OpenAI realtime API (retry): {exc}")
-        if resp.status_code != 200:
-            # Include both original and retry errors
-            try:
-                retry_detail = resp.json()
-            except Exception:
-                retry_detail = resp.text
-            raise HTTPException(status_code=resp.status_code, detail={
-                "original_error": first_error_detail,
-                "retry_error": retry_detail,
-            })
-    elif resp.status_code != 200:
-        try:
-            detail = resp.json()
-        except Exception:
-            detail = resp.text
-        raise HTTPException(status_code=resp.status_code, detail=detail)
-
-    data = resp.json()
-
-    # Normalize client_secret to a plain string (OpenAI may return an object {"value": "..."}).
-    client_secret_raw = data.get("client_secret")
-    if isinstance(client_secret_raw, dict):
-        client_secret_val = (
-            client_secret_raw.get("value")
-            or client_secret_raw.get("secret")
-            or client_secret_raw.get("token")
-        )
-    else:
-        client_secret_val = client_secret_raw
-
-    if not client_secret_val:
-        raise HTTPException(status_code=500, detail="Incomplete session response from OpenAI (no client_secret)")
-
-    # Media address may vary on different regions; default to api.openai.com if missing.
-    media_addr = data.get("media_addr") or data.get("media_address") or "api.openai.com"
-
-    # Compute a robust expires_at (epoch seconds). Some responses provide expires_in seconds.
-    expires_at = data.get("expires_at")
-    expires_in = data.get("expires_in")
-    try:
-        if expires_at is None and expires_in is not None:
-            expires_at = int(time.time() + float(expires_in))
-        elif isinstance(expires_at, str):
-            expires_at = int(float(expires_at))
-        elif isinstance(expires_at, float):
-            expires_at = int(expires_at)
-    except Exception:
-        expires_at = None
-    if not isinstance(expires_at, int):
-        # Fallback to 5 minutes from now if format is unexpected
-        expires_at = int(time.time()) + 300
-
-    # Build normalized payload for the frontend
-    normalized = {
-        "id": data.get("id"),
-        "client_secret": client_secret_val,
-        "expires_at": expires_at,
-        "media_addr": media_addr,
-    }
-    if not normalized["id"]:
-        raise HTTPException(status_code=500, detail="Incomplete session response from OpenAI (no id)")
-
-    return normalized
-
-@router.post("/call", response_model=ChatResponse)
-def chat_call(req: ChatRequest = Body(...)) -> Any:
-    """Proxy a chat completion call to OpenAI with optional tool definitions.
-
-    This is provided for convenience: clients that capture audio via
-    WebRTC can still send `text` events to the model, but if you want
-    to integrate the voice assistant with existing agents/tools you
-    may choose to call this endpoint instead.  It accepts the same
-    schema as the OpenAI Chat API.
-    """
-    url = f"{OPENAI_API_BASE}/chat/completions"
-    # Build the request payload.  Only include tools/tool_choice when
-    # provided to avoid API validation errors.
-    payload: Dict[str, Any] = {
-        "model": req.model,
-        "messages": [m.dict(exclude_none=True) for m in req.messages],
-        "temperature": req.temperature,
-    }
-    if req.tools:
-        payload["tools"] = [t.dict(exclude_none=True) for t in req.tools]
-    if req.tool_choice:
-        payload["tool_choice"] = req.tool_choice
-    try:
-        resp = requests.post(
-            url,
-            headers=_json_headers(),
-            data=json.dumps(payload),
-            timeout=30,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to call OpenAI chat completions: {exc}")
-    if resp.status_code != 200:
-        try:
-            detail = resp.json()
-        except Exception:
-            detail = resp.text
-        raise HTTPException(status_code=resp.status_code, detail=detail)
-    return resp.json()
-
-# Proper SDP proxy endpoint
-@router.post("/sdp", response_class=Response)
-def exchange_sdp(body: Dict[str, Any] = Body(...)):
-    """Proxy SDP offer to OpenAI Realtime API and return the SDP answer.
-
-    Body must include: media_addr, session_id, client_secret, sdp
-    Returns: plain SDP answer with content-type application/sdp
-    """
-    media_addr = body.get("media_addr")
-    session_id = body.get("session_id")
-    client_secret = body.get("client_secret")
-    sdp = body.get("sdp")
-    if not all([media_addr, session_id, client_secret, sdp]):
-        raise HTTPException(status_code=400, detail="Missing required fields: media_addr, session_id, client_secret, sdp")
-
-    url = f"https://{media_addr}/v1/realtime?session_id={session_id}"
-    try:
-        resp = requests.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {client_secret}",
-                "Content-Type": "application/sdp",
-                "Accept": "application/sdp",
-                "OpenAI-Beta": "realtime=v1",
-            },
-            data=sdp,
-            timeout=20,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to contact OpenAI realtime media endpoint: {exc}")
-
-    # Treat any 2xx code as success (some environments may return 201)
-    if 200 <= resp.status_code < 300:
-        return Response(content=resp.content, media_type="application/sdp")
-
-    # Non-2xx: propagate error details
-    content_type = resp.headers.get("Content-Type", "")
-    try:
-        detail = resp.json() if "application/json" in content_type else resp.text
-    except Exception:
-        detail = resp.text
-    raise HTTPException(status_code=resp.status_code, detail=detail)
-
-
-def build_app() -> FastAPI:
-    """Create and return the FastAPI application with CORS and routes."""
-    app = FastAPI(title="Realtime Voice API", version="0.1.1")
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    app.include_router(router, prefix="/api/realtime")
-    return app
-
-
-# When run directly with `uvicorn backend.realtime_voice:app`, FastAPI
-# will discover the `app` instance below.
-app = build_app()

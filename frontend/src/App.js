@@ -25,6 +25,7 @@ import ToolsDashboard from './features/tools/pages/ToolsDashboard';
 import VoiceDashboard from './features/voice/pages/VoiceDashboard';
 import MobileVoice from './features/voice/pages/MobileVoice';
 import DebugNetwork from './features/voice/pages/DebugNetwork';
+import RouteDebug from './features/voice/pages/RouteDebug';
 import KeyboardShortcutsHelp from './shared/components/KeyboardShortcutsHelp';
 import ServerManagementButtons from './shared/components/ServerManagementButtons';
 import KeyboardNavigationProvider from './components/KeyboardNavigationProvider';
@@ -442,6 +443,7 @@ export default function App() {
           <Routes>
             {/* Debug route */}
             <Route path="/debug-network" element={<DebugNetwork />} />
+
 
             {/* Mobile Voice routes - full screen, no AppBar, no Container (WebRTC enabled) */}
             <Route path="/mobile-voice" element={<MobileVoice />} />

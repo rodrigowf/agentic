@@ -1,0 +1,61 @@
+# WebRTC Voice Architecture - Essential Files
+
+## CORE BACKEND (3 files) ✅
+backend/api/openai_webrtc_client.py         # OpenAI WebRTC client
+backend/api/realtime_voice_webrtc.py        # WebRTC bridge controller
+backend/utils/voice_conversation_store.py   # Conversation database
+
+## CORE FRONTEND (8 files) ✅
+frontend/src/features/voice/pages/VoiceAssistantModular.js      # Main page
+frontend/src/features/voice/pages/MobileVoice.js                # Mobile page
+
+frontend/src/features/voice/hooks/useBackendWebRTC.js           # PRIMARY WebRTC hook
+frontend/src/features/voice/hooks/useOpenAIEventHandler.js      # Event processing
+frontend/src/features/voice/hooks/useConversationStore.js       # State management
+frontend/src/features/voice/hooks/useVoiceSession.js            # Session lifecycle
+
+frontend/src/features/voice/components/VoiceControlPanel.js     # Session controls
+frontend/src/features/voice/components/ConversationHistory.js   # Transcript display
+
+## TESTS (2 files) ✅
+backend/tests/unit/test_openai_webrtc_client.py
+backend/tests/integration/test_backend_webrtc_integration.py
+
+## UTILITIES (3 files) ✅
+start-backend.sh                            # Backend startup script
+start-frontend.sh                           # Frontend startup script
+debug/export_voice_conversations.py         # Export conversations
+
+## INTEGRATION POINT ✅
+backend/main.py (lines 93-102)              # WebRTC router registration
+
+## DEPENDENCIES ✅
+aiortc>=1.6.0
+aiohttp>=3.9.0
+av>=10.0.0
+numpy>=1.24.0,<2.0
+
+---
+
+## DEPRECATED FILES (DO NOT USE) ❌
+
+backend/api/realtime_voice.py
+backend/api/realtime_voice_pipecat.py
+backend/api/realtime_voice_pipecat_ws.py
+backend/api/realtime_voice_pipecat_simple.py
+backend/api/webrtc_signaling.py
+
+frontend/src/features/voice/pages/VoiceAssistant.js
+frontend/src/features/voice/pages/VoiceAssistantWebSocket.js
+frontend/src/features/voice/pages/VoiceDashboard*.js
+frontend/src/features/voice/hooks/usePipecatWebSocket.js
+frontend/src/features/voice/hooks/useMobileWebRTC.js
+
+---
+
+## TOTAL FILES: 16 essential files
+- Backend: 3 core + 2 tests = 5 files
+- Frontend: 8 core files
+- Utils: 3 files
+
+See WEBRTC_ARCHITECTURE_FILES.md for complete documentation.

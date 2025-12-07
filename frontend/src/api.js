@@ -58,6 +58,10 @@ export const connectVoiceConversationStream = (conversationId, params = {}) => {
   const wsUrl = getWsUrl(`${VOICE_BASE}/conversations/${conversationId}/stream${query ? `?${query}` : ''}`);
   return new WebSocket(wsUrl);
 };
+export const startVoiceWebRTCBridge = (payload) => API.post(`${VOICE_BASE}/webrtc/bridge`, payload);
+export const stopVoiceWebRTCBridge = (conversationId) => API.delete(`${VOICE_BASE}/webrtc/bridge/${conversationId}`);
+export const disconnectVoiceWebRTC = (connectionId) => API.post(`${VOICE_BASE}/webrtc/disconnect`, { connection_id: connectionId });
+export const sendVoiceWebRTCText = (conversationId, payload) => API.post(`${VOICE_BASE}/webrtc/bridge/${conversationId}/text`, payload);
 
 // Voice configurations
 export const listVoiceConfigs = () => API.get('/voice-configs');
@@ -103,6 +107,10 @@ export default {
   appendVoiceConversationEvent,
   getVoiceConversationEvents,
   connectVoiceConversationStream,
+  startVoiceWebRTCBridge,
+  stopVoiceWebRTCBridge,
+  disconnectVoiceWebRTC,
+  sendVoiceWebRTCText,
   listVoiceConfigs,
   getVoiceConfig,
   createVoiceConfig,

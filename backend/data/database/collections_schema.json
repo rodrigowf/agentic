@@ -1,1 +1,12 @@
-{}
+{
+  "test_tools_reliability": {
+    "description": "Test collection for reliability testing",
+    "structure": {
+      "name": "string",
+      "value": "number"
+    },
+    "usage": "Test data for reliability checks",
+    "example": "{\"name\": \"test\", \"value\": 42}",
+    "updated_at": "2025-12-02T16:26:50.758393"
+  }
+}

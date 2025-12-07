@@ -336,7 +336,7 @@ const buildGroupedHistory = (messages, formatTimestamp) => {
 		} else if (sourceLower === 'controller') {
 			groupKey = `controller:${msg.id || `${typeLower}-${index}`}`;
 			defaults = { kind: 'generic', label: 'Controller event', source: msg.source };
-		} else if (sourceLower === 'nested') {
+		} else if (sourceLower === 'nested' || sourceLower === 'nested_agent') {
 			groupKey = `nested:${msg.id || `${typeLower}-${index}`}`;
 			defaults = { kind: 'generic', label: 'Nested event', source: msg.source };
 		} else {

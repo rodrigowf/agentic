@@ -23,16 +23,18 @@
   "reflect_on_tool_use": true,
   "terminate_on_text": false,
   "tool_call_loop": false,
+  "initialization_function": null,
   "sub_agents": [
     "Manager",
     "Memory",
     "FileManager",
     "Database",
-    "API",
     "Researcher",
     "Engineer"
   ],
   "mode": "selector",
   "orchestrator_prompt": "__function__",
+  "orchestrator_agent_name": "Manager",
+  "orchestrator_pattern": "NEXT AGENT: <Name>",
   "include_inner_dialog": true
 }

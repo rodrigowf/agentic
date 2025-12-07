@@ -88,6 +88,21 @@ if realtime_router is not None:
     app.include_router(realtime_router, prefix="/api/realtime")
     logger.info("Realtime voice router mounted at /api/realtime")
 
+# Mount WebRTC voice router (backend-controlled) under /api/realtime
+try:
+    from .api.realtime_voice_webrtc import router as webrtc_router  # type: ignore
+except Exception:
+    try:
+        from api.realtime_voice_webrtc import router as webrtc_router  # type: ignore
+    except Exception as e:
+        webrtc_router = None
+        logger.warning(f"Failed to import WebRTC voice router: {e}")
+
+if webrtc_router is not None:
+    app.include_router(webrtc_router)
+    logger.info("WebRTC voice router mounted")
+
+
 # Startup cache
 TOOLS_DIR = "tools"
 AGENTS_DIR = "agents"
@@ -840,3 +855,30 @@ async def push_changes():
             "success": False,
             "error": str(e)
         }
+
+
+# Frontend Console Logging Endpoint
+@app.post("/api/frontend-logs")
+async def frontend_logs(log_data: dict):
+    """
+    Receive console logs from frontend for debugging.
+    Frontend sends: {level: 'log'|'warn'|'error', message: str, data: any}
+    """
+    level = log_data.get("level", "log")
+    message = log_data.get("message", "")
+    data = log_data.get("data")
+
+    # Format the log message
+    log_msg = f"[FRONTEND {level.upper()}] {message}"
+    if data:
+        log_msg += f" | Data: {data}"
+
+    # Log to backend with appropriate level
+    if level == "error":
+        logger.error(log_msg)
+    elif level == "warn":
+        logger.warning(log_msg)
+    else:
+        logger.info(log_msg)
+
+    return {"status": "logged"}
