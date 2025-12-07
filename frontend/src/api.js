@@ -62,6 +62,7 @@ export const startVoiceWebRTCBridge = (payload) => API.post(`${VOICE_BASE}/webrt
 export const stopVoiceWebRTCBridge = (conversationId) => API.delete(`${VOICE_BASE}/webrtc/bridge/${conversationId}`);
 export const disconnectVoiceWebRTC = (connectionId) => API.post(`${VOICE_BASE}/webrtc/disconnect`, { connection_id: connectionId });
 export const sendVoiceWebRTCText = (conversationId, payload) => API.post(`${VOICE_BASE}/webrtc/bridge/${conversationId}/text`, payload);
+export const getVoiceSessionStatus = (conversationId) => API.get(`${VOICE_BASE}/webrtc/conversation/${conversationId}/status`);
 
 // Voice configurations
 export const listVoiceConfigs = () => API.get('/voice-configs');
@@ -69,6 +70,8 @@ export const getVoiceConfig = (configName) => API.get(`/voice-configs/${configNa
 export const createVoiceConfig = (config) => API.post('/voice-configs', config);
 export const updateVoiceConfig = (configName, config) => API.put(`/voice-configs/${configName}`, config);
 export const deleteVoiceConfig = (configName) => API.delete(`/voice-configs/${configName}`);
+export const getSelectedVoiceConfig = () => API.get('/voice-configs/selected');
+export const setSelectedVoiceConfig = (configName) => API.put('/voice-configs/selected', { selected: configName });
 
 // Voice prompts
 export const listVoicePrompts = () => API.get('/voice-prompts');
@@ -111,11 +114,14 @@ export default {
   stopVoiceWebRTCBridge,
   disconnectVoiceWebRTC,
   sendVoiceWebRTCText,
+  getVoiceSessionStatus,
   listVoiceConfigs,
   getVoiceConfig,
   createVoiceConfig,
   updateVoiceConfig,
   deleteVoiceConfig,
+  getSelectedVoiceConfig,
+  setSelectedVoiceConfig,
   listVoicePrompts,
   getVoicePrompt,
   saveVoicePrompt,

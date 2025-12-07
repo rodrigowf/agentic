@@ -12,7 +12,8 @@ import {
   startVoiceWebRTCBridge,
   stopVoiceWebRTCBridge,
   disconnectVoiceWebRTC,
-  sendVoiceWebRTCText
+  sendVoiceWebRTCText,
+  getVoiceSessionStatus
 } from '../../../api';
 import { getWsUrl } from '../../../utils/urlBuilder';
 import { truncateText, safeStringify, formatTimestamp } from '../utils/helpers';
@@ -66,6 +67,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     memoryFilePath: 'backend/data/memory/short_term_memory.txt',
   });
   const [noMicrophoneMode, setNoMicrophoneMode] = useState(false);
+  const [backendSessionActive, setBackendSessionActive] = useState(false); // Real-time backend status
 
   // ============================================
   // Refs
@@ -140,21 +142,13 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   }, []);
 
   // ============================================
-  // Remote Session Detection
+  // Remote Session Detection (uses backend status, not just events)
   // ============================================
   const remoteSessionActive = React.useMemo(() => {
     if (isRunning) return false;
-    let lastStart = null;
-    let lastStop = null;
-    messages.forEach((msg) => {
-      if ((msg.source || '').toLowerCase() !== 'controller') return;
-      if ((msg.type || '').toLowerCase() === 'session_started') lastStart = msg.timestamp;
-      if ((msg.type || '').toLowerCase() === 'session_stopped' || (msg.type || '').toLowerCase() === 'session_error') lastStop = msg.timestamp;
-    });
-    if (!lastStart) return false;
-    if (!lastStop) return true;
-    return new Date(lastStart).getTime() > new Date(lastStop).getTime();
-  }, [messages, isRunning]);
+    // Use the real backend status instead of computing from stored events
+    return backendSessionActive;
+  }, [isRunning, backendSessionActive]);
 
   const sessionLocked = isRunning || remoteSessionActive;
 
@@ -235,6 +229,40 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
       cancelled = true;
     };
   }, [conversationId, normalizeEvent, upsertEvents]);
+
+  // ============================================
+  // Check Backend Session Status (real-time)
+  // ============================================
+  useEffect(() => {
+    if (!conversationId) {
+      setBackendSessionActive(false);
+      return;
+    }
+    let cancelled = false;
+
+    const checkStatus = async () => {
+      try {
+        const res = await getVoiceSessionStatus(conversationId);
+        if (cancelled) return;
+        // Backend returns { active: boolean, openai_connected: boolean, ... }
+        setBackendSessionActive(res.data?.active === true && res.data?.openai_connected === true);
+      } catch (err) {
+        // If the endpoint fails (404 or error), session is not active
+        if (!cancelled) setBackendSessionActive(false);
+      }
+    };
+
+    // Check immediately on load
+    checkStatus();
+
+    // Also check periodically in case session state changes externally
+    const interval = setInterval(checkStatus, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [conversationId]);
 
   // ============================================
   // Realtime Tools Configuration
@@ -502,13 +530,10 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
       console.log('[Frontend WebRTC] Offer has sendrecv?', offer.sdp.includes('a=sendrecv'));
       console.log('[Frontend WebRTC] Offer has recvonly?', offer.sdp.includes('a=recvonly'));
 
+      // Config is loaded from backend's selected config file, only send conversation_id and offer
       const response = await startVoiceWebRTCBridge({
         conversation_id: conversationId,
         offer: offer.sdp,
-        voice: voiceConfig.voice || 'alloy',
-        agent_name: voiceConfig.agentName || 'MainConversation',
-        system_prompt: voiceConfig.systemPromptContent || undefined,
-        memory_file_path: voiceConfig.memoryFilePath || 'backend/data/memory/short_term_memory.txt',
       });
 
       const answerSdp = response?.data?.answer;
@@ -533,7 +558,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
       setError(err.message || 'Failed to start session');
       await stopSession(!bridgeStarted);
     }
-  }, [attachRemoteAudio, conversationId, ensureMicrophoneStream, isRunning, stopSession, voiceConfig, recordEvent]);
+  }, [attachRemoteAudio, conversationId, ensureMicrophoneStream, isRunning, stopSession, recordEvent]);
 
   // ============================================
   // Toggle Mute

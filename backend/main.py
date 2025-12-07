@@ -369,10 +369,55 @@ def update_agent(agent_name: str, cfg: AgentConfig):
 
 # --- Voice Configuration Endpoints ---
 
+# Helper functions for selected config
+VOICE_SELECTED_CONFIG_PATH = "voice/selected_config.json"
+
+def _load_selected_config() -> str:
+    """Load the currently selected voice config name."""
+    try:
+        if os.path.exists(VOICE_SELECTED_CONFIG_PATH):
+            with open(VOICE_SELECTED_CONFIG_PATH) as f:
+                data = json.load(f)
+                return data.get("selected", "default")
+    except Exception as e:
+        print(f"Error loading selected config: {e}")
+    return "default"
+
+def _save_selected_config(name: str):
+    """Save the selected voice config name."""
+    os.makedirs(os.path.dirname(VOICE_SELECTED_CONFIG_PATH), exist_ok=True)
+    with open(VOICE_SELECTED_CONFIG_PATH, 'w') as f:
+        json.dump({"selected": name}, f, indent=2)
+
 @app.get("/api/voice-configs", response_model=list[VoiceConfig])
 def list_voice_configs():
     """List all voice configurations."""
     return load_voice_configs(VOICE_CONFIGS_DIR)
+
+# IMPORTANT: /selected must come BEFORE /{config_name} to avoid route conflict
+@app.get("/api/voice-configs/selected")
+def get_selected_voice_config():
+    """Get the currently selected voice configuration name and its full config."""
+    selected_name = _load_selected_config()
+    config = load_voice_config(VOICE_CONFIGS_DIR, selected_name)
+    if not config:
+        # Fall back to default if selected config doesn't exist
+        config = load_voice_config(VOICE_CONFIGS_DIR, "default")
+        selected_name = "default"
+    return {"selected": selected_name, "config": config}
+
+@app.put("/api/voice-configs/selected")
+def set_selected_voice_config(payload: dict = Body(...)):
+    """Set the currently selected voice configuration."""
+    name = payload.get("selected")
+    if not name:
+        raise HTTPException(400, "Missing 'selected' field")
+    # Verify the config exists
+    config = load_voice_config(VOICE_CONFIGS_DIR, name)
+    if not config:
+        raise HTTPException(404, f"Voice configuration '{name}' not found")
+    _save_selected_config(name)
+    return {"selected": name, "config": config}
 
 @app.get("/api/voice-configs/{config_name}", response_model=VoiceConfig)
 def get_voice_config(config_name: str):

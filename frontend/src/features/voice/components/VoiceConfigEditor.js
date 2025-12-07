@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Paper,
   Stack,
   Typography,
   TextField,
@@ -22,20 +21,30 @@ import {
   listVoicePrompts,
   getVoicePrompt,
   saveVoicePrompt,
+  listVoiceConfigs,
+  updateVoiceConfig,
+  getSelectedVoiceConfig,
+  setSelectedVoiceConfig,
 } from '../../../api';
 
 /**
  * Component for configuring voice assistant settings.
- * Allows selecting the agent and editing the system prompt.
+ *
+ * Configuration is saved to the backend's voice config files.
+ * The selected config is stored in voice/selected_config.json.
+ * When the voice session starts, it loads config from the backend.
  */
 function VoiceConfigEditor({ open, onClose, onSave }) {
   const [agents, setAgents] = useState([]);
   const [prompts, setPrompts] = useState([]);
+  const [configFiles, setConfigFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  // Form state
+  // Form state - reflects what's in the selected config file
+  const [selectedConfigFile, setSelectedConfigFile] = useState('default');
   const [selectedAgent, setSelectedAgent] = useState('MainConversation');
   const [selectedPromptFile, setSelectedPromptFile] = useState('default.txt');
   const [promptContent, setPromptContent] = useState('');
@@ -62,25 +71,80 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
   const loadData = async () => {
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
     try {
       // Load agents
       const agentsRes = await getAgents();
       setAgents(agentsRes.data || []);
 
+      // Load voice config files
+      const configsRes = await listVoiceConfigs();
+      setConfigFiles(configsRes.data || []);
+
       // Load prompt files
       const promptsRes = await listVoicePrompts();
       setPrompts(promptsRes.data?.prompts || []);
 
-      // Load default prompt content
-      if (selectedPromptFile) {
-        const contentRes = await getVoicePrompt(selectedPromptFile);
-        setPromptContent(contentRes.data || '');
+      // Load the currently selected config from backend
+      const selectedRes = await getSelectedVoiceConfig();
+      const selectedName = selectedRes.data?.selected || 'default';
+      const config = selectedRes.data?.config;
+
+      setSelectedConfigFile(selectedName);
+
+      if (config) {
+        setSelectedAgent(config.agent_name || 'MainConversation');
+        setSelectedVoice(config.voice || 'alloy');
+        setMemoryFilePath(config.memory_file_path || 'backend/data/memory/short_term_memory.txt');
+        setSelectedPromptFile(config.system_prompt_file || 'default.txt');
+
+        // Load prompt content
+        if (config.system_prompt_file) {
+          try {
+            const contentRes = await getVoicePrompt(config.system_prompt_file);
+            setPromptContent(contentRes.data || '');
+          } catch (err) {
+            console.warn('Failed to load prompt content:', err);
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to load voice configuration data:', err);
       setError(err?.response?.data?.detail || err.message || 'Failed to load data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfigFileChange = async (configName) => {
+    setSelectedConfigFile(configName);
+    setError(null);
+
+    // Load the config file content
+    const config = configFiles.find((c) => c.name === configName);
+    if (config) {
+      setSelectedAgent(config.agent_name || 'MainConversation');
+      setSelectedVoice(config.voice || 'alloy');
+      setMemoryFilePath(config.memory_file_path || 'backend/data/memory/short_term_memory.txt');
+      setSelectedPromptFile(config.system_prompt_file || 'default.txt');
+
+      // Load prompt content
+      if (config.system_prompt_file) {
+        try {
+          const contentRes = await getVoicePrompt(config.system_prompt_file);
+          setPromptContent(contentRes.data || '');
+        } catch (err) {
+          console.warn('Failed to load prompt content:', err);
+        }
+      }
+    }
+
+    // Update the selected config in backend
+    try {
+      await setSelectedVoiceConfig(configName);
+    } catch (err) {
+      console.error('Failed to update selected config:', err);
+      setError(`Failed to select config: ${err.message}`);
     }
   };
 
@@ -108,7 +172,7 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
 
       setSelectedPromptFile(filename);
       setNewPromptName('');
-      setError(null);
+      setSuccessMessage('Prompt saved successfully');
     } catch (err) {
       console.error('Failed to save prompt:', err);
       setError(err?.response?.data?.detail || err.message || 'Failed to save prompt');
@@ -117,15 +181,52 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
     }
   };
 
-  const handleSave = () => {
-    onSave({
-      agentName: selectedAgent,
-      systemPromptFile: selectedPromptFile,
-      systemPromptContent: promptContent,
-      voice: selectedVoice,
-      memoryFilePath: memoryFilePath,
-    });
-    onClose();
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      // Save the config to the backend config file
+      const configData = {
+        name: selectedConfigFile,
+        agent_name: selectedAgent,
+        system_prompt_file: selectedPromptFile,
+        voice_model: 'gpt-realtime',
+        voice: selectedVoice,
+        memory_file_path: memoryFilePath,
+        description: `Voice configuration: ${selectedAgent} with ${selectedVoice} voice`,
+        metadata: {},
+      };
+
+      await updateVoiceConfig(selectedConfigFile, configData);
+
+      // Make sure this config is selected
+      await setSelectedVoiceConfig(selectedConfigFile);
+
+      // Reload config files
+      const configsRes = await listVoiceConfigs();
+      setConfigFiles(configsRes.data || []);
+
+      setSuccessMessage('Configuration saved to backend');
+
+      // Notify parent (for local state if needed)
+      onSave({
+        agentName: selectedAgent,
+        systemPromptFile: selectedPromptFile,
+        systemPromptContent: promptContent,
+        voice: selectedVoice,
+        memoryFilePath: memoryFilePath,
+      });
+
+      // Close after short delay to show success
+      setTimeout(() => onClose(), 500);
+    } catch (err) {
+      console.error('Failed to save configuration:', err);
+      setError(err?.response?.data?.detail || err.message || 'Failed to save configuration');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -143,6 +244,31 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
                 {error}
               </Alert>
             )}
+
+            {successMessage && (
+              <Alert severity="success" onClose={() => setSuccessMessage(null)}>
+                {successMessage}
+              </Alert>
+            )}
+
+            {/* Config File Selection */}
+            <FormControl fullWidth>
+              <InputLabel id="config-select-label">Configuration File</InputLabel>
+              <Select
+                labelId="config-select-label"
+                id="config-select"
+                value={selectedConfigFile}
+                label="Configuration File"
+                onChange={(e) => handleConfigFileChange(e.target.value)}
+              >
+                {configFiles.map((config) => (
+                  <MenuItem key={config.name} value={config.name}>
+                    {config.name}
+                    {config.description && ` - ${config.description}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             {/* Agent Selection */}
             <FormControl fullWidth>

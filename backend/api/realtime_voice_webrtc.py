@@ -10,11 +10,14 @@ Architecture (N:1 per conversation):
 - Audio from any browser → OpenAI session
 - Audio from OpenAI → broadcast to ALL connected browsers
 - Frontend disconnects don't kill the OpenAI session (until explicitly closed)
+- Voice configuration is loaded from the backend's selected config file (not from frontend)
 """
 
 import asyncio
+import json
 import logging
-from typing import Dict, Optional
+import os
+from typing import Dict
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
@@ -41,19 +44,68 @@ except ImportError:
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# ============================================================================
+# Voice Configuration Loading
+# ============================================================================
+
+VOICE_CONFIGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "voice", "configs")
+VOICE_SELECTED_CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "voice", "selected_config.json")
+
+
+def _load_selected_voice_config() -> dict:
+    """
+    Load the currently selected voice configuration from the backend.
+    Returns the full config dict with keys: voice, agent_name, memory_file_path, etc.
+    """
+    try:
+        # First, get the selected config name
+        selected_name = "default"
+        if os.path.exists(VOICE_SELECTED_CONFIG_PATH):
+            with open(VOICE_SELECTED_CONFIG_PATH) as f:
+                data = json.load(f)
+                selected_name = data.get("selected", "default")
+
+        # Load the config file
+        config_path = os.path.join(VOICE_CONFIGS_DIR, f"{selected_name}.json")
+        if os.path.exists(config_path):
+            with open(config_path) as f:
+                config = json.load(f)
+                logger.info(f"[VoiceConfig] Loaded config '{selected_name}': voice={config.get('voice')}, agent={config.get('agent_name')}")
+                return config
+
+        # Fall back to default if selected doesn't exist
+        default_path = os.path.join(VOICE_CONFIGS_DIR, "default.json")
+        if os.path.exists(default_path):
+            with open(default_path) as f:
+                config = json.load(f)
+                logger.warning(f"[VoiceConfig] Selected config '{selected_name}' not found, using default")
+                return config
+
+    except Exception as e:
+        logger.error(f"[VoiceConfig] Error loading config: {e}")
+
+    # Ultimate fallback
+    logger.warning("[VoiceConfig] No config found, using hardcoded defaults")
+    return {
+        "voice": "alloy",
+        "agent_name": "MainConversation",
+        "memory_file_path": "backend/data/memory/short_term_memory.txt",
+        "voice_model": "gpt-realtime",
+    }
+
 
 # ============================================================================
 # Request/Response Models
 # ============================================================================
 
 class SignalRequest(BaseModel):
-    """Browser signaling request (connect)."""
+    """Browser signaling request (connect).
+
+    Note: Voice configuration (voice, agent_name, memory_file_path) is loaded
+    from the backend's selected config file, not passed from frontend.
+    """
     conversation_id: str
     offer: str  # SDP offer from browser
-    voice: Optional[str] = "alloy"
-    agent_name: Optional[str] = "MainConversation"
-    system_prompt: Optional[str] = None
-    memory_file_path: Optional[str] = None  # Path to memory file for context
 
 
 class SignalResponse(BaseModel):
@@ -84,13 +136,11 @@ _lock = asyncio.Lock()
 
 async def _get_or_setup_conversation(
     conversation_id: str,
-    voice: str = "alloy",
-    agent_name: str = "MainConversation",
-    system_prompt: Optional[str] = None,
-    memory_file_path: Optional[str] = None,
 ) -> tuple[OpenAISession, BrowserConnectionManager]:
     """
     Get or set up a conversation with both OpenAI session and browser manager.
+
+    Voice configuration is loaded from the backend's selected config file.
 
     This links the two managers together so audio flows correctly:
     Browser audio → OpenAI session
@@ -104,26 +154,20 @@ async def _get_or_setup_conversation(
             # Session died, clean up
             del _active_conversations[conversation_id]
 
-    # Get conversation metadata
+    # Verify conversation exists
     conversation = conversation_store.get_conversation(conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    metadata = conversation.get("metadata", {})
-    voice_model = conversation.get("voice_model") or "gpt-realtime"
-    final_system_prompt = (
-        system_prompt
-        or metadata.get("system_prompt")
-        or VOICE_SYSTEM_PROMPT
-    )
+    # Load voice configuration from backend's selected config file
+    voice_config = _load_selected_voice_config()
 
-    # Get memory file path from request or conversation metadata
-    # Default to short_term_memory.txt if not specified
-    final_memory_file_path = (
-        memory_file_path
-        or metadata.get("memory_file_path")
-        or "backend/data/memory/short_term_memory.txt"
-    )
+    voice = voice_config.get("voice", "alloy")
+    agent_name = voice_config.get("agent_name", "MainConversation")
+    memory_file_path = voice_config.get("memory_file_path", "backend/data/memory/short_term_memory.txt")
+    voice_model = voice_config.get("voice_model", "gpt-realtime")
+
+    logger.info(f"[Setup] Creating session for {conversation_id} with config: voice={voice}, agent={agent_name}")
 
     # Create browser manager first (we need to pass audio callback to OpenAI session)
     browser_mgr = await get_or_create_manager(conversation_id)
@@ -134,10 +178,10 @@ async def _get_or_setup_conversation(
         conversation_id=conversation_id,
         voice=voice,
         agent_name=agent_name,
-        system_prompt=final_system_prompt,
+        system_prompt=VOICE_SYSTEM_PROMPT,
         model=voice_model,
         on_audio_callback=browser_mgr.broadcast_audio,  # OpenAI audio → all browsers
-        memory_file_path=final_memory_file_path,  # Memory file for context injection
+        memory_file_path=memory_file_path,  # Memory file for context injection
     )
 
     # Set up browser audio callback → OpenAI
@@ -181,13 +225,9 @@ async def signal_connect(request: SignalRequest):
     logger.info(f"[Signal] Browser connecting to conversation {request.conversation_id}")
 
     try:
-        # Get or create the conversation setup
+        # Get or create the conversation setup (config loaded from backend)
         openai_session, browser_mgr = await _get_or_setup_conversation(
             conversation_id=request.conversation_id,
-            voice=request.voice or "alloy",
-            agent_name=request.agent_name or "MainConversation",
-            system_prompt=request.system_prompt,
-            memory_file_path=request.memory_file_path,
         )
 
         # Add browser connection
@@ -355,13 +395,12 @@ async def send_to_claude_code(conversation_id: str, request: TextRequest):
 # ============================================================================
 
 class BridgeOffer(BaseModel):
-    """Legacy bridge offer (for backwards compatibility)."""
+    """Legacy bridge offer (for backwards compatibility).
+
+    Note: Voice configuration is now loaded from backend, extra params are ignored.
+    """
     conversation_id: str
     offer: str
-    voice: Optional[str] = "alloy"
-    agent_name: Optional[str] = "MainConversation"
-    system_prompt: Optional[str] = None
-    memory_file_path: Optional[str] = None
 
 
 class BridgeAnswer(BaseModel):
@@ -381,10 +420,6 @@ async def handle_bridge_legacy(offer: BridgeOffer):
     result = await signal_connect(SignalRequest(
         conversation_id=offer.conversation_id,
         offer=offer.offer,
-        voice=offer.voice,
-        agent_name=offer.agent_name,
-        system_prompt=offer.system_prompt,
-        memory_file_path=offer.memory_file_path,
     ))
 
     # Return in legacy format
