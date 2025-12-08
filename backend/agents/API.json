@@ -21,7 +21,7 @@
   "code_executor": null,
   "model_client_stream": false,
   "sources": null,
-  "description": "An API specialist that makes HTTP requests to web APIs and manages API documentation. Capable of: executing HTTP requests (GET, POST, PUT, DELETE, PATCH), registering and retrieving API documentation, handling authentication (Bearer, API keys, Basic auth), parsing responses. Maintains a local database of API documentation for reuse. Will request documentation from Researcher when needed for unknown APIs.",
+  "description": "An API specialist that makes HTTP requests to web APIs and manages API documentation. Capable of: executing HTTP requests (GET, POST, PUT, DELETE, PATCH), registering and retrieving API documentation, handling authentication (Bearer, API keys, Basic auth), parsing responses. Maintains a local database of API documentation for reuse. Will require documentation from Researcher when needed for unknown APIs.",
   "system_message": null,
   "max_consecutive_auto_reply": 20,
   "reflect_on_tool_use": true,
