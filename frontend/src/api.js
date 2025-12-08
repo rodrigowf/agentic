@@ -86,6 +86,8 @@ export const deleteVoicePrompt = (filename) => API.delete(`/voice-prompts/${file
 // Server management
 export const refreshService = () => API.post('/server/refresh');
 export const pushChanges = () => API.post('/server/push');
+export const stashAndPull = () => API.post('/server/stash-and-pull');
+export const mergeAndPull = () => API.post('/server/merge-and-pull');
 
 // Export API instance and individual functions
 export default {
@@ -128,4 +130,6 @@ export default {
   deleteVoicePrompt,
   refreshService,
   pushChanges,
+  stashAndPull,
+  mergeAndPull,
 };

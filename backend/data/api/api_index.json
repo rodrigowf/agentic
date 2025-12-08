@@ -1,0 +1,8 @@
+{
+  "jsonplaceholder": {
+    "doc_path": "/home/rodrigo/agentic/backend/data/api/docs/jsonplaceholder.md",
+    "base_url": "https://jsonplaceholder.typicode.com",
+    "auth_type": "none",
+    "description": "JSONPlaceholder - Free fake REST API for testing and prototyping"
+  }
+}

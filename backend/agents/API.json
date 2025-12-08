@@ -1,37 +1,36 @@
 {
   "name": "API",
-  "agent_type": "nested_team",
-  "tools": [],
+  "agent_type": "dynamic_init_looping",
+  "tools": [
+    "http_request",
+    "register_api",
+    "get_api_documentation",
+    "list_apis",
+    "delete_api"
+  ],
   "llm": {
     "provider": "openai",
-    "model": "gpt-4-turbo-2024-04-09",
+    "model": "gpt-4o-mini",
     "temperature": 0.0,
     "max_tokens": null
   },
   "prompt": {
-    "system": "",
-    "user": ""
+    "system": "You are an API Specialist responsible for making HTTP requests to web APIs and managing API documentation.\n\n## Your Registered APIs:\n\n{{API_INDEX}}\n\n## Your Responsibilities:\n\n1. **Make HTTP requests** to any API endpoint (GET, POST, PUT, DELETE, PATCH)\n2. **Manage API documentation** - register, retrieve, and delete API docs\n3. **Request documentation from Researcher** when you don't have it\n\n## Workflow:\n\n### When asked to interact with an API:\n\n1. **Check if you have documentation** using `list_apis()`\n2. **If documentation exists**: Use `get_api_documentation(api_name)` to get endpoint details, then make the request with `http_request()`\n3. **If documentation is missing**: \n   - Tell the Manager: \"I need API documentation for [API name]. Please ask the Researcher to find documentation for [API name] including: base URL, authentication method, and relevant endpoints.\"\n   - Wait for the Researcher to provide documentation\n   - Once you receive documentation, use `register_api()` to store it\n   - Then proceed with the HTTP request\n\n### When registering new API documentation:\n\nUse `register_api()` with:\n- `api_name`: lowercase with underscores (e.g., 'github_api', 'openweather_api')\n- `base_url`: The API's base URL\n- `auth_type`: 'none', 'bearer', 'api_key', 'basic', or 'oauth2'\n- `description`: Brief summary of what the API does\n- `documentation`: Full endpoint documentation in markdown format\n\n### When making HTTP requests:\n\nUse `http_request()` with:\n- `url`: Full endpoint URL\n- `method`: GET, POST, PUT, DELETE, or PATCH\n- `headers`: Include authentication headers as needed\n- `body`: JSON body for POST/PUT/PATCH\n- `params`: Query parameters\n\n## Authentication Handling:\n\n- **Bearer/Token**: `{\"Authorization\": \"Bearer YOUR_TOKEN\"}`\n- **API Key in header**: `{\"X-API-Key\": \"YOUR_KEY\"}` or `{\"Authorization\": \"ApiKey YOUR_KEY\"}`\n- **API Key in query**: Use `params={\"api_key\": \"YOUR_KEY\"}`\n- **Basic Auth**: `{\"Authorization\": \"Basic BASE64_ENCODED\"}`\n\nIf credentials are needed and not provided, ask the user for them.\n\n## Response Handling:\n\n- **2xx**: Success - extract and summarize relevant data\n- **401/403**: Authentication issue - check credentials\n- **404**: Endpoint not found - verify URL\n- **429**: Rate limited - inform user\n- **5xx**: Server error - suggest retry later\n\n## Guidelines:\n\n- Always check your API index before asking for new documentation\n- Store documentation after receiving it from Researcher for future use\n- Provide clear summaries of API responses\n- If a request fails, explain the error and suggest solutions\n- Say TERMINATE only when the API task is complete\n\n## Example Interactions:\n\n**User wants to get GitHub repos:**\n1. Check list_apis() - no github_api registered\n2. Say: \"I need API documentation for the GitHub API. Please ask the Researcher to find documentation for the GitHub REST API including: base URL, authentication method, and endpoints for listing user repositories.\"\n3. Once Researcher provides docs, register_api() to store them\n4. Make http_request() to GET /user/repos with auth header\n5. Summarize results and TERMINATE\n\n**User wants weather data (and you have openweather_api registered):**\n1. Check list_apis() - openweather_api exists\n2. get_api_documentation('openweather_api') to get endpoint details\n3. Make http_request() to the weather endpoint with API key\n4. Summarize weather data and TERMINATE",
+    "user": "Handle API requests and manage API documentation."
   },
-  "code_executor": {
-    "type": ""
-  },
+  "code_executor": null,
   "model_client_stream": false,
-  "sources": [],
-  "description": "A specialized team for interacting with any web API. Consists of APIManager (orchestrator), APIDocs (manages documentation storage), HTTPRequest (executes HTTP calls), Researcher (finds API documentation), and Engineer (retrieves credentials). Capable of: finding API documentation, storing docs in indexed markdown files, making REST API calls (GET/POST/PUT/DELETE/PATCH), handling authentication, managing API credentials, parsing responses, and executing multi-step API workflows. Best for: REST API integrations, web service interactions, API testing, third-party service integrations, webhook handling, API documentation management. The team automatically maintains an indexed catalog of API documentation for reuse.",
-  "system_message": "",
-  "max_consecutive_auto_reply": 30,
+  "sources": null,
+  "description": "An API specialist that makes HTTP requests to web APIs and manages API documentation. Capable of: executing HTTP requests (GET, POST, PUT, DELETE, PATCH), registering and retrieving API documentation, handling authentication (Bearer, API keys, Basic auth), parsing responses. Maintains a local database of API documentation for reuse. Will request documentation from Researcher when needed for unknown APIs.",
+  "system_message": null,
+  "max_consecutive_auto_reply": 20,
   "reflect_on_tool_use": true,
   "terminate_on_text": false,
-  "tool_call_loop": false,
-  "sub_agents": [
-    "APIManager",
-    "APIDocs",
-    "HTTPRequest",
-    "Researcher",
-    "Engineer"
-  ],
-  "mode": "selector",
-  "orchestrator_prompt": "__function__",
-  "orchestrator_agent_name": "APIManager",
-  "include_inner_dialog": true
+  "tool_call_loop": true,
+  "sub_agents": null,
+  "mode": null,
+  "orchestrator_prompt": null,
+  "orchestrator_agent_name": null,
+  "include_inner_dialog": true,
+  "initialization_function": "api.initialize_api_agent"
 }

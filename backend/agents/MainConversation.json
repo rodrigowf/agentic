@@ -30,7 +30,8 @@
     "FileManager",
     "Database",
     "Researcher",
-    "Engineer"
+    "Engineer",
+    "API"
   ],
   "mode": "selector",
   "orchestrator_prompt": "__function__",

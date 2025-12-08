@@ -689,10 +689,31 @@ async def refresh_service():
         )
 
         if pull_result.returncode != 0:
-            logger.error(f"Git pull failed: {pull_result.stderr}")
+            error_output = pull_result.stderr + pull_result.stdout
+            logger.error(f"Git pull failed: {error_output}")
+
+            # Check if it's a local changes conflict
+            if "Your local changes" in error_output or "would be overwritten" in error_output or "Please commit your changes or stash them" in error_output:
+                return {
+                    "success": False,
+                    "error": f"Git pull failed: {error_output}",
+                    "step": "git_pull",
+                    "conflict_type": "local_changes",
+                    "message": "Local changes would be overwritten by merge. Choose an option to resolve."
+                }
+            # Check for merge conflicts
+            elif "CONFLICT" in error_output or "Automatic merge failed" in error_output:
+                return {
+                    "success": False,
+                    "error": f"Git pull failed: {error_output}",
+                    "step": "git_pull",
+                    "conflict_type": "merge_conflict",
+                    "message": "Merge conflicts detected. Choose an option to resolve."
+                }
+
             return {
                 "success": False,
-                "error": f"Git pull failed: {pull_result.stderr}",
+                "error": f"Git pull failed: {error_output}",
                 "step": "git_pull"
             }
 
@@ -901,6 +922,261 @@ async def push_changes():
             "success": False,
             "error": str(e)
         }
+
+
+@app.post("/api/server/stash-and-pull")
+async def stash_and_pull():
+    """
+    Stash local changes and pull latest from git, then continue with build/restart.
+    """
+    try:
+        import subprocess
+
+        project_root = os.path.abspath(os.path.dirname(__file__) + "/..")
+
+        logger.info("Stashing local changes and pulling...")
+
+        # Step 1: Stash local changes
+        stash_result = subprocess.run(
+            ["git", "stash", "push", "-m", f"Auto-stash before pull: {__import__('datetime').datetime.now().isoformat()}"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        stash_output = stash_result.stdout + stash_result.stderr
+        logger.info(f"Stash result: {stash_output}")
+
+        # Step 2: Pull latest changes
+        pull_result = subprocess.run(
+            ["git", "pull"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if pull_result.returncode != 0:
+            logger.error(f"Git pull failed after stash: {pull_result.stderr}")
+            # Try to restore stash if pull failed
+            subprocess.run(["git", "stash", "pop"], cwd=project_root, capture_output=True, text=True, timeout=30)
+            return {
+                "success": False,
+                "error": f"Git pull failed: {pull_result.stderr}",
+                "step": "git_pull"
+            }
+
+        # Step 3: Build frontend
+        logger.info("Building frontend...")
+        frontend_dir = os.path.join(project_root, "frontend")
+        build_result = subprocess.run(
+            ["npm", "run", "build"],
+            cwd=frontend_dir,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        if build_result.returncode != 0:
+            logger.error(f"Frontend build failed: {build_result.stderr}")
+            return {
+                "success": False,
+                "error": f"Frontend build failed: {build_result.stderr}",
+                "step": "frontend_build"
+            }
+
+        # Step 4: Reload nginx
+        nginx_pid_file = os.path.join(project_root, "nginx.pid")
+        nginx_reload_output = ""
+
+        if os.path.exists(nginx_pid_file):
+            try:
+                with open(nginx_pid_file, 'r') as f:
+                    nginx_pid = f.read().strip()
+                nginx_result = subprocess.run(
+                    ["kill", "-HUP", nginx_pid],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                nginx_reload_output = "Nginx reloaded successfully" if nginx_result.returncode == 0 else f"Nginx reload warning: {nginx_result.stderr}"
+            except Exception as nginx_err:
+                nginx_reload_output = f"Nginx reload skipped: {str(nginx_err)}"
+        else:
+            nginx_reload_output = "Nginx reload skipped (not running via custom nginx)"
+
+        # Step 5: Schedule backend restart
+        import asyncio
+        async def delayed_restart():
+            await asyncio.sleep(2)
+            try:
+                subprocess.run(
+                    ["sudo", "systemctl", "restart", "agentic-backend"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+            except Exception as e:
+                logger.warning(f"Backend restart failed: {e}")
+
+        asyncio.create_task(delayed_restart())
+
+        return {
+            "success": True,
+            "message": "Service refreshed successfully (local changes stashed). Backend will restart in 2 seconds.",
+            "stash_output": stash_output,
+            "git_output": pull_result.stdout,
+            "build_output": build_result.stdout[:500] + "..." if len(build_result.stdout) > 500 else build_result.stdout,
+            "nginx_output": nginx_reload_output
+        }
+
+    except subprocess.TimeoutExpired as e:
+        return {"success": False, "error": f"Operation timed out: {str(e)}"}
+    except Exception as e:
+        logger.exception(f"Error in stash-and-pull: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/server/merge-and-pull")
+async def merge_and_pull():
+    """
+    Attempt to merge local changes with remote by committing first, then pulling with rebase.
+    If merge conflicts occur, abort and report to user.
+    """
+    try:
+        import subprocess
+        from datetime import datetime
+
+        project_root = os.path.abspath(os.path.dirname(__file__) + "/..")
+
+        logger.info("Attempting merge strategy: commit local changes then pull...")
+
+        # Step 1: Stage all changes
+        add_result = subprocess.run(
+            ["git", "add", "-A"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        # Step 2: Commit local changes
+        commit_message = f"Auto-commit before merge: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", commit_message],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        # It's okay if commit fails (nothing to commit)
+        committed = commit_result.returncode == 0
+
+        # Step 3: Pull with merge
+        pull_result = subprocess.run(
+            ["git", "pull", "--no-rebase"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        pull_output = pull_result.stdout + pull_result.stderr
+
+        if pull_result.returncode != 0:
+            # Check for merge conflicts
+            if "CONFLICT" in pull_output or "Automatic merge failed" in pull_output:
+                logger.error("Merge conflicts detected, aborting merge")
+                # Abort the merge
+                subprocess.run(["git", "merge", "--abort"], cwd=project_root, capture_output=True, text=True, timeout=30)
+                # Reset the commit if we made one
+                if committed:
+                    subprocess.run(["git", "reset", "HEAD~1", "--soft"], cwd=project_root, capture_output=True, text=True, timeout=30)
+                return {
+                    "success": False,
+                    "error": "Merge conflicts detected. Please use 'Stash and Pull' instead to discard local changes.",
+                    "step": "merge_conflict",
+                    "conflict_type": "merge_conflict",
+                    "details": pull_output
+                }
+            else:
+                logger.error(f"Git pull failed: {pull_output}")
+                return {
+                    "success": False,
+                    "error": f"Git pull failed: {pull_output}",
+                    "step": "git_pull"
+                }
+
+        # Step 4: Build frontend
+        logger.info("Building frontend...")
+        frontend_dir = os.path.join(project_root, "frontend")
+        build_result = subprocess.run(
+            ["npm", "run", "build"],
+            cwd=frontend_dir,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        if build_result.returncode != 0:
+            logger.error(f"Frontend build failed: {build_result.stderr}")
+            return {
+                "success": False,
+                "error": f"Frontend build failed: {build_result.stderr}",
+                "step": "frontend_build"
+            }
+
+        # Step 5: Reload nginx
+        nginx_pid_file = os.path.join(project_root, "nginx.pid")
+        nginx_reload_output = ""
+
+        if os.path.exists(nginx_pid_file):
+            try:
+                with open(nginx_pid_file, 'r') as f:
+                    nginx_pid = f.read().strip()
+                nginx_result = subprocess.run(
+                    ["kill", "-HUP", nginx_pid],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                nginx_reload_output = "Nginx reloaded successfully" if nginx_result.returncode == 0 else f"Nginx reload warning: {nginx_result.stderr}"
+            except Exception as nginx_err:
+                nginx_reload_output = f"Nginx reload skipped: {str(nginx_err)}"
+        else:
+            nginx_reload_output = "Nginx reload skipped (not running via custom nginx)"
+
+        # Step 6: Schedule backend restart
+        import asyncio
+        async def delayed_restart():
+            await asyncio.sleep(2)
+            try:
+                subprocess.run(
+                    ["sudo", "systemctl", "restart", "agentic-backend"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+            except Exception as e:
+                logger.warning(f"Backend restart failed: {e}")
+
+        asyncio.create_task(delayed_restart())
+
+        return {
+            "success": True,
+            "message": "Service refreshed successfully (changes merged). Backend will restart in 2 seconds.",
+            "git_output": pull_output,
+            "build_output": build_result.stdout[:500] + "..." if len(build_result.stdout) > 500 else build_result.stdout,
+            "nginx_output": nginx_reload_output
+        }
+
+    except subprocess.TimeoutExpired as e:
+        return {"success": False, "error": f"Operation timed out: {str(e)}"}
+    except Exception as e:
+        logger.exception(f"Error in merge-and-pull: {e}")
+        return {"success": False, "error": str(e)}
 
 
 # Frontend Console Logging Endpoint

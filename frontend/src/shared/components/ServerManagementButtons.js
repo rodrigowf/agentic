@@ -14,13 +14,14 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PublishIcon from '@mui/icons-material/Publish';
-import { refreshService, pushChanges } from '../../api';
+import { refreshService, pushChanges, stashAndPull, mergeAndPull } from '../../api';
 
 export default function ServerManagementButtons({ iconOnly = false }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [refreshDialog, setRefreshDialog] = useState({ open: false, result: null });
   const [pushDialog, setPushDialog] = useState({ open: false, result: null });
+  const [conflictDialog, setConflictDialog] = useState({ open: false, result: null, isResolving: false });
 
   const handleRefreshService = async () => {
     setIsRefreshing(true);
@@ -28,15 +29,54 @@ export default function ServerManagementButtons({ iconOnly = false }) {
       const response = await refreshService();
       const result = response.data;
 
+      // Check if there's a git conflict that needs resolution
+      if (!result.success && result.conflict_type) {
+        setConflictDialog({ open: true, result, isResolving: false });
+      } else {
+        setRefreshDialog({ open: true, result });
+
+        if (result.success) {
+          // Wait 5 seconds for backend to restart (2s delay + 3s startup) then reload
+          setTimeout(() => {
+            window.location.reload();
+          }, 5000);
+        }
+      }
+    } catch (error) {
+      const errorData = error.response?.data;
+      // Check if the error response contains conflict info
+      if (errorData?.conflict_type) {
+        setConflictDialog({ open: true, result: errorData, isResolving: false });
+      } else {
+        setRefreshDialog({
+          open: true,
+          result: {
+            success: false,
+            error: errorData?.error || error.message || 'Unknown error',
+          },
+        });
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleStashAndPull = async () => {
+    setConflictDialog((prev) => ({ ...prev, isResolving: true }));
+    try {
+      const response = await stashAndPull();
+      const result = response.data;
+
+      setConflictDialog({ open: false, result: null, isResolving: false });
       setRefreshDialog({ open: true, result });
 
       if (result.success) {
-        // Wait 5 seconds for backend to restart (2s delay + 3s startup) then reload
         setTimeout(() => {
           window.location.reload();
         }, 5000);
       }
     } catch (error) {
+      setConflictDialog({ open: false, result: null, isResolving: false });
       setRefreshDialog({
         open: true,
         result: {
@@ -44,9 +84,47 @@ export default function ServerManagementButtons({ iconOnly = false }) {
           error: error.response?.data?.error || error.message || 'Unknown error',
         },
       });
-    } finally {
-      setIsRefreshing(false);
     }
+  };
+
+  const handleMergeAndPull = async () => {
+    setConflictDialog((prev) => ({ ...prev, isResolving: true }));
+    try {
+      const response = await mergeAndPull();
+      const result = response.data;
+
+      // Check if merge resulted in conflicts
+      if (!result.success && result.conflict_type === 'merge_conflict') {
+        setConflictDialog({ open: true, result, isResolving: false });
+      } else {
+        setConflictDialog({ open: false, result: null, isResolving: false });
+        setRefreshDialog({ open: true, result });
+
+        if (result.success) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 5000);
+        }
+      }
+    } catch (error) {
+      const errorData = error.response?.data;
+      if (errorData?.conflict_type === 'merge_conflict') {
+        setConflictDialog({ open: true, result: errorData, isResolving: false });
+      } else {
+        setConflictDialog({ open: false, result: null, isResolving: false });
+        setRefreshDialog({
+          open: true,
+          result: {
+            success: false,
+            error: errorData?.error || error.message || 'Unknown error',
+          },
+        });
+      }
+    }
+  };
+
+  const handleCloseConflictDialog = () => {
+    setConflictDialog({ open: false, result: null, isResolving: false });
   };
 
   const handlePushChanges = async () => {
@@ -112,6 +190,14 @@ export default function ServerManagementButtons({ iconOnly = false }) {
           result={pushDialog.result}
           onClose={handleClosePushDialog}
         />
+        <ConflictDialog
+          open={conflictDialog.open}
+          result={conflictDialog.result}
+          isResolving={conflictDialog.isResolving}
+          onClose={handleCloseConflictDialog}
+          onStashAndPull={handleStashAndPull}
+          onMergeAndPull={handleMergeAndPull}
+        />
       </>
     );
   }
@@ -145,6 +231,14 @@ export default function ServerManagementButtons({ iconOnly = false }) {
         open={pushDialog.open}
         result={pushDialog.result}
         onClose={handleClosePushDialog}
+      />
+      <ConflictDialog
+        open={conflictDialog.open}
+        result={conflictDialog.result}
+        isResolving={conflictDialog.isResolving}
+        onClose={handleCloseConflictDialog}
+        onStashAndPull={handleStashAndPull}
+        onMergeAndPull={handleMergeAndPull}
       />
     </>
   );
@@ -318,6 +412,90 @@ function PushDialog({ open, result, onClose }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Close</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function ConflictDialog({ open, result, isResolving, onClose, onStashAndPull, onMergeAndPull }) {
+  const isLocalChanges = result?.conflict_type === 'local_changes';
+  const isMergeConflict = result?.conflict_type === 'merge_conflict';
+
+  return (
+    <Dialog open={open} onClose={isResolving ? undefined : onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Git Conflict Detected</DialogTitle>
+      <DialogContent>
+        {result && (
+          <Box>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {result.message || 'Local changes conflict with remote changes.'}
+            </Alert>
+
+            <DialogContentText
+              component="pre"
+              sx={{
+                fontSize: '0.75rem',
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                color: 'text.primary',
+                p: 1,
+                borderRadius: 1,
+                overflow: 'auto',
+                maxHeight: 150,
+                mb: 2,
+              }}
+            >
+              {result.error || result.details || 'Conflict details unavailable'}
+            </DialogContentText>
+
+            <DialogContentText sx={{ mb: 2, color: 'text.primary' }}>
+              <strong>Choose how to resolve:</strong>
+            </DialogContentText>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={onStashAndPull}
+                disabled={isResolving}
+                startIcon={isResolving ? <CircularProgress size={20} /> : null}
+              >
+                Stash Local Changes & Pull
+              </Button>
+              <DialogContentText sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: -1 }}>
+                Your local changes will be saved to git stash. You can recover them later with "git stash pop".
+              </DialogContentText>
+
+              {isLocalChanges && (
+                <>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={onMergeAndPull}
+                    disabled={isResolving}
+                    startIcon={isResolving ? <CircularProgress size={20} /> : null}
+                  >
+                    Try to Merge Changes
+                  </Button>
+                  <DialogContentText sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: -1 }}>
+                    Attempts to commit your changes and merge with remote. If conflicts occur, you'll need to use stash.
+                  </DialogContentText>
+                </>
+              )}
+
+              {isMergeConflict && (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  Merge conflicts were detected. Use "Stash Local Changes & Pull" to discard local changes and pull the latest version.
+                </Alert>
+              )}
+            </Box>
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={isResolving}>
+          Cancel
+        </Button>
       </DialogActions>
     </Dialog>
   );
