@@ -5,8 +5,9 @@ __pycache__/
 .venv/
 
 # Local databases
-*.db
-*.db-journal
+# *.db
+# *.db-journal
+# I actually wanna keep the databases in sync with the server.
 
 
 # Node
