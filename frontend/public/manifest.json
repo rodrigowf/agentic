@@ -3,7 +3,7 @@
   "short_name": "Agentic",
   "start_url": "/agentic/",
   "scope": "/agentic/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#1a1a1a",
   "theme_color": "#3f51b5",
   "description": "Multi-agent AI system with voice assistant",
