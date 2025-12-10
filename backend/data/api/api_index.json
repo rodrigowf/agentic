@@ -4,5 +4,11 @@
     "base_url": "https://jsonplaceholder.typicode.com",
     "auth_type": "none",
     "description": "JSONPlaceholder - Free fake REST API for testing and prototyping"
+  },
+  "youtube_api": {
+    "doc_path": "/home/rodrigo/agentic/backend/data/api/docs/youtube_api.md",
+    "base_url": "https://www.googleapis.com/youtube/v3",
+    "auth_type": "api_key",
+    "description": "YouTube API allows for managing videos, playlists, channels, and retrieving YouTube data like video search and playback."
   }
 }
