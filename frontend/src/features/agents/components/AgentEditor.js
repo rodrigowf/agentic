@@ -631,31 +631,91 @@ export default function AgentEditor({nested = false}) {
                   disabled={loading}
                 />
               </Grid>
-              {cfg.agent_type === 'dynamic_init_looping' && (
-                <Grid item xs={12}>
-                  <TextField
-                    label="Initialization Function"
-                    value={cfg.initialization_function || ''}
-                    onChange={(e) => handleInputChange('initialization_function', e.target.value)}
-                    disabled={loading}
-                    helperText="e.g., memory.initialize_memory_agent"
-                  />
-                </Grid>
-              )}
             </Grid>
           </Section>
 
-          {/* System Prompt Section */}
-          {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping' || cfg.agent_type === 'multimodal_tools_looping' || cfg.agent_type === 'dynamic_init_looping') && (
-            <Section title="System Prompt" defaultExpanded={true}>
+          {/* Model Configuration Section */}
+          <Section title="Model" defaultExpanded={true}>
+            <Grid container spacing={2.5}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Select
+                  label="Provider"
+                  required
+                  error={!cfg.llm.provider && !!error}
+                  value={cfg.llm.provider}
+                  onChange={(e) => handleInputChange('llm.provider', e.target.value)}
+                  disabled={loading}
+                >
+                  <MenuItem value="openai">OpenAI</MenuItem>
+                  <MenuItem value="anthropic">Anthropic</MenuItem>
+                  <MenuItem value="gemini">Gemini</MenuItem>
+                </Select>
+              </Grid>
+              <Grid item xs={12} sm={6} md={5}>
+                <Select
+                  label="Model"
+                  required
+                  error={!cfg.llm.model && !!error}
+                  value={cfg.llm.model}
+                  onChange={(e) => handleInputChange('llm.model', e.target.value)}
+                  disabled={loading || modelsLoading || !cfg.llm.provider}
+                  helperText={modelsLoading ? 'Loading...' : undefined}
+                >
+                  {modelsLoading ? (
+                    <MenuItem value="" disabled>
+                      <CircularProgress size={16} sx={{ mr: 1 }} />
+                      Loading...
+                    </MenuItem>
+                  ) : models.length === 0 && cfg.llm.provider ? (
+                    <MenuItem value="" disabled>
+                      No models available
+                    </MenuItem>
+                  ) : (
+                    models.map((model) => (
+                      <MenuItem key={model} value={model}>
+                        {model}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </Grid>
+              <Grid item xs={6} sm={6} md={2}>
+                <TextField
+                  type="number"
+                  label="Temperature"
+                  value={cfg.llm.temperature}
+                  onChange={(e) => handleInputChange('llm.temperature', e.target.value)}
+                  inputProps={{ step: '0.1', min: '0', max: '2' }}
+                  disabled={loading}
+                />
+              </Grid>
+              <Grid item xs={6} sm={6} md={2}>
+                <TextField
+                  type="number"
+                  label="Max Tokens"
+                  value={cfg.llm.max_tokens ?? ''}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'llm.max_tokens',
+                      e.target.value ? parseInt(e.target.value) : null
+                    )
+                  }
+                  inputProps={{ min: '1' }}
+                  disabled={loading}
+                />
+              </Grid>
+            </Grid>
+          </Section>
+
+          {/* Initialization Function for dynamic_init_looping */}
+          {cfg.agent_type === 'dynamic_init_looping' && (
+            <Section title="Initialization" defaultExpanded={true}>
               <TextField
-                label="Instructions"
-                multiline
-                minRows={4}
-                maxRows={20}
-                value={cfg.prompt.system}
-                onChange={(e) => handleInputChange('prompt.system', e.target.value)}
+                label="Initialization Function"
+                value={cfg.initialization_function || ''}
+                onChange={(e) => handleInputChange('initialization_function', e.target.value)}
                 disabled={loading}
+                helperText="e.g., memory.initialize_memory_agent"
               />
             </Section>
           )}
@@ -936,78 +996,20 @@ export default function AgentEditor({nested = false}) {
             </Section>
           )}
 
-          {/* Model Configuration Section */}
-          <Section title="Model" defaultExpanded={true}>
-            <Grid container spacing={2.5}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Select
-                  label="Provider"
-                  required
-                  error={!cfg.llm.provider && !!error}
-                  value={cfg.llm.provider}
-                  onChange={(e) => handleInputChange('llm.provider', e.target.value)}
-                  disabled={loading}
-                >
-                  <MenuItem value="openai">OpenAI</MenuItem>
-                  <MenuItem value="anthropic">Anthropic</MenuItem>
-                  <MenuItem value="gemini">Gemini</MenuItem>
-                </Select>
-              </Grid>
-              <Grid item xs={12} sm={6} md={5}>
-                <Select
-                  label="Model"
-                  required
-                  error={!cfg.llm.model && !!error}
-                  value={cfg.llm.model}
-                  onChange={(e) => handleInputChange('llm.model', e.target.value)}
-                  disabled={loading || modelsLoading || !cfg.llm.provider}
-                  helperText={modelsLoading ? 'Loading...' : undefined}
-                >
-                  {modelsLoading ? (
-                    <MenuItem value="" disabled>
-                      <CircularProgress size={16} sx={{ mr: 1 }} />
-                      Loading...
-                    </MenuItem>
-                  ) : models.length === 0 && cfg.llm.provider ? (
-                    <MenuItem value="" disabled>
-                      No models available
-                    </MenuItem>
-                  ) : (
-                    models.map((model) => (
-                      <MenuItem key={model} value={model}>
-                        {model}
-                      </MenuItem>
-                    ))
-                  )}
-                </Select>
-              </Grid>
-              <Grid item xs={6} sm={6} md={2}>
-                <TextField
-                  type="number"
-                  label="Temperature"
-                  value={cfg.llm.temperature}
-                  onChange={(e) => handleInputChange('llm.temperature', e.target.value)}
-                  inputProps={{ step: '0.1', min: '0', max: '2' }}
-                  disabled={loading}
-                />
-              </Grid>
-              <Grid item xs={6} sm={6} md={2}>
-                <TextField
-                  type="number"
-                  label="Max Tokens"
-                  value={cfg.llm.max_tokens ?? ''}
-                  onChange={(e) =>
-                    handleInputChange(
-                      'llm.max_tokens',
-                      e.target.value ? parseInt(e.target.value) : null
-                    )
-                  }
-                  inputProps={{ min: '1' }}
-                  disabled={loading}
-                />
-              </Grid>
-            </Grid>
-          </Section>
+          {/* System Prompt Section - at the end for all applicable agent types */}
+          {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping' || cfg.agent_type === 'multimodal_tools_looping' || cfg.agent_type === 'dynamic_init_looping') && (
+            <Section title="System Prompt" defaultExpanded={true}>
+              <TextField
+                label="Instructions"
+                multiline
+                minRows={4}
+                maxRows={20}
+                value={cfg.prompt.system}
+                onChange={(e) => handleInputChange('prompt.system', e.target.value)}
+                disabled={loading}
+              />
+            </Section>
+          )}
 
           {/* Action Buttons */}
           <Box

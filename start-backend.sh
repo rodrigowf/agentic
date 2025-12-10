@@ -29,4 +29,4 @@ echo ""
 
 # Start uvicorn with logging to both console and file
 mkdir -p /tmp/agentic-logs
-uvicorn main:app --reload --host 0.0.0.0 --port 8000 2>&1 | tee /tmp/agentic-logs/backend.log
+uvicorn main:app --host 0.0.0.0 --port 8000 2>&1 | tee /tmp/agentic-logs/backend.log

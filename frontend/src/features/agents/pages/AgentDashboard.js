@@ -206,10 +206,6 @@ export default function AgentDashboard() {
             borderColor: 'divider',
             overflowY: 'auto',
             flexShrink: 0,
-            outline: 'none',
-            '&:focus-within': {
-              boxShadow: theme => `inset 0 0 0 2px ${theme.palette.primary.main}`,
-            },
           }}
         >
           {AgentListContent}
