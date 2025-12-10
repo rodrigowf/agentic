@@ -6,10 +6,12 @@ import AddIcon from '@mui/icons-material/Add';
 import AgentEditor from '../components/AgentEditor';
 import RunConsole from '../components/RunConsole';
 import api from '../../../api';
+import { useSpatialNavigationContext } from '../../../components/SpatialNavigationProvider';
 
 export default function AgentDashboard() {
   const { name } = useParams();
   const theme = useTheme();
+  const { isTV } = useSpatialNavigationContext();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [agents, setAgents] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -108,7 +110,8 @@ export default function AgentDashboard() {
                     borderLeft: 3,
                     borderColor: 'primary.main',
                   },
-                  ...(selectedIndex === index && {
+                  // Only show hover outline on TV for remote navigation
+                  ...(isTV && selectedIndex === index && {
                     outline: theme => `2px solid ${theme.palette.primary.main}`,
                     outlineOffset: '-2px',
                   }),

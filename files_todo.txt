@@ -1,3 +1,5 @@
+All basically Done --
+
 We tried to do a smart trick which is not working: 
 After I first open the app, it should run a script in the background that works as a fake screensaver, so whenever the screen is inactive for more than 40s it should take us back to our app as if it is a screensaver. But this is not working. Please fix it.
 One other trick is: before the app initialization we must open the youtube app so it keep running in the background (to receive casting), but i believe this might be already working.

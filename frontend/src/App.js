@@ -30,6 +30,7 @@ import KeyboardShortcutsHelp from './shared/components/KeyboardShortcutsHelp';
 import ServerManagementButtons from './shared/components/ServerManagementButtons';
 import KeyboardNavigationProvider from './components/KeyboardNavigationProvider';
 import SpatialNavigationProvider from './components/SpatialNavigationProvider';
+import TVFocusStyles from './components/TVFocusStyles';
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
 import DynamicManifest from './components/DynamicManifest';
 
@@ -382,12 +383,6 @@ export default function App() {
               background-color: ${mode === 'dark' ? '#4a4a4a' : '#a0a0a0'};
             }
 
-            /* Global keyboard focus styling for accessibility */
-            *:focus-visible {
-              outline: 3px solid ${mode === 'dark' ? '#90caf9' : '#3f51b5'} !important;
-              outline-offset: 2px !important;
-            }
-
             /* Skip to main content link */
             .skip-to-main {
               position: absolute;
@@ -405,29 +400,10 @@ export default function App() {
             .skip-to-main:focus {
               top: 0;
             }
-
-            /* Improve form control focus */
-            input:focus,
-            textarea:focus,
-            select:focus {
-              outline: 2px solid ${mode === 'dark' ? '#90caf9' : '#3f51b5'} !important;
-              outline-offset: 2px !important;
-            }
-
-            /* Focus styles for interactive elements */
-            button:focus-visible,
-            a:focus-visible {
-              outline: 3px solid ${mode === 'dark' ? '#90caf9' : '#3f51b5'} !important;
-              outline-offset: 3px !important;
-              transition: outline 0.2s ease;
-            }
-
-            /* Remove default focus outline for mouse users but keep for keyboard */
-            *:focus:not(:focus-visible) {
-              outline: none !important;
-            }
           `}
         </style>
+        {/* TV-specific focus styles - only rendered on Android TV/Fire TV */}
+        <TVFocusStyles mode={mode} />
         <Router basename={process.env.PUBLIC_URL || ''}>
           {/* Dynamically switch PWA manifest based on current route */}
           <DynamicManifest />
