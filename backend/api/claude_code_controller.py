@@ -86,6 +86,7 @@ class ClaudeCodeProcess:
             raise RuntimeError("Process already started")
 
         # Build command: claude --print --verbose --input-format=stream-json --output-format=stream-json
+        # Use --dangerously-skip-permissions for full unrestricted access (bypasses ALL permission checks)
         cmd = [
             self.claude_cli_path,
             "--print",
@@ -94,7 +95,7 @@ class ClaudeCodeProcess:
             "--output-format=stream-json",
             "--replay-user-messages",
             f"--model={self.model}",
-            f"--permission-mode={self.permission_mode}",
+            "--dangerously-skip-permissions",  # Bypass ALL permission checks for non-interactive voice assistant
         ]
 
         logger.info(f"Starting Claude Code in {self.working_dir}: {' '.join(cmd)}")
