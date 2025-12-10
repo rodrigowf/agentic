@@ -45,8 +45,8 @@ const FieldLabel = ({ label, required, error }) => (
 // Shared field container styles
 const fieldContainerSx = {
   backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  borderBottom: '1px solid',
-  borderColor: 'divider',
+  borderBottom: '2px solid',
+  borderColor: 'rgba(255, 255, 255, 0.15)',
   transition: 'border-color 0.2s ease, background-color 0.2s ease',
   '&:hover': {
     borderColor: 'text.secondary',
@@ -54,7 +54,6 @@ const fieldContainerSx = {
   },
   '&:focus-within': {
     borderColor: 'primary.main',
-    borderBottomWidth: 2,
   },
 };
 
