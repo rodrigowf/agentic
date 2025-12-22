@@ -1,33 +1,36 @@
 {
   "name": "HTMLDisplay",
-  "agent_type": "looping",
-  "tools": [
-    "create_file",
-    "update_file",
-    "read_file",
-    "list_files"
-  ],
+  "agent_type": "custom_loop",
+  "tools": [],
   "llm": {
     "provider": "openai",
-    "model": "gpt-5.1-mini",
+    "model": "gpt-4o",
     "temperature": 0.2,
     "max_tokens": null
   },
   "prompt": {
-    "system": "You are the HTML Display Generator. Build engaging, interactive single-page HTML experiences and save them into the workspace.\n\nRules:\n- Working directory: `html_outputs/` inside the workspace (`data/workspace/html_outputs`).\n- Reference file: `html_display_config.json` in the workspace root. Maintain `working_directory`, `active_file`, and the `files` list with label/description/updated_at. Paths are relative to the workspace (e.g., `html_outputs/dashboard.html`).\n- Always update `active_file` to the file you want displayed. Preserve other file entries when adding a new one.\n- Keep pages self-contained: inline CSS/JS, load external libraries via CDN (Chart.js, Plotly, D3, three.js, FullCalendar are available by default).\n- Prefer accessible, responsive layouts and engaging visuals.\n\nFlow:\n1) Gather the user goal and choose a filename in `html_outputs/` (kebab-case).\n2) Use `create_file`/`update_file` to write the full HTML (including CSS + JS).\n3) Update `html_display_config.json` to set `active_file` and refresh or insert that file entry with label/description/updated_at (ISO timestamp).\n4) Verify content with `read_file` if needed, then summarize and respond with TERMINATE when done.\n\nNotes:\n- Do not delete files.\n- Keep network usage minimal; prefer CDN libraries already listed.\n- Ensure the page renders without build steps.",
-    "user": "Generate or update HTML displays on request, saving them into the workspace and updating the display config."
+    "system": "You are the HTML Display Generator. You create engaging, interactive single-page HTML experiences.\n\nYour workflow:\n1. When given a request, output the COMPLETE HTML document (including inline CSS and JS).\n2. Your output will be saved to a file, rendered in a browser, and a screenshot will be taken.\n3. You will receive the screenshot and any console logs as feedback.\n4. Review the screenshot carefully:\n   - If the result looks correct and matches the request, output exactly: TERMINATE\n   - If there are issues (visual bugs, console errors, missing features), output a NEW complete HTML document with fixes.\n\nRules:\n- Output ONLY the HTML code (starting with <!DOCTYPE html>) or the word TERMINATE.\n- Keep pages self-contained: inline CSS and JS only.\n- You may use CDN libraries: Chart.js, Plotly, D3.js, three.js, FullCalendar.\n- Prefer accessible, responsive layouts with engaging visuals.\n- Do not include explanations or markdown - just raw HTML or TERMINATE.\n\nExample output formats:\n\nFor HTML:\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>...</head>\n<body>...</body>\n</html>\n\nWhen satisfied:\nTERMINATE",
+    "user": "Generate interactive HTML displays based on user requests."
   },
   "code_executor": null,
   "model_client_stream": false,
   "sources": null,
-  "description": "Creates interactive HTML files, saves them to the workspace, and updates the active display reference.",
+  "description": "Generates and displays HTML Views for the user.",
   "system_message": null,
-  "max_consecutive_auto_reply": 12,
-  "reflect_on_tool_use": true,
+  "max_consecutive_auto_reply": 5,
+  "reflect_on_tool_use": false,
   "terminate_on_text": false,
-  "tool_call_loop": true,
+  "tool_call_loop": false,
+  "initialization_function": null,
+  "output_handler": "html_display.process_output",
+  "output_handler_config": {
+    "output_dir": "data/workspace/html_outputs",
+    "terminate_signal": "TERMINATE"
+  },
   "sub_agents": null,
   "mode": null,
   "orchestrator_prompt": null,
+  "orchestrator_agent_name": "Manager",
+  "orchestrator_pattern": "NEXT AGENT: <Name>",
   "include_inner_dialog": true
 }

@@ -1,0 +1,5 @@
+We need to fix two key issues:
+
+1. Termination Condition Configuration: The HTMLDisplay agent currently uses 'DONE' (all caps) as the termination signal, but it should be configurable. Update the agent editor or logic to allow an optional termination condition. In this specific case, set the termination condition to 'TERMINATE' (all caps) instead of 'DONE'.
+
+2. File Creation and Display: The generated HTML output should be saved to a file and properly displayed. Ensure that when the HTMLDisplay agent finishes, it creates a new file for the HTML content in the workspace, and logs the file creation. Also, confirm that the result can be viewed in the HTML tab or similar interface. Add appropriate console logs that show the file's location and name after creation, and ensure the display mechanism is triggered.

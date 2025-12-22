@@ -1,85 +1,95 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Paper,
   Typography,
   Stack,
   Button,
-  Chip,
   CircularProgress,
   Alert,
+  List,
+  ListItemButton,
+  ListItemText,
+  Collapse,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SensorsIcon from '@mui/icons-material/Sensors';
-import TextSnippetIcon from '@mui/icons-material/TextSnippet';
-import { getHtmlDisplayConfig, getActiveHtmlDisplay } from '../../../api';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { getHtmlDisplayLatest, getHtmlDisplayContent } from '../../../api';
 
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 3000;
 
 export default function HtmlDisplayPage() {
-  const [config, setConfig] = useState(null);
+  const [latestInfo, setLatestInfo] = useState(null);
   const [htmlContent, setHtmlContent] = useState('');
-  const [loadingConfig, setLoadingConfig] = useState(false);
-  const [loadingHtml, setLoadingHtml] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const lastActiveRef = useRef(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const lastModifiedRef = useRef(null);
 
-  const activeMeta = useMemo(() => {
-    if (!config?.config?.files) return null;
-    return config.config.files.find((file) => file.path === config.config.active_file) || null;
-  }, [config]);
-
-  const fetchConfig = async (force = false) => {
-    if (loadingConfig && !force) return;
-    setLoadingConfig(true);
+  const fetchLatest = async (force = false) => {
     try {
-      const response = await getHtmlDisplayConfig();
-      setConfig(response.data);
+      const response = await getHtmlDisplayLatest();
+      const data = response.data;
+      setLatestInfo(data);
       setError(null);
+
+      // If latest file changed, fetch its content
+      if (data.has_content && data.modified !== lastModifiedRef.current) {
+        lastModifiedRef.current = data.modified;
+        // Only auto-load if no file is manually selected, or if viewing latest
+        if (!selectedFile || selectedFile === data.filename) {
+          setSelectedFile(data.filename);
+          await fetchHtmlContent(data.filename);
+        }
+      }
     } catch (e) {
-      setError(e?.response?.data?.detail || 'Failed to load display config');
-    } finally {
-      setLoadingConfig(false);
+      if (force) {
+        setError(e?.response?.data?.detail || 'Failed to load display info');
+      }
     }
   };
 
-  const fetchHtml = async () => {
-    setLoadingHtml(true);
+  const fetchHtmlContent = async (filename = null) => {
+    setLoading(true);
     try {
-      const response = await getActiveHtmlDisplay();
+      const response = await getHtmlDisplayContent(filename);
       setHtmlContent(response.data || '');
       setError(null);
     } catch (e) {
-      setError(e?.response?.data?.detail || 'Failed to load active HTML');
+      setError(e?.response?.data?.detail || 'Failed to load HTML content');
       setHtmlContent('');
     } finally {
-      setLoadingHtml(false);
+      setLoading(false);
     }
   };
 
-  // Initial load + polling for active_file changes
+  // Initial load + polling
   useEffect(() => {
-    fetchConfig(true);
-    const interval = setInterval(() => fetchConfig(), POLL_INTERVAL_MS);
+    fetchLatest(true);
+    const interval = setInterval(() => fetchLatest(), POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, []);
 
-  // When config changes, reload HTML if active_file changed
-  useEffect(() => {
-    const activeFile = config?.config?.active_file;
-    if (!activeFile) return;
-    if (activeFile !== lastActiveRef.current) {
-      lastActiveRef.current = activeFile;
-      fetchHtml();
-    }
-  }, [config]);
-
   const handleManualRefresh = () => {
-    fetchConfig(true);
-    fetchHtml();
+    lastModifiedRef.current = null;
+    setSelectedFile(null);
+    fetchLatest(true);
   };
 
-  const activeFilePath = config?.config?.active_file || 'Not set';
+  const handleSelectFile = async (filename) => {
+    setSelectedFile(filename);
+    await fetchHtmlContent(filename);
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    return new Date(timestamp * 1000).toLocaleString();
+  };
+
+  const isViewingLatest = !selectedFile || selectedFile === latestInfo?.filename;
 
   return (
     <Stack spacing={2}>
@@ -95,7 +105,7 @@ export default function HtmlDisplayPage() {
             variant="outlined"
             startIcon={<RefreshIcon />}
             onClick={handleManualRefresh}
-            disabled={loadingConfig || loadingHtml}
+            disabled={loading}
           >
             Refresh
           </Button>
@@ -105,29 +115,72 @@ export default function HtmlDisplayPage() {
       {error && <Alert severity="error">{error}</Alert>}
 
       <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <TextSnippetIcon color="action" />
-            <Typography variant="body1" sx={{ wordBreak: 'break-all' }}>
-              Active file: {activeFilePath}
-            </Typography>
-            {activeMeta?.label && <Chip label={activeMeta.label} size="small" color="primary" />}
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            {loadingConfig && <CircularProgress size={18} />}
-            {activeMeta?.updated_at && (
-              <Typography variant="body2" color="text.secondary">
-                Updated: {activeMeta.updated_at}
+        <Stack spacing={1}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Typography variant="body1" sx={{ wordBreak: 'break-all' }}>
+                {latestInfo?.has_content ? (
+                  <>
+                    Viewing: <strong>{selectedFile || latestInfo.filename}</strong>
+                    {isViewingLatest && <Typography component="span" color="primary.main" sx={{ ml: 1 }}>(latest)</Typography>}
+                  </>
+                ) : (
+                  'No HTML files yet'
+                )}
               </Typography>
-            )}
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              {loading && <CircularProgress size={18} />}
+              {latestInfo?.has_content && (
+                <Typography variant="body2" color="text.secondary">
+                  {formatDate(latestInfo.modified)}
+                </Typography>
+              )}
+            </Stack>
           </Stack>
+
+          {/* File history toggle */}
+          {latestInfo?.files?.length > 1 && (
+            <>
+              <Button
+                size="small"
+                onClick={() => setShowHistory(!showHistory)}
+                endIcon={showHistory ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                History ({latestInfo.files.length} files)
+              </Button>
+              <Collapse in={showHistory}>
+                <List dense sx={{ maxHeight: 200, overflow: 'auto', bgcolor: 'background.default', borderRadius: 1 }}>
+                  {latestInfo.files.map((file) => (
+                    <ListItemButton
+                      key={file.filename}
+                      selected={selectedFile === file.filename}
+                      onClick={() => handleSelectFile(file.filename)}
+                    >
+                      <ListItemText
+                        primary={file.filename}
+                        secondary={formatDate(file.modified)}
+                      />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Collapse>
+            </>
+          )}
         </Stack>
       </Paper>
 
       <Paper sx={{ p: 1, minHeight: '60vh' }}>
-        {loadingHtml && !htmlContent ? (
+        {loading && !htmlContent ? (
           <Box display="flex" alignItems="center" justifyContent="center" height="100%" py={4}>
             <CircularProgress />
+          </Box>
+        ) : !latestInfo?.has_content ? (
+          <Box display="flex" alignItems="center" justifyContent="center" height="100%" py={4}>
+            <Typography color="text.secondary">
+              Run the HTMLDisplay agent to generate content
+            </Typography>
           </Box>
         ) : (
           <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1, overflow: 'hidden', minHeight: '60vh' }}>
@@ -136,7 +189,7 @@ export default function HtmlDisplayPage() {
               srcDoc={htmlContent}
               sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-downloads"
               style={{ width: '100%', height: '70vh', border: 'none', background: '#0b1224' }}
-              key={config?.config?.active_file || 'html-display' }
+              key={selectedFile || 'html-display'}
             />
           </Box>
         )}

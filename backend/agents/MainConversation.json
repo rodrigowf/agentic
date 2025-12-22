@@ -24,6 +24,8 @@
   "terminate_on_text": false,
   "tool_call_loop": false,
   "initialization_function": null,
+  "output_handler": null,
+  "output_handler_config": null,
   "sub_agents": [
     "Manager",
     "Memory",
@@ -31,7 +33,8 @@
     "Database",
     "Researcher",
     "Engineer",
-    "API"
+    "API",
+    "HTMLDisplay"
   ],
   "mode": "selector",
   "orchestrator_prompt": "__function__",

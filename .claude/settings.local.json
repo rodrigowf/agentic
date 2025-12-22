@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Bash(node -e:*)",
+      "Bash(source:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

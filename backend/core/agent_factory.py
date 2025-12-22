@@ -15,6 +15,7 @@ from core.looping_agent import LoopingAssistantAgent
 from core.looping_code_executor_agent import LoopingCodeExecutorAgent
 from core.multimodal_tools_looping_agent import MultimodalToolsLoopingAgent
 from core.dynamic_init_looping_agent import DynamicInitLoopingAgent
+from core.custom_loop_agent import CustomLoopAgent
 from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
 
 
@@ -119,6 +120,19 @@ def create_agent_from_config(
             reflect_on_tool_use=agent_cfg.reflect_on_tool_use,
             max_consecutive_auto_reply=agent_cfg.max_consecutive_auto_reply,
             initialization_function=agent_cfg.initialization_function
+        )
+
+    # Custom loop agent with output handler
+    if agent_cfg.agent_type == 'custom_loop':
+        return CustomLoopAgent(
+            name=agent_cfg.name,
+            description=agent_cfg.description,
+            system_message=agent_cfg.prompt.system,
+            model_client=model_client,
+            tools=agent_tools,
+            output_handler=agent_cfg.output_handler,
+            output_handler_config=agent_cfg.output_handler_config or {},
+            max_iterations=agent_cfg.max_consecutive_auto_reply
         )
 
     # Default: standard AssistantAgent

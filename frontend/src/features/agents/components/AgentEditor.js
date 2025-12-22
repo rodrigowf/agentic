@@ -222,6 +222,9 @@ const DEFAULT_AGENT_CONFIG = {
   reflect_on_tool_use: true,
   // Dynamic initialization field
   initialization_function: '',
+  // Custom loop agent fields
+  output_handler: '',
+  output_handler_config: {},
   // Nested team orchestrator settings
   orchestrator_agent_name: 'Manager',
   orchestrator_pattern: 'NEXT AGENT: <Name>',
@@ -538,6 +541,7 @@ export default function AgentEditor({nested = false}) {
       'looping': { label: 'Looping Assistant', description: 'Self-continuing agent with tool loop' },
       'multimodal_tools_looping': { label: 'Multimodal Tools Looping', description: 'Vision-capable agent with tool loop' },
       'dynamic_init_looping': { label: 'Dynamic Init Looping', description: 'Custom initialization with tool loop' },
+      'custom_loop': { label: 'Custom Loop', description: 'Agent with custom output handler (e.g., HTML display with screenshots)' },
       'nested_team': { label: 'Nested Team', description: 'Multi-agent coordination' },
       'code_executor': { label: 'Code Executor', description: 'Executes code in sandbox' },
       'looping_code_executor': { label: 'Looping Code Executor', description: 'Code execution with continuation' },
@@ -617,6 +621,7 @@ export default function AgentEditor({nested = false}) {
                   <MenuItem value="nested_team">Nested Team</MenuItem>
                   <MenuItem value="code_executor">Code Executor</MenuItem>
                   <MenuItem value="looping_code_executor">Looping Code Executor</MenuItem>
+                  <MenuItem value="custom_loop">Custom Loop</MenuItem>
                 </Select>
               </Grid>
               <Grid item xs={12}>
@@ -716,6 +721,53 @@ export default function AgentEditor({nested = false}) {
                 disabled={loading}
                 helperText="e.g., memory.initialize_memory_agent"
               />
+            </Section>
+          )}
+
+          {/* Output Handler for custom_loop */}
+          {cfg.agent_type === 'custom_loop' && (
+            <Section title="Output Handler" defaultExpanded={true}>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Handler Function"
+                    value={cfg.output_handler || ''}
+                    onChange={(e) => handleInputChange('output_handler', e.target.value)}
+                    disabled={loading}
+                    helperText="e.g., html_display.process_output"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    type="number"
+                    label="Max Iterations"
+                    value={cfg.max_consecutive_auto_reply ?? 5}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleInputChange('max_consecutive_auto_reply', val === '' ? 5 : parseInt(val));
+                    }}
+                    inputProps={{ min: '1', max: '20' }}
+                    disabled={loading}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    label="Output Directory"
+                    value={cfg.output_handler_config?.output_dir || 'data/workspace/html_outputs'}
+                    onChange={(e) => handleInputChange('output_handler_config', { ...cfg.output_handler_config, output_dir: e.target.value })}
+                    disabled={loading}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    label="Terminate Signal"
+                    value={cfg.output_handler_config?.terminate_signal || 'TERMINATE'}
+                    onChange={(e) => handleInputChange('output_handler_config', { ...cfg.output_handler_config, terminate_signal: e.target.value })}
+                    disabled={loading}
+                    helperText="Signal to end the loop"
+                  />
+                </Grid>
+              </Grid>
             </Section>
           )}
 
@@ -996,7 +1048,7 @@ export default function AgentEditor({nested = false}) {
           )}
 
           {/* System Prompt Section - at the end for all applicable agent types */}
-          {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping' || cfg.agent_type === 'multimodal_tools_looping' || cfg.agent_type === 'dynamic_init_looping') && (
+          {(cfg.agent_type === 'assistant' || cfg.agent_type === 'looping' || cfg.agent_type === 'multimodal_tools_looping' || cfg.agent_type === 'dynamic_init_looping' || cfg.agent_type === 'custom_loop') && (
             <Section title="System Prompt" defaultExpanded={true}>
               <TextField
                 label="Instructions"

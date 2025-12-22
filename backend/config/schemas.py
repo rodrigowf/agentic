@@ -30,7 +30,7 @@ class PromptConfig(BaseSchema):
 
 class AgentConfig(BaseSchema):
     name: str
-    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent, 'looping' for looping agent, 'looping_code_executor' for looping code executor agent, 'dynamic_init_looping' for looping agent with custom initialization")
+    agent_type: str = Field(default="assistant", description="'assistant' for single LLM agent, 'nested_team' for nested team agent, 'code_executor' for code executor agent, 'looping' for looping agent, 'looping_code_executor' for looping code executor agent, 'dynamic_init_looping' for looping agent with custom initialization, 'custom_loop' for agent with custom output handler")
     tools: List[str]
     llm: Optional[LLMConfig] = None
     prompt: Optional[PromptConfig] = None
@@ -46,6 +46,9 @@ class AgentConfig(BaseSchema):
     tool_call_loop: bool = False  # New field to control looping agent behavior
     # Dynamic initialization configuration
     initialization_function: Optional[str] = Field(default=None, description="Python function to call during agent initialization (format: 'module.function_name', e.g., 'memory.initialize_memory_agent'). The function will be called with no arguments after agent creation and can modify the agent's state, system prompt, or perform any setup logic.")
+    # Custom loop agent configuration
+    output_handler: Optional[str] = Field(default=None, description="Output handler function for custom_loop agents (format: 'module.function_name', e.g., 'html_display.process_output'). The handler processes model output each iteration and returns feedback.")
+    output_handler_config: Optional[Dict[str, Any]] = Field(default=None, description="Configuration dict passed to the output handler (e.g., {'output_dir': 'data/workspace/html_outputs'}).")
     # Nested team-specific configuration
     sub_agents: Optional[List["AgentConfig"]] = None
     mode: Optional[str] = None

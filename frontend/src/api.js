@@ -84,9 +84,10 @@ export const saveVoicePrompt = (filename, content) => API.post(`/voice-prompts/$
 export const deleteVoicePrompt = (filename) => API.delete(`/voice-prompts/${filename}`);
 
 // HTML display
-export const getHtmlDisplayConfig = () => API.get('/html-display/config');
-export const getActiveHtmlDisplay = () =>
-  API.get('/html-display/active-html', {
+export const getHtmlDisplayLatest = () => API.get('/html-display/latest');
+export const getHtmlDisplayContent = (filename = null) =>
+  API.get('/html-display/content', {
+    params: filename ? { filename } : {},
     transformResponse: [(data) => data],
     responseType: 'text',
   });
@@ -145,8 +146,8 @@ export default {
   getVoicePrompt,
   saveVoicePrompt,
   deleteVoicePrompt,
-  getHtmlDisplayConfig,
-  getActiveHtmlDisplay,
+  getHtmlDisplayLatest,
+  getHtmlDisplayContent,
   getClaudeAuthStatus,
   setClaudeApiKey,
   startClaudeOAuth,

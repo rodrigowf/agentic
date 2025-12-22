@@ -401,7 +401,8 @@ class OpenAISession:
         if not self.nested_ws or self.nested_ws.closed:
             return {"success": False, "error": "Nested WebSocket not connected"}
         try:
-            await self.nested_ws.send_json({"type": "control", "action": "pause"})
+            # Send "cancel" type which the runner's control_listener expects
+            await self.nested_ws.send_json({"type": "cancel"})
             return {"success": True, "message": "Nested agents paused"}
         except Exception as exc:
             return {"success": False, "error": str(exc)}
@@ -410,7 +411,8 @@ class OpenAISession:
         if not self.nested_ws or self.nested_ws.closed:
             return {"success": False, "error": "Nested WebSocket not connected"}
         try:
-            await self.nested_ws.send_json({"type": "control", "action": "reset"})
+            # Send "cancel" to stop the current run - reset is effectively a cancel
+            await self.nested_ws.send_json({"type": "cancel"})
             return {"success": True, "message": "Nested agents reset"}
         except Exception as exc:
             return {"success": False, "error": str(exc)}
@@ -419,7 +421,8 @@ class OpenAISession:
         if not self.claude_code_ws or self.claude_code_ws.closed:
             return {"success": False, "error": "Claude Code WebSocket not connected"}
         try:
-            await self.claude_code_ws.send_json({"type": "control", "action": "pause"})
+            # Send "cancel" type which the runner's control_listener expects
+            await self.claude_code_ws.send_json({"type": "cancel"})
             return {"success": True, "message": "Claude Code paused"}
         except Exception as exc:
             return {"success": False, "error": str(exc)}

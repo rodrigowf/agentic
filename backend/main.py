@@ -32,7 +32,7 @@ from api.claude_oauth import (
     set_claude_api_key,
     OAuthFlowStatus,
 )  # Import Claude OAuth
-from pathlib import Path
+from pathlib import Path as FilePath
 
 load_dotenv()
 
@@ -116,9 +116,8 @@ TOOLS_DIR = "tools"
 AGENTS_DIR = "agents"
 VOICE_CONFIGS_DIR = "voice/configs"
 VOICE_PROMPTS_DIR = "voice/prompts"
-HTML_WORKSPACE_DIR = Path("data/workspace")
+HTML_WORKSPACE_DIR = FilePath("data/workspace")
 HTML_OUTPUTS_DIR = HTML_WORKSPACE_DIR / "html_outputs"
-HTML_CONFIG_PATH = HTML_WORKSPACE_DIR / "html_display_config.json"
 
 # Ensure directories exist at startup
 os.makedirs(TOOLS_DIR, exist_ok=True)
@@ -497,62 +496,85 @@ def delete_voice_prompt_endpoint(filename: str):
 
 # --- HTML Display Endpoints ---
 
-def _load_html_display_config() -> dict:
-    """Load HTML display configuration from workspace."""
-    if not HTML_CONFIG_PATH.exists():
-        raise HTTPException(404, "html_display_config.json not found in workspace")
-    try:
-        with open(HTML_CONFIG_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        raise HTTPException(500, f"Failed to read html_display_config.json: {e}")
+def _get_latest_html_file() -> FilePath | None:
+    """Get the most recently modified HTML file from the outputs directory."""
+    if not HTML_OUTPUTS_DIR.exists():
+        return None
+
+    html_files = list(HTML_OUTPUTS_DIR.glob("html_*.html"))
+    if not html_files:
+        return None
+
+    # Sort by modification time, most recent first
+    html_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+    return html_files[0]
 
 
-def _resolve_html_path(relative_path: str) -> Path:
-    """Resolve a workspace-relative HTML path safely within the workspace root."""
-    if not relative_path:
-        raise HTTPException(400, "active_file is not set")
+def _list_html_files() -> list:
+    """List all HTML files in the outputs directory, sorted by modification time."""
+    if not HTML_OUTPUTS_DIR.exists():
+        return []
 
-    candidate = (HTML_WORKSPACE_DIR / relative_path).resolve()
-    workspace_root = HTML_WORKSPACE_DIR.resolve()
-    try:
-        candidate.relative_to(workspace_root)
-    except ValueError:
-        raise HTTPException(400, "active_file path is outside the workspace")
-    return candidate
+    html_files = list(HTML_OUTPUTS_DIR.glob("html_*.html"))
+    html_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+
+    return [
+        {
+            "filename": f.name,
+            "path": str(f.relative_to(HTML_WORKSPACE_DIR)),
+            "modified": f.stat().st_mtime,
+            "size": f.stat().st_size
+        }
+        for f in html_files
+    ]
 
 
-@app.get("/api/html-display/config")
-def get_html_display_config():
-    """Return HTML display configuration and resolved active path if valid."""
-    cfg = _load_html_display_config()
-    active_file = cfg.get("active_file")
-    active_absolute_path = None
-    if active_file:
-        try:
-            active_absolute_path = str(_resolve_html_path(active_file))
-        except HTTPException:
-            active_absolute_path = None
+@app.get("/api/html-display/latest")
+def get_html_display_latest():
+    """Return info about the latest HTML file."""
+    latest = _get_latest_html_file()
+    if not latest:
+        return {
+            "has_content": False,
+            "filename": None,
+            "path": None,
+            "modified": None,
+            "files": []
+        }
 
     return {
-        "config": cfg,
-        "active_absolute_path": active_absolute_path,
+        "has_content": True,
+        "filename": latest.name,
+        "path": str(latest.relative_to(HTML_WORKSPACE_DIR)),
+        "modified": latest.stat().st_mtime,
+        "files": _list_html_files()
     }
 
 
-@app.get("/api/html-display/active-html", response_class=HTMLResponse)
-def get_active_html():
-    """Return the HTML content of the active file defined in the display config."""
-    cfg = _load_html_display_config()
-    active_file = cfg.get("active_file")
-    html_path = _resolve_html_path(active_file)
+@app.get("/api/html-display/content", response_class=HTMLResponse)
+def get_html_display_content(filename: str = None):
+    """Return HTML content. If filename not specified, returns the latest file."""
+    if filename:
+        # Specific file requested
+        html_path = HTML_OUTPUTS_DIR / filename
+        # Security: ensure path is within outputs dir
+        try:
+            html_path.resolve().relative_to(HTML_OUTPUTS_DIR.resolve())
+        except ValueError:
+            raise HTTPException(400, "Invalid filename")
+    else:
+        # Get latest file
+        html_path = _get_latest_html_file()
+        if not html_path:
+            raise HTTPException(404, "No HTML files found")
 
     if not html_path.exists():
-        raise HTTPException(404, f"Active file not found: {active_file}")
+        raise HTTPException(404, f"File not found: {filename}")
+
     try:
         return HTMLResponse(html_path.read_text(encoding="utf-8"))
     except Exception as e:
-        raise HTTPException(500, f"Failed to read active HTML: {e}")
+        raise HTTPException(500, f"Failed to read HTML: {e}")
 
 # --- WebSocket Helper Function ---
 async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: dict):
