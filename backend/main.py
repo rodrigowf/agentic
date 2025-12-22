@@ -26,6 +26,12 @@ from datetime import datetime  # Import datetime
 import anthropic  # Import Anthropic client
 from api.claude_code_controller import ClaudeCodeSession  # Import Claude Code controller
 from api.webrtc_signaling import handle_webrtc_signaling  # Import WebRTC signaling handler
+from api.claude_oauth import (
+    get_oauth_manager,
+    check_claude_auth,
+    set_claude_api_key,
+    OAuthFlowStatus,
+)  # Import Claude OAuth
 from pathlib import Path
 
 load_dotenv()
@@ -725,6 +731,110 @@ async def webrtc_signaling_ws(websocket: WebSocket, conversation_id: str):
     - ICE candidate exchange
     """
     await handle_webrtc_signaling(websocket, conversation_id)
+
+# --- Claude OAuth Endpoints ---
+
+@app.get("/api/claude/auth/status")
+async def get_claude_auth_status():
+    """Check if Claude Code is authenticated."""
+    return await check_claude_auth()
+
+
+@app.post("/api/claude/auth/set-key")
+async def set_claude_api_key_endpoint(payload: dict = Body(...)):
+    """Set the API key for Claude authentication."""
+    api_key = payload.get("apiKey", "").strip()
+    if not api_key:
+        raise HTTPException(400, "Missing 'apiKey' field")
+    if not api_key.startswith("sk-ant-"):
+        raise HTTPException(400, "Invalid API key format. Should start with 'sk-ant-'")
+    set_claude_api_key(api_key)
+    return {"success": True, "message": "API key set successfully"}
+
+
+@app.post("/api/claude/auth/oauth/start")
+async def start_oauth_flow():
+    """Start the OAuth flow for Claude.ai authentication."""
+    manager = get_oauth_manager()
+    await manager.start_oauth_flow()
+    return {"success": True, "message": "OAuth flow started"}
+
+
+@app.get("/api/claude/auth/oauth/status")
+async def get_oauth_status():
+    """Get the current OAuth flow status."""
+    manager = get_oauth_manager()
+    return manager.get_status().to_dict()
+
+
+@app.post("/api/claude/auth/oauth/input")
+async def send_oauth_input(payload: dict = Body(...)):
+    """Send the authorization code to the OAuth process."""
+    code = payload.get("input", "").strip()
+    if not code:
+        raise HTTPException(400, "Missing 'input' field")
+    manager = get_oauth_manager()
+    await manager.send_input(code)
+    return {"success": True, "message": "Code submitted"}
+
+
+@app.post("/api/claude/auth/oauth/cancel")
+async def cancel_oauth_flow():
+    """Cancel the OAuth flow."""
+    manager = get_oauth_manager()
+    await manager.cancel()
+    return {"success": True, "message": "OAuth flow cancelled"}
+
+
+@app.get("/api/claude/auth/oauth/events")
+async def oauth_events():
+    """Server-Sent Events endpoint for OAuth status updates."""
+    from starlette.responses import StreamingResponse
+    import asyncio
+
+    manager = get_oauth_manager()
+
+    async def event_generator():
+        queue: asyncio.Queue = asyncio.Queue()
+
+        def on_status(status: OAuthFlowStatus):
+            try:
+                queue.put_nowait(status)
+            except Exception:
+                pass
+
+        unsubscribe = manager.subscribe(on_status)
+
+        try:
+            # Send initial status
+            initial_status = manager.get_status()
+            yield f"data: {json.dumps(initial_status.to_dict())}\n\n"
+
+            # Stream status updates
+            while True:
+                try:
+                    status = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield f"data: {json.dumps(status.to_dict())}\n\n"
+
+                    # Stop streaming on terminal states
+                    if status.status.value in ("success", "error", "idle"):
+                        break
+                except asyncio.TimeoutError:
+                    # Send heartbeat to keep connection alive
+                    yield f": heartbeat\n\n"
+        finally:
+            unsubscribe()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
 
 # --- Server Management Endpoints ---
 

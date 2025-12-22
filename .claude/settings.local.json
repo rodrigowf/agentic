@@ -1,17 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Edit(//**)",
-      "Write(//**)",
-      "Read(//**)",
-      "Bash(*)",
-      "Glob(//**)",
-      "Grep(//**)",
-      "WebFetch(*)",
-      "WebSearch(*)",
-      "Task(*)",
-      "TodoWrite(*)",
-      "NotebookEdit(//**)"
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

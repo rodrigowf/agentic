@@ -91,6 +91,15 @@ export const getActiveHtmlDisplay = () =>
     responseType: 'text',
   });
 
+// Claude Code OAuth
+export const getClaudeAuthStatus = () => API.get('/claude/auth/status');
+export const setClaudeApiKey = (apiKey) => API.post('/claude/auth/set-key', { apiKey });
+export const startClaudeOAuth = () => API.post('/claude/auth/oauth/start');
+export const getClaudeOAuthStatus = () => API.get('/claude/auth/oauth/status');
+export const sendClaudeOAuthInput = (code) => API.post('/claude/auth/oauth/input', { input: code });
+export const cancelClaudeOAuth = () => API.post('/claude/auth/oauth/cancel');
+export const getClaudeOAuthEventsUrl = () => `${getHttpBase()}/api/claude/auth/oauth/events`;
+
 // Server management
 export const refreshService = () => API.post('/server/refresh');
 export const pushChanges = () => API.post('/server/push');
@@ -138,6 +147,13 @@ export default {
   deleteVoicePrompt,
   getHtmlDisplayConfig,
   getActiveHtmlDisplay,
+  getClaudeAuthStatus,
+  setClaudeApiKey,
+  startClaudeOAuth,
+  getClaudeOAuthStatus,
+  sendClaudeOAuthInput,
+  cancelClaudeOAuth,
+  getClaudeOAuthEventsUrl,
   refreshService,
   pushChanges,
   stashAndPull,
