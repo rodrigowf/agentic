@@ -83,6 +83,14 @@ export const saveVoicePrompt = (filename, content) => API.post(`/voice-prompts/$
 });
 export const deleteVoicePrompt = (filename) => API.delete(`/voice-prompts/${filename}`);
 
+// HTML display
+export const getHtmlDisplayConfig = () => API.get('/html-display/config');
+export const getActiveHtmlDisplay = () =>
+  API.get('/html-display/active-html', {
+    transformResponse: [(data) => data],
+    responseType: 'text',
+  });
+
 // Server management
 export const refreshService = () => API.post('/server/refresh');
 export const pushChanges = () => API.post('/server/push');
@@ -128,6 +136,8 @@ export default {
   getVoicePrompt,
   saveVoicePrompt,
   deleteVoicePrompt,
+  getHtmlDisplayConfig,
+  getActiveHtmlDisplay,
   refreshService,
   pushChanges,
   stashAndPull,

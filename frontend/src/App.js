@@ -33,6 +33,7 @@ import SpatialNavigationProvider from './components/SpatialNavigationProvider';
 import TVFocusStyles from './components/TVFocusStyles';
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
 import DynamicManifest from './components/DynamicManifest';
+import HtmlDisplayPage from './features/htmlDisplay/pages/HtmlDisplayPage';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -469,6 +470,16 @@ export default function App() {
                           Voice
                         </Button>
                       </Tooltip>
+                      <Tooltip title="HTML Display" arrow>
+                        <Button
+                          color="inherit"
+                          component={RouterLink}
+                          to="/html-display"
+                          aria-label="Go to HTML Display page"
+                        >
+                          HTML
+                        </Button>
+                      </Tooltip>
                       <Box sx={{ flexGrow: 1 }} />
                       <ServerManagementButtons iconOnly />
                       <Tooltip title="Keyboard shortcuts (Shift+?)" arrow>
@@ -518,6 +529,7 @@ export default function App() {
                         <Route path="/tools/:filename" element={<ToolsDashboard />} />
                         <Route path="/voice" element={<VoiceDashboard />} />
                         <Route path="/voice/:conversationId" element={<VoiceDashboard />} />
+                        <Route path="/html-display" element={<HtmlDisplayPage />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Container>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML Display Agent Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --accent: #22d3ee;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.08), transparent 40%),
+                  radial-gradient(circle at 80% 0%, rgba(94, 234, 212, 0.08), transparent 30%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+    .shell {
+      width: min(960px, 100%);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(10px);
+      padding: 28px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      letter-spacing: -0.02em;
+    }
+    p {
+      color: var(--muted);
+      margin: 6px 0 0;
+      line-height: 1.6;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(34, 211, 238, 0.12);
+      color: var(--text);
+      font-weight: 600;
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      box-shadow: 0 10px 30px rgba(34, 211, 238, 0.25);
+    }
+    .grid {
+      margin-top: 24px;
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    .card strong { display: block; margin-bottom: 6px; }
+    canvas { width: 100% !important; height: 320px !important; }
+    button {
+      background: linear-gradient(135deg, #22d3ee, #a855f7);
+      color: #0b1224;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 12px 30px rgba(168, 85, 247, 0.35);
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(168, 85, 247, 0.45); }
+    button:active { transform: translateY(0); box-shadow: 0 10px 26px rgba(168, 85, 247, 0.35); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <h1>HTML Display Agent</h1>
+        <p>This page is generated automatically. Replace it by updating the active file in the display config.</p>
+      </div>
+      <span class="pill">Ready for dynamic HTML</span>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <strong>Usage</strong>
+        <p>Create or update HTML files in <code>html_outputs/</code> and set the one you want to show as <code>active_file</code> in <code>html_display_config.json</code>.</p>
+        <button id="refresh">Refresh Data</button>
+      </div>
+      <div class="card">
+        <strong>Live Signal</strong>
+        <canvas id="spark"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('spark');
+    let chart;
+
+    function renderChart() {
+      const points = Array.from({ length: 16 }, (_, i) => ({
+        x: i,
+        y: Math.round(Math.sin(i / 2) * 8 + 12 + Math.random() * 2)
+      }));
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Synthetic Signal',
+            data: points,
+            fill: true,
+            borderColor: '#22d3ee',
+            backgroundColor: 'rgba(34, 211, 238, 0.12)',
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#a855f7'
+          }]
+        },
+        options: {
+          animation: { duration: 600 },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+            y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
+          }
+        }
+      });
+    }
+
+    document.getElementById('refresh').addEventListener('click', renderChart);
+    renderChart();
+  </script>
+</body>
+</html>

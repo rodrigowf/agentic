@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, HTTPException, UploadFile, File, Body, Path
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
@@ -26,6 +26,7 @@ from datetime import datetime  # Import datetime
 import anthropic  # Import Anthropic client
 from api.claude_code_controller import ClaudeCodeSession  # Import Claude Code controller
 from api.webrtc_signaling import handle_webrtc_signaling  # Import WebRTC signaling handler
+from pathlib import Path
 
 load_dotenv()
 
@@ -109,12 +110,17 @@ TOOLS_DIR = "tools"
 AGENTS_DIR = "agents"
 VOICE_CONFIGS_DIR = "voice/configs"
 VOICE_PROMPTS_DIR = "voice/prompts"
+HTML_WORKSPACE_DIR = Path("data/workspace")
+HTML_OUTPUTS_DIR = HTML_WORKSPACE_DIR / "html_outputs"
+HTML_CONFIG_PATH = HTML_WORKSPACE_DIR / "html_display_config.json"
 
 # Ensure directories exist at startup
 os.makedirs(TOOLS_DIR, exist_ok=True)
 os.makedirs(AGENTS_DIR, exist_ok=True)
 os.makedirs(VOICE_CONFIGS_DIR, exist_ok=True)
 os.makedirs(VOICE_PROMPTS_DIR, exist_ok=True)
+HTML_WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
+HTML_OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Load tools returns (FunctionTool, filename) tuples
 LOADED_TOOLS_WITH_FILENAMES = load_tools(TOOLS_DIR)
@@ -481,6 +487,66 @@ def delete_voice_prompt_endpoint(filename: str):
     if not success:
         raise HTTPException(404, f"Voice prompt '{filename}' not found")
     return {"message": f"Voice prompt '{filename}' deleted"}
+
+
+# --- HTML Display Endpoints ---
+
+def _load_html_display_config() -> dict:
+    """Load HTML display configuration from workspace."""
+    if not HTML_CONFIG_PATH.exists():
+        raise HTTPException(404, "html_display_config.json not found in workspace")
+    try:
+        with open(HTML_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(500, f"Failed to read html_display_config.json: {e}")
+
+
+def _resolve_html_path(relative_path: str) -> Path:
+    """Resolve a workspace-relative HTML path safely within the workspace root."""
+    if not relative_path:
+        raise HTTPException(400, "active_file is not set")
+
+    candidate = (HTML_WORKSPACE_DIR / relative_path).resolve()
+    workspace_root = HTML_WORKSPACE_DIR.resolve()
+    try:
+        candidate.relative_to(workspace_root)
+    except ValueError:
+        raise HTTPException(400, "active_file path is outside the workspace")
+    return candidate
+
+
+@app.get("/api/html-display/config")
+def get_html_display_config():
+    """Return HTML display configuration and resolved active path if valid."""
+    cfg = _load_html_display_config()
+    active_file = cfg.get("active_file")
+    active_absolute_path = None
+    if active_file:
+        try:
+            active_absolute_path = str(_resolve_html_path(active_file))
+        except HTTPException:
+            active_absolute_path = None
+
+    return {
+        "config": cfg,
+        "active_absolute_path": active_absolute_path,
+    }
+
+
+@app.get("/api/html-display/active-html", response_class=HTMLResponse)
+def get_active_html():
+    """Return the HTML content of the active file defined in the display config."""
+    cfg = _load_html_display_config()
+    active_file = cfg.get("active_file")
+    html_path = _resolve_html_path(active_file)
+
+    if not html_path.exists():
+        raise HTTPException(404, f"Active file not found: {active_file}")
+    try:
+        return HTMLResponse(html_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(500, f"Failed to read active HTML: {e}")
 
 # --- WebSocket Helper Function ---
 async def send_event_to_websocket(websocket: WebSocket, event_type: str, data: dict):

@@ -1,28 +1,31 @@
 {
   "name": "HTMLDisplay",
-  "agent_type": "assistant",
-  "tools": [],
+  "agent_type": "looping",
+  "tools": [
+    "create_file",
+    "update_file",
+    "read_file",
+    "list_files"
+  ],
   "llm": {
-    "provider": "gemini",
-    "model": "gemini-2.5-pro",
-    "temperature": 0.0,
+    "provider": "openai",
+    "model": "gpt-5.1-mini",
+    "temperature": 0.2,
     "max_tokens": null
   },
   "prompt": {
-    "system": "You are a html visualization agent. Your role is to clearly display the information provided by you using html.\nYou'll receive clear instructions on what to do, as well as the information needed. Then you must display that content to the user in a beautiful and engaging manner by following the steps:\n1. Think about what is the best way to convey the requested information to the user using html.\n2. Write all the necessary code in a single file including all necessary html, css and javascript.\n3. Use your `display_html` function to run that code, display it to the user and collect the console output.\n4. Inspect the console output for errors or inconsistencies.\n5. If the output is good, then respond with TERMINATE.\n6. If not, rewrite a fixed version of the full code and go back to step 3.",
-    "user": ""
+    "system": "You are the HTML Display Generator. Build engaging, interactive single-page HTML experiences and save them into the workspace.\n\nRules:\n- Working directory: `html_outputs/` inside the workspace (`data/workspace/html_outputs`).\n- Reference file: `html_display_config.json` in the workspace root. Maintain `working_directory`, `active_file`, and the `files` list with label/description/updated_at. Paths are relative to the workspace (e.g., `html_outputs/dashboard.html`).\n- Always update `active_file` to the file you want displayed. Preserve other file entries when adding a new one.\n- Keep pages self-contained: inline CSS/JS, load external libraries via CDN (Chart.js, Plotly, D3, three.js, FullCalendar are available by default).\n- Prefer accessible, responsive layouts and engaging visuals.\n\nFlow:\n1) Gather the user goal and choose a filename in `html_outputs/` (kebab-case).\n2) Use `create_file`/`update_file` to write the full HTML (including CSS + JS).\n3) Update `html_display_config.json` to set `active_file` and refresh or insert that file entry with label/description/updated_at (ISO timestamp).\n4) Verify content with `read_file` if needed, then summarize and respond with TERMINATE when done.\n\nNotes:\n- Do not delete files.\n- Keep network usage minimal; prefer CDN libraries already listed.\n- Ensure the page renders without build steps.",
+    "user": "Generate or update HTML displays on request, saving them into the workspace and updating the display config."
   },
-  "code_executor": {
-    "type": ""
-  },
+  "code_executor": null,
   "model_client_stream": false,
-  "sources": [],
-  "description": "Html display agent.",
-  "system_message": "",
-  "max_consecutive_auto_reply": null,
+  "sources": null,
+  "description": "Creates interactive HTML files, saves them to the workspace, and updates the active display reference.",
+  "system_message": null,
+  "max_consecutive_auto_reply": 12,
   "reflect_on_tool_use": true,
   "terminate_on_text": false,
-  "tool_call_loop": false,
+  "tool_call_loop": true,
   "sub_agents": null,
   "mode": null,
   "orchestrator_prompt": null,

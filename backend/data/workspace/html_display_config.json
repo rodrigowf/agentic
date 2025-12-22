@@ -1,0 +1,12 @@
+{
+  "working_directory": "html_outputs",
+  "active_file": "html_outputs/welcome.html",
+  "files": [
+    {
+      "path": "html_outputs/welcome.html",
+      "label": "Welcome Demo",
+      "description": "Default HTML preview showing that the display pipeline is wired up.",
+      "updated_at": "2025-12-07T00:00:00Z"
+    }
+  ]
+}
