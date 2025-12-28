@@ -281,3 +281,140 @@ class CustomLoopAgent(AssistantAgent):
             await asyncio.sleep(0.1)
 
         logger.info(f"[{self.name}] Completed after {iteration} iteration(s)")
+
+    async def on_messages_stream(
+        self,
+        messages: List[BaseChatMessage],
+        cancellation_token: CancellationToken,
+    ) -> AsyncIterator:
+        """
+        Override on_messages_stream to implement output handling loop.
+
+        This is called by SelectorGroupChat and other team-based orchestration.
+        It processes the agent's output through the configured handler, allowing
+        for iterative refinement with visual feedback.
+        """
+        if not self._handler_func:
+            # No handler, fall back to base behavior
+            async for evt in super().on_messages_stream(messages, cancellation_token):
+                yield evt
+            return
+
+        # Context passed to handler
+        handler_context = {
+            "agent_name": self.name,
+            "output_dir": self.output_handler_config.get("output_dir", "data/workspace/html_outputs"),
+        }
+
+        # Start with the incoming messages as history
+        history: List[BaseChatMessage] = list(messages)
+        iteration = 0
+        final_response: Optional[Response] = None
+
+        while True:
+            iteration += 1
+
+            if iteration > self.max_iterations:
+                logger.info(f"[{self.name}] Max iterations ({self.max_iterations}) reached")
+                break
+
+            logger.info(f"[{self.name}] on_messages_stream iteration {iteration}/{self.max_iterations}")
+
+            # Collect the model's complete output this iteration
+            accumulated_output = ""
+            current_iteration_messages: List[BaseChatMessage] = []
+
+            try:
+                async for evt in super().on_messages_stream(
+                    messages=history,
+                    cancellation_token=cancellation_token
+                ):
+                    # Capture streaming content
+                    if isinstance(evt, ModelClientStreamingChunkEvent):
+                        if evt.content:
+                            accumulated_output += evt.content
+                        yield evt
+
+                    elif isinstance(evt, Response):
+                        if evt.chat_message:
+                            # Capture final response content
+                            msg_content = evt.chat_message.content
+                            if msg_content:
+                                if isinstance(msg_content, str):
+                                    if not accumulated_output.strip():
+                                        accumulated_output = msg_content
+                                elif isinstance(msg_content, list):
+                                    text_parts = [str(item) for item in msg_content if isinstance(item, str)]
+                                    if text_parts and not accumulated_output.strip():
+                                        accumulated_output = "\n".join(text_parts)
+                            current_iteration_messages.append(evt.chat_message)
+                            final_response = evt
+                            # Don't yield the Response yet - we may continue looping
+                        else:
+                            yield evt
+
+                    elif isinstance(evt, (TextMessage, MultiModalMessage)):
+                        yield evt
+
+                    else:
+                        yield evt
+
+            except asyncio.CancelledError:
+                raise
+
+            # Add assistant messages to history for potential next iteration
+            history.extend(current_iteration_messages)
+
+            # If no output, give model another chance
+            if not accumulated_output.strip():
+                logger.warning(f"[{self.name}] Empty output at iteration {iteration}")
+                feedback_msg = TextMessage(
+                    content="Your output was empty. Please provide the requested output.",
+                    source="system"
+                )
+                history.append(feedback_msg)
+                yield feedback_msg
+                await asyncio.sleep(0.1)
+                continue
+
+            # Process output through handler
+            try:
+                logger.info(f"[{self.name}] Processing through handler at iteration {iteration}")
+                handler_result = self._handler_func(
+                    output=accumulated_output,
+                    iteration=iteration,
+                    config=self.output_handler_config,
+                    context=handler_context
+                )
+            except Exception as e:
+                logger.error(f"[{self.name}] Handler error: {e}")
+                # Yield the final response we have and break
+                if final_response:
+                    yield final_response
+                break
+
+            # Check if we should stop
+            if not handler_result.should_continue:
+                logger.info(f"[{self.name}] Handler signaled completion")
+                # Yield the final response
+                if final_response:
+                    yield final_response
+                break
+
+            # Continue with feedback - add to history for next iteration
+            if handler_result.feedback_text or handler_result.feedback_images:
+                feedback_msg = self._create_feedback_message(handler_result, source="system")
+                history.append(feedback_msg)
+                yield feedback_msg
+
+            # Log saved file info
+            if handler_result.saved_file:
+                logger.info(f"[{self.name}] Saved: {handler_result.saved_file}")
+
+            await asyncio.sleep(0.1)
+
+        # If we exited the loop without yielding a response, yield it now
+        if final_response:
+            yield final_response
+
+        logger.info(f"[{self.name}] on_messages_stream completed after {iteration} iteration(s)")

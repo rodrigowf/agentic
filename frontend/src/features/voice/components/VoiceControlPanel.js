@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import VoiceSessionControls from './VoiceSessionControls';
 import ConversationHistory from './ConversationHistory';
+import DisconnectedVoiceControls from './DisconnectedVoiceControls';
 
 /**
  * Voice control panel with session controls, message input, and conversation history
@@ -30,6 +31,7 @@ const VoiceControlPanel = ({
   // Errors
   conversationError,
   error,
+  setError,
 
   // Message input
   transcript,
@@ -48,14 +50,24 @@ const VoiceControlPanel = ({
   onToggleSpeakerMute,
 
   // Conversation
+  conversationId,
   conversationLoading,
   messages,
   formatTimestamp,
+
+  // Disconnected mode
+  onSendToDisconnected,
+  isSendingDisconnected,
 
   // Other
   micStream,
   isMobile,
 }) => {
+  // Show disconnected mode when WebRTC is not active
+  const showDisconnectedMode = !isRunning && !remoteSessionActive && !conversationError && conversationId;
+
+  // Enable text input in connected mode OR disconnected mode
+  const textInputEnabled = isRunning || showDisconnectedMode;
   return (
     <>
       {/* Header with controls */}
@@ -118,6 +130,18 @@ const VoiceControlPanel = ({
           </Alert>
         )}
 
+        {/* Disconnected Voice Mode - Push to Talk */}
+        {showDisconnectedMode && (
+          <Box sx={{ mb: 2 }}>
+            <DisconnectedVoiceControls
+              conversationId={conversationId}
+              voiceConfig={voiceConfig}
+              onError={(err) => setError?.(err?.message || 'Audio error')}
+              isSendingText={isSendingDisconnected}
+            />
+          </Box>
+        )}
+
         {/* Message input */}
         <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
           <TextField
@@ -129,48 +153,69 @@ const VoiceControlPanel = ({
             minRows={2}
             maxRows={4}
             fullWidth
-            disabled={!isRunning}
+            disabled={!textInputEnabled || isSendingDisconnected}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && transcript.trim()) {
                 e.preventDefault();
-                onSendToVoice();
+                if (isRunning) {
+                  onSendToVoice();
+                } else if (showDisconnectedMode) {
+                  onSendToDisconnected?.();
+                }
               }
             }}
           />
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
             <Chip
-              label={isRunning ? 'Connected' : remoteSessionActive ? 'Active (joinable)' : 'Idle'}
-              color={isRunning ? 'success' : remoteSessionActive ? 'info' : 'default'}
+              label={isRunning ? 'Connected' : remoteSessionActive ? 'Active (joinable)' : showDisconnectedMode ? 'Disconnected' : 'Idle'}
+              color={isRunning ? 'success' : remoteSessionActive ? 'info' : showDisconnectedMode ? 'warning' : 'default'}
               size="small"
             />
             <Box sx={{ flexGrow: 1 }} />
-            <Button
-              variant="contained"
-              color="success"
-              onClick={onSendToVoice}
-              disabled={!isRunning || !transcript.trim()}
-              size="small"
-            >
-              Voice
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={onSendToNested}
-              disabled={!isRunning || !transcript.trim() || !nestedWsConnected}
-              size="small"
-            >
-              Nested
-            </Button>
-            <Button
-              variant="contained"
-              color="info"
-              onClick={onSendToClaude}
-              disabled={!isRunning || !transcript.trim() || !claudeCodeWsConnected}
-              size="small"
-            >
-              Claude
-            </Button>
+            {/* Connected mode buttons */}
+            {isRunning && (
+              <>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={onSendToVoice}
+                  disabled={!transcript.trim()}
+                  size="small"
+                >
+                  Voice
+                </Button>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={onSendToNested}
+                  disabled={!transcript.trim() || !nestedWsConnected}
+                  size="small"
+                >
+                  Nested
+                </Button>
+                <Button
+                  variant="contained"
+                  color="info"
+                  onClick={onSendToClaude}
+                  disabled={!transcript.trim() || !claudeCodeWsConnected}
+                  size="small"
+                >
+                  Claude
+                </Button>
+              </>
+            )}
+            {/* Disconnected mode button */}
+            {showDisconnectedMode && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={onSendToDisconnected}
+                disabled={!transcript.trim() || isSendingDisconnected}
+                size="small"
+              >
+                {isSendingDisconnected ? 'Sending...' : 'Send'}
+              </Button>
+            )}
           </Box>
         </Box>
       </Box>

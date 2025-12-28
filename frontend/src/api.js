@@ -64,6 +64,14 @@ export const disconnectVoiceWebRTC = (connectionId) => API.post(`${VOICE_BASE}/w
 export const sendVoiceWebRTCText = (conversationId, payload) => API.post(`${VOICE_BASE}/webrtc/bridge/${conversationId}/text`, payload);
 export const getVoiceSessionStatus = (conversationId) => API.get(`${VOICE_BASE}/webrtc/conversation/${conversationId}/status`);
 
+// Disconnected voice - send audio message (non-WebRTC)
+export const sendAudioMessage = (conversationId, payload) =>
+  API.post(`${VOICE_BASE}/conversations/${conversationId}/audio-message`, payload);
+
+// Disconnected voice - send text message (non-WebRTC)
+export const sendTextMessage = (conversationId, payload) =>
+  API.post(`${VOICE_BASE}/conversations/${conversationId}/text-message`, payload);
+
 // Voice configurations
 export const listVoiceConfigs = () => API.get('/voice-configs');
 export const getVoiceConfig = (configName) => API.get(`/voice-configs/${configName}`);
@@ -135,6 +143,8 @@ export default {
   disconnectVoiceWebRTC,
   sendVoiceWebRTCText,
   getVoiceSessionStatus,
+  sendAudioMessage,
+  sendTextMessage,
   listVoiceConfigs,
   getVoiceConfig,
   createVoiceConfig,

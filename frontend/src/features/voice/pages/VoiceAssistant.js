@@ -12,7 +12,9 @@ import {
   stopVoiceWebRTCBridge,
   disconnectVoiceWebRTC,
   sendVoiceWebRTCText,
-  getVoiceSessionStatus
+  getVoiceSessionStatus,
+  sendTextMessage,
+  getSelectedVoiceConfig
 } from '../../../api';
 import { getWsUrl } from '../../../utils/urlBuilder';
 import { truncateText, safeStringify, formatTimestamp } from '../utils/helpers';
@@ -61,12 +63,13 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     agentName: 'MainConversation',
     systemPromptFile: 'default.txt',
     systemPromptContent: '',
-    voice: 'alloy',
+    voice: 'cedar',
     memoryFilePath: 'backend/data/memory/short_term_memory.txt',
   });
   const [noMicrophoneMode, setNoMicrophoneMode] = useState(false);
   const [backendSessionActive, setBackendSessionActive] = useState(false); // Real-time backend status
   const [isStarting, setIsStarting] = useState(false); // Loading state for start button
+  const [isSendingDisconnected, setIsSendingDisconnected] = useState(false); // Disconnected text sending state
 
   // ============================================
   // Refs
@@ -150,6 +153,31 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   }, [isRunning, backendSessionActive]);
 
   const sessionLocked = isRunning || remoteSessionActive;
+
+  // ============================================
+  // Load Voice Config from Backend
+  // ============================================
+  useEffect(() => {
+    const loadVoiceConfig = async () => {
+      try {
+        const response = await getSelectedVoiceConfig();
+        const config = response.data?.config;
+        if (config) {
+          setVoiceConfig({
+            agentName: config.agent_name || 'MainConversation',
+            systemPromptFile: config.system_prompt_file || 'default.txt',
+            systemPromptContent: '',
+            voice: config.voice || 'cedar',
+            memoryFilePath: config.memory_file_path || 'backend/data/memory/short_term_memory.txt',
+          });
+          console.log('[VoiceAssistant] Loaded voice config from backend:', config.voice, config.agent_name);
+        }
+      } catch (err) {
+        console.warn('[VoiceAssistant] Failed to load voice config from backend, using defaults:', err.message);
+      }
+    };
+    loadVoiceConfig();
+  }, []);
 
   // ============================================
   // Conversation Stream (WebSocket for events)
@@ -666,6 +694,56 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
   };
 
   // ============================================
+  // Send to Disconnected Mode (non-WebRTC)
+  // ============================================
+  const sendToDisconnected = useCallback(async () => {
+    const text = transcript.trim();
+    if (!text || !conversationId) return;
+
+    setIsSendingDisconnected(true);
+    setError(null);
+
+    try {
+      const response = await sendTextMessage(conversationId, {
+        text,
+        voice: voiceConfig?.voice || 'cedar',
+        include_audio: true
+      });
+
+      const { text: responseText, audio_base64: responseAudio } = response.data;
+
+      console.log('[DisconnectedVoice] Text response received:', {
+        text: responseText || '(empty)',
+        textLength: responseText?.length || 0,
+        hasAudio: !!responseAudio,
+        audioLength: responseAudio?.length || 0,
+      });
+
+      // Clear input
+      setTranscript('');
+
+      // Play response audio if available
+      if (responseAudio && audioRef.current) {
+        const audioData = `data:audio/wav;base64,${responseAudio}`;
+        audioRef.current.src = audioData;
+
+        try {
+          await audioRef.current.play();
+        } catch (playError) {
+          console.warn('[DisconnectedVoice] Audio playback failed:', playError);
+        }
+      }
+
+    } catch (err) {
+      console.error('[DisconnectedVoice] Failed to send text:', err);
+      const detail = err?.response?.data?.detail || err.message || 'Failed to send text';
+      setError(detail);
+    } finally {
+      setIsSendingDisconnected(false);
+    }
+  }, [transcript, conversationId, voiceConfig]);
+
+  // ============================================
   // Keyboard Shortcuts
   // ============================================
   useKeyboardNavigation({
@@ -717,11 +795,14 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     setConfigEditorOpen,
     conversationError,
     error,
+    setError,
     transcript,
     setTranscript,
     onSendToVoice: sendText,
     onSendToNested: sendToNested,
     onSendToClaude: sendToClaude,
+    onSendToDisconnected: sendToDisconnected,
+    isSendingDisconnected,
     nestedWsConnected: isRunning, // Connected via backend
     claudeCodeWsConnected: isRunning, // Connected via backend
     onStart: startSession,
@@ -729,6 +810,7 @@ function VoiceAssistantModular({ nested = false, onConversationUpdate }) {
     onForceStop: forceStopSession,
     onToggleMute: toggleMute,
     onToggleSpeakerMute: toggleSpeakerMute,
+    conversationId,
     conversationLoading,
     messages,
     formatTimestamp,

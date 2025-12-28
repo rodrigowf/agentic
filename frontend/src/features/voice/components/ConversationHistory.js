@@ -159,6 +159,17 @@ const summarizeEvent = (msg) => {
 				if (rate.remaining != null) return `Rate limits: ${rate.remaining} remaining`;
 			}
 			return 'Rate limits updated';
+		// Disconnected voice mode events
+		case 'disconnected_user_audio':
+			return data.transcript ? `You (audio): ${truncateText(data.transcript, 120)}` : 'Audio message sent';
+		case 'disconnected_user_text':
+			return data.text ? `You: ${truncateText(data.text, 120)}` : 'Text message sent';
+		case 'disconnected_assistant_response':
+			return data.text ? `Assistant: ${truncateText(data.text, 120)}` : 'Assistant response';
+		case 'disconnected_tool_call':
+			const toolName = data.tool || 'unknown';
+			const success = data.result?.success ? '✓' : '✗';
+			return `Tool ${success}: ${toolName}`;
 		default:
 			return '';
 	}
@@ -318,7 +329,20 @@ const buildGroupedHistory = (messages, formatTimestamp) => {
 		let groupKey;
 		let defaults;
 
-		if (responseId) {
+		// Handle disconnected voice mode events with their own groups
+		if (typeLower === 'disconnected_user_audio') {
+			groupKey = `disconnected-user:${msg.id || `audio-${index}`}`;
+			defaults = { kind: 'user-speech', label: 'User (audio)', source: 'disconnected' };
+		} else if (typeLower === 'disconnected_user_text') {
+			groupKey = `disconnected-user:${msg.id || `text-${index}`}`;
+			defaults = { kind: 'user-speech', label: 'User (text)', source: 'disconnected' };
+		} else if (typeLower === 'disconnected_assistant_response') {
+			groupKey = `disconnected-assistant:${msg.id || `response-${index}`}`;
+			defaults = { kind: 'assistant-response', label: 'Assistant (disconnected)', source: 'disconnected' };
+		} else if (typeLower === 'disconnected_tool_call') {
+			groupKey = `disconnected-tool:${msg.id || `tool-${index}`}`;
+			defaults = { kind: 'tool-call', label: 'Tool call (disconnected)', source: 'disconnected' };
+		} else if (responseId) {
 			groupKey = `response:${responseId}`;
 			defaults = { kind: 'assistant-response', label: 'Assistant response', responseId, source: 'voice' };
 		} else if (sourceLower === 'voice' && typeLower.startsWith('input_audio_buffer')) {
@@ -439,6 +463,33 @@ const buildGroupedHistory = (messages, formatTimestamp) => {
 			|| group.transcript
 			|| '';
 		if (transcript) group.summary = truncateText(transcript, 280);
+
+		// Extract summaries for disconnected mode events
+		if (group.source === 'disconnected' && group.events.length > 0) {
+			const firstEvent = group.events[0];
+			const eventData = firstEvent.data || {};
+			const eventType = (firstEvent.type || '').toLowerCase();
+
+			if (eventType === 'disconnected_user_audio') {
+				group.summary = eventData.transcript ? truncateText(eventData.transcript, 280) : 'Audio message';
+			} else if (eventType === 'disconnected_user_text') {
+				group.summary = eventData.text ? truncateText(eventData.text, 280) : 'Text message';
+			} else if (eventType === 'disconnected_assistant_response') {
+				group.summary = eventData.text ? truncateText(eventData.text, 280) : 'Response';
+				if (eventData.has_audio) {
+					group.badges.push({ label: 'Audio' });
+				}
+			} else if (eventType === 'disconnected_tool_call') {
+				const toolName = eventData.tool || 'unknown';
+				const success = eventData.result?.success;
+				group.summary = `${toolName}: ${success ? 'Success' : 'Failed'}`;
+				if (eventData.result?.error) {
+					group.summary += ` - ${truncateText(eventData.result.error, 100)}`;
+				}
+				group.badges.push({ label: `Tool: ${toolName}` });
+			}
+		}
+
 		if (group.kind === 'tool-call' && group.functionCall) {
 			const chunks = group.functionCall.args ? truncateText(group.functionCall.args, 200) : '';
 			group.summary = chunks || group.summary || 'Tool call';

@@ -49,7 +49,7 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
   const [selectedPromptFile, setSelectedPromptFile] = useState('default.txt');
   const [promptContent, setPromptContent] = useState('');
   const [newPromptName, setNewPromptName] = useState('');
-  const [selectedVoice, setSelectedVoice] = useState('alloy');
+  const [selectedVoice, setSelectedVoice] = useState('cedar');
   const [memoryFilePath, setMemoryFilePath] = useState('backend/data/memory/short_term_memory.txt');
 
   // Available OpenAI Realtime API voices
@@ -99,7 +99,7 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
 
       if (config) {
         setSelectedAgent(config.agent_name || 'MainConversation');
-        setSelectedVoice(config.voice || 'alloy');
+        setSelectedVoice(config.voice || 'cedar');
         setMemoryFilePath(config.memory_file_path || 'backend/data/memory/short_term_memory.txt');
         setSelectedPromptFile(config.system_prompt_file || 'default.txt');
 
@@ -129,7 +129,7 @@ function VoiceConfigEditor({ open, onClose, onSave }) {
     const config = configFiles.find((c) => c.name === configName);
     if (config) {
       setSelectedAgent(config.agent_name || 'MainConversation');
-      setSelectedVoice(config.voice || 'alloy');
+      setSelectedVoice(config.voice || 'cedar');
       setMemoryFilePath(config.memory_file_path || 'backend/data/memory/short_term_memory.txt');
       setSelectedPromptFile(config.system_prompt_file || 'default.txt');
 

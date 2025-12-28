@@ -74,6 +74,27 @@ class VoiceConfig(BaseSchema):
     description: Optional[str] = Field(default=None, description="Optional description of this voice configuration")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
+class AudioMessageRequest(BaseSchema):
+    """Request for disconnected voice audio message."""
+    audio_base64: str = Field(..., description="Base64-encoded audio data")
+    format: str = Field(default="wav", description="Audio format (wav, mp3, etc.)")
+    voice: str = Field(default="alloy", description="Voice to use for response (alloy, echo, fable, onyx, nova, shimmer)")
+
+
+class AudioMessageResponse(BaseSchema):
+    """Response from disconnected voice audio message."""
+    text: str = Field(..., description="Text response from the model")
+    audio_base64: Optional[str] = Field(default=None, description="Base64-encoded audio response")
+    transcript: Optional[str] = Field(default=None, description="Transcript of user's speech input")
+
+
+class TextMessageRequest(BaseSchema):
+    """Request for disconnected voice text message."""
+    text: str = Field(..., description="Text message to send")
+    voice: str = Field(default="alloy", description="Voice to use for response (alloy, echo, fable, onyx, nova, shimmer)")
+    include_audio: bool = Field(default=True, description="Whether to include audio in the response")
+
+
 class BaseChatMessage(BaseModel):
     content: str
     source: str
