@@ -22,8 +22,11 @@ import {
   connectVoiceConversationStream,
   appendVoiceConversationEvent,
   cleanupInactiveConversations,
+  startVoiceWebRTCBridge,
+  disconnectVoiceWebRTC,
+  stopVoiceWebRTCBridge,
 } from '../../../api';
-import { getHttpBase, getWsUrl } from '../../../utils/urlBuilder';
+import { getHttpBase } from '../../../utils/urlBuilder';
 
 /**
  * MobileVoice - Mobile-optimized remote microphone interface
@@ -45,22 +48,17 @@ function MobileVoice() {
   // Session state
   const [isRunning, setIsRunning] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Start muted
-  const [isSpeakerMuted, setIsSpeakerMuted] = useState(true); // Start with echo muted (desktop mic off)
+  const [isSpeakerMuted, setIsSpeakerMuted] = useState(false); // Speaker not muted by default
   const [error, setError] = useState(null);
 
   // Audio streaming refs
   const audioRef = useRef(null);
   const micStreamRef = useRef(null);
   const streamRef = useRef(null);
-  const signalingWsRef = useRef(null);
-  const mobilePeerRef = useRef(null);
+  const peerConnectionRef = useRef(null);
+  const connectionIdRef = useRef(null); // Backend connection ID
   const eventsMapRef = useRef(new Map());
-  const speakerGainNodeRef = useRef(null); // For speaker mute control
-  const audioBufferQueueRef = useRef([]); // Buffer queue for smoother playback
-  const isPlayingRef = useRef(false); // Track if currently playing audio
-  const minBufferThreshold = 3; // Wait for 3 chunks before starting (adaptive buffering)
-  const isMutedRef = useRef(true); // Ref for mute state (avoids closure issues)
-  const remoteAudioElementsRef = useRef([]); // Track all remote audio elements for echo control
+  const fallbackAudioContextRef = useRef(null);
 
   // Audio analysis for visualization
   const audioContextRef = useRef(null);
@@ -324,12 +322,51 @@ function MobileVoice() {
     }
   }, [isRunning]);
 
-  // Start voice session - use WebRTC for high-quality peer-to-peer audio
+  // Helper: Get microphone or fallback to silent track
+  const ensureMicrophoneStream = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1,
+        }
+      });
+      return stream;
+    } catch (err) {
+      console.warn('[MobileVoice] No microphone available, using silent track', err);
+      // Create silent audio track as fallback
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0; // Silent
+      oscillator.connect(gainNode);
+      const destination = ctx.createMediaStreamDestination();
+      gainNode.connect(destination);
+      oscillator.start();
+      fallbackAudioContextRef.current = ctx;
+      return destination.stream;
+    }
+  };
+
+  // Helper: Attach remote audio stream to audio element
+  const attachRemoteAudio = (stream) => {
+    if (!audioRef.current) return;
+    audioRef.current.srcObject = stream;
+    audioRef.current.muted = isSpeakerMuted;
+    const playPromise = audioRef.current.play();
+    if (playPromise?.catch) {
+      playPromise.catch((err) => {
+        console.warn('[MobileVoice] Failed to start remote audio playback', err);
+      });
+    }
+  };
+
+  // Start voice session - connect to backend WebRTC bridge
   const startSession = async () => {
     if (isRunning || !selectedConversationId) return;
-    setIsRunning(true);
-    setIsMuted(true); // Start muted
-    isMutedRef.current = true; // Also update ref
     setError(null);
 
     try {
@@ -337,224 +374,113 @@ function MobileVoice() {
       try {
         const cleanupResult = await cleanupInactiveConversations(30);
         if (cleanupResult.data?.deleted_count > 0) {
-          console.log(`[MobileVoice Cleanup] Deleted ${cleanupResult.data.deleted_count} inactive conversations:`, cleanupResult.data.deleted_ids);
+          console.log(`[MobileVoice] Deleted ${cleanupResult.data.deleted_count} inactive conversations:`, cleanupResult.data.deleted_ids);
         }
       } catch (cleanupErr) {
-        console.warn('[MobileVoice Cleanup] Failed to cleanup inactive conversations:', cleanupErr);
-        // Don't fail the session start if cleanup fails
+        console.warn('[MobileVoice] Failed to cleanup inactive conversations:', cleanupErr);
       }
 
-      // Get microphone access
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error(
-          'Microphone access not available. ' +
-          'Mobile browsers require HTTPS for microphone access. ' +
-          'Please access this page via HTTPS or use desktop Chrome which allows localhost access.'
-        );
-      }
+      // Get microphone stream (or fallback to silent)
+      const localStream = await ensureMicrophoneStream();
+      micStreamRef.current = localStream;
 
-      // QUALITY-FOCUSED: Request highest quality audio settings
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000,  // Request higher sample rate (48kHz instead of 44.1kHz)
-          channelCount: 1,
-          sampleSize: 16,
-          latency: 0.02,  // 20ms latency is acceptable for quality
-        }
-      });
-      micStreamRef.current = stream;
+      // Create WebRTC peer connection
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      peerConnectionRef.current = pc;
 
-      // Mute by default
-      stream.getAudioTracks().forEach((track) => {
-        track.enabled = false; // Muted
+      // Add local microphone tracks
+      console.log('[MobileVoice] Adding local audio tracks to peer connection');
+      const tracks = localStream.getTracks();
+      tracks.forEach((track, idx) => {
+        console.log(`[MobileVoice] Track ${idx}: kind=${track.kind}, enabled=${track.enabled}`);
+        pc.addTrack(track, localStream);
       });
 
-      // Create audio context for speaker playback
-      if (!window.mobilePlaybackContext) {
-        window.mobilePlaybackContext = new (window.AudioContext || window.webkitAudioContext)();
-        const gainNode = window.mobilePlaybackContext.createGain();
-        gainNode.connect(window.mobilePlaybackContext.destination);
-        speakerGainNodeRef.current = gainNode;
-      }
+      // Start muted
+      tracks.forEach((track) => {
+        track.enabled = false;
+      });
+      setIsMuted(true);
 
-      // Resume AudioContext (Chrome autoplay policy requires user gesture)
-      if (window.mobilePlaybackContext.state === 'suspended') {
-        await window.mobilePlaybackContext.resume();
-        console.log('[MobileVoice] AudioContext resumed - audio playback enabled');
-      }
-
-      // Connect to WebRTC signaling WebSocket
-      const signalingUrl = getWsUrl(`/realtime/webrtc-signal/${selectedConversationId}/mobile`);
-      const signalingWs = new WebSocket(signalingUrl);
-      signalingWsRef.current = signalingWs;
-      console.log('[MobileVoice] Connecting to WebRTC signaling:', signalingUrl);
-
-      signalingWs.onopen = () => {
-        console.log('[MobileVoice] WebRTC signaling connected');
-        // Registration happens automatically via URL path (/webrtc-signal/{conversation_id}/mobile)
-        // No need to send explicit register message
-        void recordEvent('controller', 'mobile_signaling_connected', { conversationId: selectedConversationId });
+      // Handle remote audio track from backend (OpenAI responses)
+      pc.ontrack = (event) => {
+        console.log('[MobileVoice] Remote track received:', event.track.kind);
+        const remoteStream = event.streams?.[0] || new MediaStream([event.track]);
+        attachRemoteAudio(remoteStream);
       };
 
-      signalingWs.onmessage = async (event) => {
-        console.log('[MobileVoice] Raw WebSocket message received:', event.data);
-        try {
-          const msg = JSON.parse(event.data);
-          console.log('[MobileVoice] Parsed signaling message type:', msg.type, 'Full message:', msg);
-
-          if (msg.type === 'offer' && msg.sdp) {
-            let pc = mobilePeerRef.current;
-
-            // Check if this is initial offer or renegotiation
-            if (!pc) {
-              console.log('[MobileVoice] Received initial offer from desktop, creating peer connection');
-              pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-              mobilePeerRef.current = pc;
-
-              // Add local microphone track(s)
-              for (const track of micStreamRef.current.getAudioTracks()) {
-                pc.addTrack(track, micStreamRef.current);
-                console.log('[MobileVoice] Added microphone track to peer connection');
-              }
-
-              // Play incoming audio from OpenAI (desktop no longer sends its mic - no echo!)
-              pc.ontrack = async (evt) => {
-                console.log('[MobileVoice] Received remote audio track, stream ID:', evt.streams[0].id);
-                console.log('[MobileVoice] Track details - kind:', evt.track.kind, 'id:', evt.track.id, 'enabled:', evt.track.enabled, 'muted:', evt.track.muted, 'readyState:', evt.track.readyState);
-
-                const stream = evt.streams[0];
-
-                // Use HTMLAudioElement for audio playback
-                // (Web Audio API has issues with multiple MediaStreamSource objects)
-                console.log('[MobileVoice] Using HTMLAudioElement for audio playback');
-
-                // Create a new audio element for this track
-                const audio = new Audio();
-                audio.srcObject = stream;
-                audio.autoplay = true;
-                audio.volume = 1.0;
-
-                console.log('[MobileVoice] Audio element created - autoplay:', audio.autoplay, 'volume:', audio.volume);
-
-                // Play the audio
-                audio.play().then(() => {
-                  console.log('[MobileVoice] ✅ Audio element playing successfully! Stream ID:', stream.id);
-                }).catch((playErr) => {
-                  console.error('[MobileVoice] ❌ Failed to play audio:', playErr);
-                  console.error('[MobileVoice] Error details:', playErr.message, playErr.name);
-                });
-
-                // Monitor track mute state changes
-                evt.track.onmute = () => {
-                  console.log('[MobileVoice] Track MUTED - id:', evt.track.id);
-                };
-                evt.track.onunmute = () => {
-                  console.log('[MobileVoice] Track UNMUTED - id:', evt.track.id, 'Audio should now play!');
-                };
-
-                // Monitor track ended
-                evt.track.onended = () => {
-                  console.log('[MobileVoice] Track ENDED - id:', evt.track.id);
-                  audio.srcObject = null;
-                };
-
-                // Check if track is currently muted
-                if (evt.track.muted) {
-                  console.warn('[MobileVoice] WARNING: Track is currently muted, waiting for media to flow...');
-                } else {
-                  console.log('[MobileVoice] Track is NOT muted, audio should be flowing');
-                }
-              };
-
-              // Send ICE candidates back via signaling
-              pc.onicecandidate = (e) => {
-                if (e.candidate && signalingWsRef.current?.readyState === WebSocket.OPEN) {
-                  signalingWsRef.current.send(JSON.stringify({ type: 'candidate', candidate: e.candidate }));
-                  console.log('[MobileVoice] Sent ICE candidate to desktop');
-                }
-              };
-
-              // Connection state monitoring
-              pc.onconnectionstatechange = () => {
-                console.log('[MobileVoice] Connection state:', pc.connectionState);
-                if (pc.connectionState === 'connected') {
-                  console.log('[MobileVoice] WebRTC peer connected successfully!');
-                } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-                  console.error('[MobileVoice] WebRTC connection failed or disconnected');
-                }
-              };
-            } else {
-              console.log('[MobileVoice] Received renegotiation offer from desktop (new tracks added)');
-            }
-
-            // Set remote description (works for both initial and renegotiation)
-            await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
-            console.log('[MobileVoice] Set remote description (offer)');
-
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            console.log('[MobileVoice] Created and set local description (answer)');
-
-            if (signalingWsRef.current?.readyState === WebSocket.OPEN) {
-              signalingWsRef.current.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
-              console.log('[MobileVoice] Sent answer to desktop');
-            } else {
-              console.error('[MobileVoice] Signaling WebSocket not open, cannot send answer');
-            }
-          } else if (msg.type === 'candidate' && msg.candidate) {
-            console.log('[MobileVoice] Received ICE candidate from desktop');
-            if (mobilePeerRef.current) {
-              mobilePeerRef.current.addIceCandidate(new RTCIceCandidate(msg.candidate))
-                .then(() => console.log('[MobileVoice] Added ICE candidate successfully'))
-                .catch(err => console.error('[MobileVoice] Failed to add ICE candidate:', err));
-            } else {
-              console.warn('[MobileVoice] Received ICE candidate but peer not ready');
-            }
-          } else {
-            console.warn('[MobileVoice] Unknown signaling message type:', msg.type);
-          }
-        } catch (err) {
-          console.error('[MobileVoice] Failed to handle signaling message:', err);
-          console.error('[MobileVoice] Error stack:', err.stack);
-          console.error('[MobileVoice] Raw event data:', event.data);
+      // Monitor connection state
+      pc.onconnectionstatechange = () => {
+        console.log('[MobileVoice] Connection state:', pc.connectionState);
+        if (pc.connectionState === 'failed') {
+          setError('WebRTC connection failed');
         }
       };
 
-      signalingWs.onerror = (err) => {
-        console.error('[MobileVoice] Signaling WebSocket error:', err);
-        void recordEvent('controller', 'mobile_signaling_error', { message: String(err) });
-      };
+      // Create offer
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
+      await pc.setLocalDescription(offer);
+      console.log('[MobileVoice] Created offer, local description set');
 
-      signalingWs.onclose = (event) => {
-        console.log('[MobileVoice] Signaling WebSocket closed. Code:', event.code, 'Reason:', event.reason, 'Was clean:', event.wasClean);
-        void recordEvent('controller', 'mobile_signaling_closed', { code: event.code, reason: event.reason });
-      };
+      // Send offer to backend and get answer
+      const response = await startVoiceWebRTCBridge({
+        conversation_id: selectedConversationId,
+        offer: offer.sdp,
+      });
 
-      // WebRTC handles microphone sending; no manual processor required
+      const answerSdp = response?.data?.answer;
+      const sessionId = response?.data?.session_id;
+      if (!answerSdp) {
+        throw new Error('Invalid SDP answer from backend');
+      }
 
+      connectionIdRef.current = sessionId;
+      console.log('[MobileVoice] Received answer from backend, connection_id:', sessionId);
+
+      // Set remote description
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: answerSdp }));
+      console.log('[MobileVoice] Remote description (answer) set');
+
+      setIsRunning(true);
       void recordEvent('controller', 'mobile_session_started', { conversationId: selectedConversationId });
-  console.log('[MobileVoice] Session started successfully with WebRTC signaling');
     } catch (err) {
+      console.error('[MobileVoice] Failed to start session:', err);
       void recordEvent('controller', 'mobile_session_error', { message: err.message || String(err) });
       setError(err.message || String(err));
-      setIsRunning(false);
-      setIsMuted(true);
+
+      // Cleanup on error
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
       if (micStreamRef.current) {
         micStreamRef.current.getTracks().forEach((track) => track.stop());
         micStreamRef.current = null;
+      }
+      if (fallbackAudioContextRef.current) {
+        fallbackAudioContextRef.current.close();
+        fallbackAudioContextRef.current = null;
       }
     }
   };
 
   // Stop voice session
-  const stopSession = () => {
-    setIsRunning(false);
-    setIsMuted(true);
-    isMutedRef.current = true;
-    void recordEvent('controller', 'mobile_session_stopped', {});
+  const stopSession = async () => {
+    console.log('[MobileVoice] Stop session');
+
+    // Close peer connection
+    const pc = peerConnectionRef.current;
+    if (pc) {
+      pc.getSenders().forEach((sender) => sender.track?.stop());
+      pc.getReceivers().forEach((receiver) => receiver.track?.stop());
+      pc.close();
+      peerConnectionRef.current = null;
+    }
+
+    // Clear audio element
+    if (audioRef.current) {
+      audioRef.current.srcObject = null;
+    }
 
     // Stop microphone
     if (micStreamRef.current) {
@@ -562,58 +488,68 @@ function MobileVoice() {
       micStreamRef.current = null;
     }
 
-    // Close signaling and WebRTC peer
-    if (signalingWsRef.current) { try { signalingWsRef.current.close(); } catch {} signalingWsRef.current = null; }
-    if (mobilePeerRef.current) { try { mobilePeerRef.current.close(); } catch {} mobilePeerRef.current = null; }
+    // Close fallback audio context
+    if (fallbackAudioContextRef.current) {
+      try {
+        fallbackAudioContextRef.current.close();
+      } catch (err) {
+        console.warn('[MobileVoice] Failed to close fallback audio context', err);
+      }
+      fallbackAudioContextRef.current = null;
+    }
 
+    // Disconnect from backend
+    if (connectionIdRef.current) {
+      try {
+        console.log('[MobileVoice] Disconnecting connection:', connectionIdRef.current);
+        await disconnectVoiceWebRTC(connectionIdRef.current);
+      } catch (err) {
+        console.warn('[MobileVoice] Failed to disconnect from backend:', err);
+      }
+      connectionIdRef.current = null;
+    }
+
+    setIsRunning(false);
+    setIsMuted(false);
+    setIsSpeakerMuted(false);
     setMicLevel(0);
     setSpeakerLevel(0);
+    void recordEvent('controller', 'mobile_session_stopped', {});
   };
 
   // Toggle microphone mute
   const toggleMute = () => {
     if (!micStreamRef.current) return;
 
-    setIsMuted((prevMuted) => {
-      const newMutedState = !prevMuted;
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
 
-      // Update ref immediately (for processor callback)
-      isMutedRef.current = newMutedState;
-
-      // Also update track enabled state
-      const audioTracks = micStreamRef.current.getAudioTracks();
-      audioTracks.forEach((track) => {
-        track.enabled = !newMutedState;
-      });
-
-      console.log(`[MobileMute] Toggled to: ${newMutedState ? 'MUTED' : 'UNMUTED'}, ref updated`);
-      void recordEvent('controller', newMutedState ? 'mobile_microphone_muted' : 'mobile_microphone_unmuted', {});
-      return newMutedState;
+    // Update track enabled state
+    micStreamRef.current.getAudioTracks().forEach((track) => {
+      track.enabled = !newMuted;
     });
+
+    console.log(`[MobileVoice] Mic toggled to: ${newMuted ? 'MUTED' : 'UNMUTED'}`);
+    void recordEvent('controller', newMuted ? 'mobile_microphone_muted' : 'mobile_microphone_unmuted', {});
   };
 
-  // Toggle speaker mute (controls desktop mic echo only, not OpenAI)
+  // Toggle speaker mute
   const toggleSpeakerMute = () => {
-    setIsSpeakerMuted((prevMuted) => {
-      const newMutedState = !prevMuted;
+    const newMuted = !isSpeakerMuted;
+    setIsSpeakerMuted(newMuted);
 
-      // Mute/unmute ONLY desktop microphone audio elements (echo prevention)
-      // Keep OpenAI response audio always playing
-      console.log('[MobileVoice] Toggling speaker mute (desktop mic only):', newMutedState);
-      remoteAudioElementsRef.current.forEach(({ element, isDesktopMic, isOpenAI }) => {
-        if (isDesktopMic) {
-          element.muted = newMutedState;
-          console.log('[MobileVoice] Desktop mic audio muted:', newMutedState);
+    if (audioRef.current) {
+      audioRef.current.muted = newMuted;
+      if (!newMuted) {
+        const playPromise = audioRef.current.play();
+        if (playPromise?.catch) {
+          playPromise.catch((err) => console.warn('[MobileVoice] Failed to resume audio', err));
         }
-        // Never mute OpenAI response
-        if (isOpenAI) {
-          console.log('[MobileVoice] OpenAI audio remains unmuted');
-        }
-      });
+      }
+    }
 
-      void recordEvent('controller', newMutedState ? 'mobile_echo_muted' : 'mobile_echo_unmuted', {});
-      return newMutedState;
-    });
+    console.log(`[MobileVoice] Speaker toggled to: ${newMuted ? 'MUTED' : 'UNMUTED'}`);
+    void recordEvent('controller', newMuted ? 'mobile_speaker_muted' : 'mobile_speaker_unmuted', {});
   };
 
   // Handle conversation selection
@@ -868,8 +804,8 @@ function MobileVoice() {
                 {isSpeakerMuted ? <VolumeOffIcon sx={{ fontSize: 50 }} /> : <VolumeUpIcon sx={{ fontSize: 50 }} />}
               </IconButton>
               <Chip
-                label={isSpeakerMuted ? 'Echo Muted' : 'Echo On'}
-                color={isSpeakerMuted ? 'success' : 'warning'}
+                label={isSpeakerMuted ? 'Speaker Off' : 'Speaker On'}
+                color={isSpeakerMuted ? 'warning' : 'success'}
                 size="small"
                 sx={{ fontWeight: 500 }}
               />

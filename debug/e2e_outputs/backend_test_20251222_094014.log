@@ -1,0 +1,64 @@
+[2025-12-22T09:40:14.440517] ============================================================
+[2025-12-22T09:40:14.440657] Starting Backend E2E Test for MainConversation -> HTMLDisplay
+[2025-12-22T09:40:14.440687] ============================================================
+[2025-12-22T09:40:14.440707] Test task: Please research the weather forecast for Rio de Janeiro for tomorrow, then display it to me with a beautiful HTML visualization.
+[2025-12-22T09:40:14.440737] Connecting to: ws://localhost:8000/api/runs/MainConversation
+[2025-12-22T09:40:14.440755] Opening WebSocket connection to: ws://localhost:8000/api/runs/MainConversation
+[2025-12-22T09:40:14.655384] WebSocket connected!
+[2025-12-22T09:40:14.655599] Sending run command: {"type": "run", "data": "Please research the weather forecast for Rio de Janeiro for tomorrow, then ...
+[2025-12-22T09:40:14.655886] Run command sent, waiting for agent messages...
+[2025-12-22T09:40:14.663021] [SYSTEM]: {
+  "message": "Initiating agent run with task: Please research the weather forecast for Rio de Janeiro for tomorrow, then display it to me with a b..."
+}
+[2025-12-22T09:40:39.196878] Manager TERMINATE detected: {
+  "content": "Summary:\nThe weather forecast for Rio de Janeiro tomorrow is expected to be very warm and sunny, with day temperatures reaching 34\u00b0C, dipping to 24\u00b0C at night, and a minimal chance of rain.\n\nTERMINATE"
+}
+[2025-12-22T09:40:39.199966] Agent run finished!
+[2025-12-22T09:40:39.201070] 
+[2025-12-22T09:40:39.201194] ============================================================
+[2025-12-22T09:40:39.201250] TEST REPORT
+[2025-12-22T09:40:39.201297] ============================================================
+[2025-12-22T09:40:39.201346] Report: {
+  "success": false,
+  "agent_finished": true,
+  "html_display_invoked": false,
+  "manager_terminated": true,
+  "agents_involved": [
+    "Manager",
+    "Researcher",
+    "user"
+  ],
+  "total_messages": 13
+}
+[2025-12-22T09:40:39.202932] All messages saved to: /home/rodrigo/agentic/backend/../debug/e2e_outputs/backend_test_messages.json
+[2025-12-22T09:40:39.203036] 
+[2025-12-22T09:40:39.203108] FLOW ANALYSIS:
+[2025-12-22T09:40:39.203211] Agent sequence (first 50): ['user', 'user', 'Manager', 'Researcher', 'Researcher', 'Researcher', 'Researcher', 'Researcher', 'Researcher', 'Manager']
+[2025-12-22T09:40:39.203269] 
+[2025-12-22T09:40:39.203313] MANAGER MESSAGES:
+[2025-12-22T09:40:39.203362]   -> TASK: Research the weather forecast for Rio de Janeiro for tomorrow
+NEXT AGENT: Researcher
+[2025-12-22T09:40:39.203411]   -> Summary:
+The weather forecast for Rio de Janeiro tomorrow is expected to be very warm and sunny, with day temperatures reaching 34°C, dipping to 24°C at night, and a minimal chance of rain.
+
+TERMINATE
+[2025-12-22T09:40:39.203460] 
+[2025-12-22T09:40:39.203503] RESEARCHER MESSAGES (last 3):
+[2025-12-22T09:40:39.203568]   -> [{'id': 'call_zNOlNcXQHC9fn1H7AVvReRpS', 'arguments': '{"url":"https://www.accuweather.com/en/br/rio-de-janeiro/45449/weather-forecast/45449"}', 'name': 'fetch_web_content'}]...
+[2025-12-22T09:40:39.203724]   -> [{'content': 'Rio de Janeiro, Rio De Janeiro, Brazil Weather Forecast | AccuWeather Go Back For Business | Warnings Data Suite Forensics Advertising Superior Accuracy™ Rio de Janeiro, Rio De Janeiro 27° C Location Chevron down Location News Videos Use Current Location Recent Rio de Janeiro Rio De Janeiro 27° No results found. Try searching for a city, zip code or point of interest. settings Rio de Janeiro, Rio De Janeiro Weather Today WinterCast Local {stormName} Tracker Hourly Daily Radar MinuteCast® Monthly Air Quality Health & Activities Around the Globe Radar & Maps News News & Features Astronomy Business Climate Health Recreation Sports Travel For Business Warnings Data Suite Forensics Advertising Superior Accuracy™ Video Severe Weather Hurricane Tracker Today Hourly Daily Radar MinuteCast® Monthly Air Quality Health & Activities Today\'s Weather Mon, Dec 22 Partly sunny and very warm Hi: 33° Tonight: Clear Lo: 22° Current Weather 9:40 AM 27° C RealFeel®\n\t\t\t\t\t\t30° Cloudy More Details RealFeel Shade™ 27° Wind N 8 km/h Wind Gusts 19 km/h Air Quality Fair Rio de Janeiro Weather Radar Static Radar Temporarily Unavailable Thank you for your patience as we work to get everything up and running again. Refresh Page Clouds Temperature Hourly Weather 10 AM 29° 0% 11 AM 31° 0% 12 PM 32° 0% 1 PM 32° 0% 2 PM 33° 0% 3 PM 32° 0% 4 PM 31° 0% 5 PM 30° 0% 6 PM 29° 0% 7 PM 27° 0% 8 PM 27° 0% 9 PM 26° 0% 10-Day Weather Forecast Today 12/22 33° 22° Partly sunny and very warm Night: Clear 1% Tue 12/23 34° 24° Brilliant sunshine and hot Partly cloudy 2% Wed 12/24 35° 25° Cloudy and hot Mainly clear 25% Thu 12/25 36° 25° Partly sunny and very hot Mainly clear 25% Fri 12/26 34° 25° Hot in the morning; sunshine Clear and humid 25% Sat 12/27 33° 25° Partly sunny and very warm Mostly clear 13% Sun 12/28 36° 25° Mostly sunny and very hot Partly cloudy 4% Mon 12/29 31° 25° An afternoon t-storm or two Occasional evening rain 61% Tue 12/30 29° 24° Mostly cloudy Mostly cloudy 25% Wed 12/31 28° 24° Rain and a thunderstorm Rain 71% Sun & Moon 13 hrs 33 mins Rise 5:05 AM Set 6:38 PM Waxing Crescent Rise 7:04 AM Set 8:54 PM Air Quality See More Air Quality Fair The air quality is generally acceptable for most individuals. However, sensitive groups may experience minor to moderate symptoms from long-term exposure. Allergy Outlook See All Dust & Dander Extreme Data is not supported in this location Top Stories Winter Weather Northeastern US to get a mixed bag of snow, ice and rain this week 1 hour ago Weather Forecasts Christmas week US travelers to face stormy weather on West Coast 17 hours ago Weather News Largest wildlife overpass in North America opens across 6-lane highway 2 days ago Severe Weather 2nd atmospheric river to flood California with firehose of rain 2 hours ago Winter Weather What are the snowiest cities in the US? 20 hours ago More Stories Featured Stories Weather News Los Angeles wildfires linked to spike in heart, lung emergencies 2 days ago Astronomy Satellite ‘Crash Clock’ shows orbit 2.8 days from potential disaster 5 days ago Weather News Why the weirdest sea level changes on Earth are happening off the coas... 3 days ago Weather News Is it safe to eat snow? Here\'s what the science says 4 days ago Astronomy Interstellar comet 3I/ATLAS swings by Earth this week 2 days ago World South America Brazil Rio De Janeiro Rio de Janeiro Weather Near Rio de Janeiro: Jardim Carioca , Rio De Janeiro Jardim Guanabara , Rio De Janeiro Portuguesa , Rio De Janeiro Company Proven Superior Accuracy™ About AccuWeather Digital Advertising Careers Press Contact Us Products & Services For Business For Partners For Advertising AccuWeather APIs AccuWeather Connect RealFeel® and RealFeel Shade™ Personal Weather Stations Apps & Downloads iPhone App Android App See all Apps & Downloads Subscription Services AccuWeather Premium AccuWeather Professional More AccuWeather Ready Business Health Hurricane Leisure and Recreation Severe Weather Space and Astronomy Sports Travel Weather News Company Proven Superior Accuracy™ About AccuWeather Digital Advertising Careers Press Contact Us Products & Services For Business For Partners For Advertising AccuWeather APIs AccuWeather Connect RealFeel® and RealFeel Shade™ Personal Weather Stations Apps & Downloads iPhone App Android App See all Apps & Downloads Subscription Services AccuWeather Premium AccuWeather Professional More AccuWeather Ready Business Health Hurricane Leisure and Recreation Severe Weather Space and Astronomy Sports Travel Weather News © 2025 AccuWeather, Inc. "AccuWeather" and sun design are registered trademarks of AccuWeather, Inc. All Rights Reserved. Terms of Use | Privacy Policy | Cookie Policy | Data Sources', 'name': 'fetch_web_content', 'call_id': 'call_zNOlNcXQHC9fn1H7AVvReRpS', 'is_error': False}]...
+[2025-12-22T09:40:39.203876]   -> The weather forecast for Rio de Janeiro tomorrow, December 23rd, is as follows:
+
+- **Expected Temperature**: 34°C during the day and 24°C at night.
+- **General Condition**: The day will have brilliant sunshine and hot conditions.
+- **Chance of Precipitation**: Approximately 2% chance of rain.
+
+Here ...
+[2025-12-22T09:40:39.204027] 
+[2025-12-22T09:40:39.204098] HTML OUTPUT CHECK:
+[2025-12-22T09:40:39.205045] HTML files in output dir: ['welcome.html', 'html_001.html', 'html_004.html', 'html_003.html', 'html_002.html']
+[2025-12-22T09:40:39.205534] 
+[2025-12-22T09:40:39.205631] ============================================================
+[2025-12-22T09:40:39.205699] TEST FAILED: HTMLDisplay was NOT invoked!
+[2025-12-22T09:40:39.205761] This means Manager did not delegate to HTMLDisplay after Researcher finished.
+[2025-12-22T09:40:39.205828] ============================================================
+[2025-12-22T09:40:39.205892] Results saved to: /home/rodrigo/agentic/backend/../debug/e2e_outputs

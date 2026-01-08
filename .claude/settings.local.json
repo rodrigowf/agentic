@@ -6,7 +6,18 @@
       "Bash(cat:*)",
       "Bash(node -e:*)",
       "Bash(source:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(~/.nvm/versions/node/v22.21.1/bin/node:*)",
+      "Bash(git add:*)",
+      "Bash(sudo systemctl status:*)",
+      "Bash(sudo netstat:*)",
+      "Bash(sudo -S systemctl status:*)",
+      "Bash(sudo -S netstat:*)",
+      "Bash(sudo -S ss:*)",
+      "Bash(ssh:*)",
+      "Bash(sshpass:*)",
+      "Bash(scp:*)",
+      "Bash(~/.nvm/versions/node/v22.21.1/bin/npm run build)"
     ],
     "deny": [],
     "ask": []

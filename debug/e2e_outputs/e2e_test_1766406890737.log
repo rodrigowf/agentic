@@ -1,0 +1,17 @@
+[2025-12-22T12:34:50.738Z] Starting E2E test for MainConversation -> HTMLDisplay flow
+[2025-12-22T12:34:50.740Z] Test task: "Please research the weather forecast for Rio de Janeiro for tomorrow, then display it to me with a beautiful HTML visualization."
+[2025-12-22T12:34:51.599Z] Navigating to http://localhost:3000/agentic/agents/MainConversation
+[2025-12-22T12:34:53.409Z] Agent WebSocket created: "ws://localhost:8000/api/runs/MainConversation"
+[2025-12-22T12:34:55.272Z] Took initial screenshot
+[2025-12-22T12:34:55.272Z] Waiting for page to fully load...
+[2025-12-22T12:34:55.286Z] Agent data loaded
+[2025-12-22T12:34:55.287Z] Waiting for WebSocket connection...
+[2025-12-22T12:34:55.292Z] WebSocket connected
+[2025-12-22T12:34:57.294Z] Entering task...
+[2025-12-22T12:35:00.690Z] Agent WebSocket created: "ws://localhost:8000/api/runs/MainConversation"
+[2025-12-22T12:35:01.293Z] Clicking Run button...
+[2025-12-22T12:35:01.670Z] Agent run started, waiting for completion...
+[2025-12-22T12:35:32.015Z] Agent WebSocket created: "ws://localhost:8000/api/runs/MainConversation"
+[2025-12-22T12:35:32.520Z] Progress at 30s - Messages: 0, Agents: 
+[2025-12-22T12:36:02.933Z] Agent WebSocket created: "ws://localhost:8000/api/runs/MainConversation"
+[2025-12-22T12:36:03.569Z] Progress at 60s - Messages: 0, Agents: 
